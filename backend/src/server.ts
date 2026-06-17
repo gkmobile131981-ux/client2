@@ -31,10 +31,19 @@ app.use(
   })
 );
 
-// Cors setup
+// Cors setup — allow any localhost in development
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? [FRONTEND_URL]
+  : [FRONTEND_URL, 'http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173'];
+
 app.use(
   cors({
-    origin: FRONTEND_URL,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (curl, Postman, mobile apps)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -58,7 +67,7 @@ const limiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 auth requests per windowMs
+  max: process.env.NODE_ENV === 'production' ? 10 : 1000, // Unlimited in dev
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many login or registration attempts. Please try again after 15 minutes.' }

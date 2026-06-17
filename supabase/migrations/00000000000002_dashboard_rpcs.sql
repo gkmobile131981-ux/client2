@@ -67,7 +67,7 @@ BEGIN
     u.id AS staff_id,
     u.name,
     count(r.id)::bigint AS assigned_count,
-    count(r.id) FILTER (WHERE r.status = 'delivered')::bigint AS completed_count,
+    (count(r.id) FILTER (WHERE r.status = 'delivered'))::bigint AS completed_count,
     coalesce(
       round(
         avg(
@@ -77,7 +77,7 @@ BEGIN
       ), 
       0
     ) AS avg_turnaround_days,
-    coalesce(sum(r.estimate)::numeric FILTER (WHERE r.status = 'delivered'), 0) AS total_collected
+    coalesce((sum(r.estimate) FILTER (WHERE r.status = 'delivered'))::numeric, 0) AS total_collected
   FROM public.users u
   LEFT JOIN public.repairs r ON u.id = r.staff_id 
     AND r.created_at >= p_from 
