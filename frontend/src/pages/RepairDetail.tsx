@@ -52,6 +52,12 @@ interface RepairDetailData {
   receiver_photo_url?: string | null;
   signature_url?: string | null;
   staff_id?: string | null;
+  token_number?: string | null;
+  services?: Array<{
+    id: string;
+    service_name: string;
+    labor_cost: number;
+  }>;
   device?: {
     id: string;
     brand: string;
@@ -217,6 +223,11 @@ export default function RepairDetail() {
           </div>
           <h2 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5 mt-1">
             <span className="font-mono text-primary">{repair.job_number}</span>
+            {repair.token_number && (
+              <span className="text-xs font-bold text-muted-foreground border border-border/60 rounded-lg px-2 py-0.5 bg-secondary/30">
+                Token: {repair.token_number}
+              </span>
+            )}
           </h2>
           <p className="text-muted-foreground text-xs mt-0.5">
             Opened on {new Date(repair.created_at).toLocaleString()}
@@ -529,21 +540,43 @@ export default function RepairDetail() {
             <CardContent className="space-y-3.5 text-sm">
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Estimate Cost:</span>
-                <span className="font-bold text-white">${Number(repair.estimate).toFixed(2)}</span>
+                <span className="font-bold text-white">₹{Number(repair.estimate).toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Advance Deposited:</span>
-                <span className="font-bold text-emerald-400">${Number(repair.advance).toFixed(2)}</span>
+                <span className="font-bold text-emerald-400">₹{Number(repair.advance).toFixed(2)}</span>
               </div>
               <div className="h-px bg-border/60 my-2" />
               <div className="flex justify-between items-center bg-secondary/35 rounded-xl p-3 border border-border/50">
                 <span className="font-semibold text-white">Balance Due:</span>
                 <span className={`text-base font-extrabold ${repair.balance > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
-                  ${Number(repair.balance).toFixed(2)}
+                  ₹{Number(repair.balance).toFixed(2)}
                 </span>
               </div>
             </CardContent>
           </Card>
+
+          {/* Service Line Items */}
+          {repair.services && repair.services.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base text-white">Service Breakdown</CardTitle>
+                <CardDescription>Itemized repair services performed.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {repair.services.map((svc, idx) => (
+                  <div key={svc.id || idx} className="flex justify-between items-center text-sm py-1 border-b border-border/30 last:border-0">
+                    <span className="text-white">{svc.service_name}</span>
+                    <span className="font-bold text-primary">₹{Number(svc.labor_cost).toFixed(2)}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between items-center text-sm pt-2 font-extrabold">
+                  <span className="text-white">Total Services</span>
+                  <span className="text-white">₹{repair.services.reduce((sum, s) => sum + Number(s.labor_cost), 0).toFixed(2)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Assignment */}
           <Card>

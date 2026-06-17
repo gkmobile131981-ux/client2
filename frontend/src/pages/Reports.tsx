@@ -295,9 +295,9 @@ export default function Reports() {
                       <TableCell className="text-white text-xs">{r.device?.customer?.name || 'Walk-In'}</TableCell>
                       <TableCell className="text-white text-xs">{r.device ? `${r.device.brand} ${r.device.model}` : 'Unknown'}</TableCell>
                       <TableCell className="capitalize text-xs text-muted-foreground">{r.status}</TableCell>
-                      <TableCell className="text-right text-white">${Number(r.estimate).toFixed(2)}</TableCell>
-                      <TableCell className="text-right text-emerald-400">${Number(r.advance).toFixed(2)}</TableCell>
-                      <TableCell className="text-right text-amber-400">${Number(r.balance).toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-white">₹{Number(r.estimate).toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-emerald-400">₹{Number(r.advance).toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-amber-400">₹{Number(r.balance).toFixed(2)}</TableCell>
                     </TableRow>
                   ))}
                   {/* Totals row */}
@@ -351,7 +351,7 @@ export default function Reports() {
                       <TableCell className="text-center text-white">{staff.assigned_count}</TableCell>
                       <TableCell className="text-center text-white">{staff.completed_count}</TableCell>
                       <TableCell className="text-center text-white">{staff.avg_turnaround_days} days</TableCell>
-                      <TableCell className="text-right text-emerald-400 font-bold">${Number(staff.total_collected).toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-emerald-400 font-bold">₹{Number(staff.total_collected).toFixed(2)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

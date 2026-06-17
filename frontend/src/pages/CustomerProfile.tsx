@@ -313,7 +313,7 @@ export default function CustomerProfile() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right font-bold text-white">
-                        ${Number(r.estimate).toFixed(2)}
+                        ₹{Number(r.estimate).toFixed(2)}
                       </TableCell>
                     </TableRow>
                   );

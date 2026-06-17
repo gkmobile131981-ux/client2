@@ -7,6 +7,7 @@ import repairRoutes from './routes/repairs.routes';
 import authRoutes from './routes/auth.routes';
 import customerRoutes from './routes/customers.routes';
 import reportsRoutes from './routes/reports.routes';
+import rateCardsRoutes from './routes/ratecards.routes';
 import { sanitizeMiddleware } from './middleware/sanitize';
 
 dotenv.config();
@@ -86,6 +87,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/repairs', repairRoutes);
 app.use('/api', reportsRoutes);
+app.use('/api/ratecards', rateCardsRoutes);
 
 // 404 Route handler
 app.use((_req: Request, res: Response) => {

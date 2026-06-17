@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseAdmin } from '../utils/supabase';
 import { uploadPhoto } from '../utils/photoUpload';
 import { generateJobNumber } from '../utils/jobNumber';
+import { generateTokenNumber } from '../utils/tokenNumber';
 import { v4 as uuidv4 } from 'uuid';
 import { generateReceiptPdf } from '../utils/receipt.generator';
 
@@ -19,7 +20,11 @@ const createRepairSchema = z.object({
   advance: z.number().nonnegative('Advance must be positive'),
   deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Delivery date must be YYYY-MM-DD').optional().nullable(),
   staffId: z.string().uuid('Invalid Staff ID').optional().nullable(),
-  notes: z.string().optional().nullable()
+  notes: z.string().optional().nullable(),
+  services: z.array(z.object({
+    service_name: z.string().min(1),
+    labor_cost: z.number().nonnegative()
+  })).optional().default([])
 }).refine((data) => data.advance <= data.estimate, {
   message: 'Advance cannot exceed estimate amount',
   path: ['advance']
@@ -140,7 +145,8 @@ export async function getRepairById(req: Request, res: Response): Promise<void> 
         device:devices(*),
         customer:customers(*),
         assigned_staff:users!repairs_staff_id_fkey(id, name, staff_id),
-        history:repair_history(*, changed_by_user:users(id, name, role))
+        history:repair_history(*, changed_by_user:users(id, name, role)),
+        services:repair_services(*)
       `)
       .eq('id', id)
       .eq('shop_id', user.shop_id)
@@ -184,7 +190,8 @@ export async function createRepair(req: Request, res: Response): Promise<void> {
       advance: parseFloat(req.body.advance || '0'),
       deliveryDate: req.body.deliveryDate || null,
       staffId: req.body.staffId || null,
-      notes: req.body.notes || null
+      notes: req.body.notes || null,
+      services: req.body.services ? JSON.parse(req.body.services) : []
     };
 
     const validatedData = createRepairSchema.parse(rawBody);
@@ -230,6 +237,9 @@ export async function createRepair(req: Request, res: Response): Promise<void> {
     // 4. Generate unique sequential job number atomically
     const job_number = await generateJobNumber(user.shop_id);
 
+    // 4b. Generate per-customer token number (C-0001 style)
+    const token_number = await generateTokenNumber(validatedData.customerId);
+
     // 5. Create the repair order
     const repairId = uuidv4();
     const { data: repair, error: repairError } = await supabaseAdmin
@@ -237,6 +247,7 @@ export async function createRepair(req: Request, res: Response): Promise<void> {
       .insert({
         id: repairId,
         job_number,
+        token_number,
         device_id: deviceId,
         shop_id: user.shop_id,
         estimate: validatedData.estimate,
@@ -266,6 +277,16 @@ export async function createRepair(req: Request, res: Response): Promise<void> {
       new_status: 'pending',
       note: 'Repair order initialized'
     });
+
+    // 7. Insert service line items if provided
+    if (validatedData.services && validatedData.services.length > 0) {
+      const servicePayload = validatedData.services.map((svc) => ({
+        repair_id: repairId,
+        service_name: svc.service_name,
+        labor_cost: svc.labor_cost
+      }));
+      await supabaseAdmin.from('repair_services').insert(servicePayload);
+    }
 
     res.status(201).json({ message: 'Repair order created successfully', repair });
   } catch (err) {

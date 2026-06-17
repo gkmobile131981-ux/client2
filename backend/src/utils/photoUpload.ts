@@ -27,12 +27,13 @@ const MAX_BUCKET_SIZES: Record<string, number> = {
   'device-photos': 5 * 1024 * 1024,   // 5MB
   'customer-photos': 2 * 1024 * 1024, // 2MB
   'shop-logos': 1 * 1024 * 1024,      // 1MB
-  'delivery-photos': 5 * 1024 * 1024  // 5MB
+  'delivery-photos': 5 * 1024 * 1024, // 5MB
+  'rate-card-images': 2 * 1024 * 1024 // 2MB
 };
 
 export async function uploadPhoto(
   file: Express.Multer.File,
-  bucket: 'device-photos' | 'customer-photos' | 'shop-logos' | 'delivery-photos'
+  bucket: 'device-photos' | 'customer-photos' | 'shop-logos' | 'delivery-photos' | 'rate-card-images'
 ): Promise<string> {
   // 1. Validate file extension
   if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
@@ -63,8 +64,8 @@ export async function uploadPhoto(
   }
 
   // 5. Generate matching public or signed URL path
-  if (bucket === 'shop-logos') {
-    // Return Public URL
+  if (bucket === 'shop-logos' || bucket === 'rate-card-images') {
+    // Return Public URL (public buckets)
     const { data: { publicUrl } } = supabaseAdmin.storage.from(bucket).getPublicUrl(filePath);
     return publicUrl;
   } else {

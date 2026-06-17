@@ -219,12 +219,12 @@ export default function Repairs() {
                   <div className="flex flex-wrap items-center gap-6 text-sm">
                     <div className="flex flex-col">
                       <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Estimate</span>
-                      <span className="font-bold text-white">${Number(r.estimate).toFixed(2)}</span>
+                      <span className="font-bold text-white">₹{Number(r.estimate).toFixed(2)}</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Balance</span>
                       <span className={`font-bold ${r.balance > 0 ? 'text-amber-400' : 'text-slate-400'}`}>
-                        ${Number(r.balance).toFixed(2)}
+                        ₹{Number(r.balance).toFixed(2)}
                       </span>
                     </div>
 

@@ -24,7 +24,10 @@ jest.mock('../src/utils/supabase', () => {
     customers: [] as any[],
     devices: [] as any[],
     repairs: [] as any[],
-    repair_history: [] as any[]
+    repair_history: [] as any[],
+    rate_cards: [] as any[],
+    rate_card_services: [] as any[],
+    repair_services: [] as any[]
   };
 
   class MockQueryBuilder {
@@ -389,6 +392,11 @@ jest.mock('../src/utils/supabase', () => {
           const count = DB.repairs.filter(r => r.job_number && r.job_number.includes(todayStr)).length + 1;
           const num = `GK-${todayStr}-${String(count).padStart(3, '0')}`;
           return Promise.resolve({ data: num, error: null });
+        }
+        if (fnName === 'generate_token_number') {
+          const count = DB.repairs.length + 1;
+          const token = `C-${String(count).padStart(4, '0')}`;
+          return Promise.resolve({ data: token, error: null });
         }
         if (fnName === 'get_monthly_revenue') {
           return Promise.resolve({ data: [{ month: '2026-06', revenue: 100, repairsCount: 5 }], error: null });

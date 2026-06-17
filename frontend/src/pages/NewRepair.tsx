@@ -15,7 +15,8 @@ import {
   Plus,
   Loader2,
   X,
-  Search
+  Search,
+  Tag
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -89,6 +90,9 @@ export default function NewRepair() {
   const [frontPreview, setFrontPreview] = useState<string | null>(null);
   const [backPreview, setBackPreview] = useState<string | null>(null);
 
+  // Service line items
+  const [selectedServices, setSelectedServices] = useState<Array<{ service_name: string; labor_cost: number }>>([]);
+
   // 1. Fetch staff members (owners only)
   const { data: staffData } = useQuery<{ staff: Staff[] }>({
     queryKey: ['staff-list'],
@@ -102,6 +106,7 @@ export default function NewRepair() {
     queryFn: () => apiClient.get(`/customers?search=${phoneSearch}`),
     enabled: phoneSearch.length >= 2
   });
+
 
   // Pre-load customer if ID is passed in the route
   useEffect(() => {
@@ -157,6 +162,15 @@ export default function NewRepair() {
       staffId: '',
       notes: ''
     }
+  });
+
+  // 3. Fetch rate card when brand + model are available (for service picker in Step 3)
+  const watchBrand = form2.watch('brand');
+  const watchModel = form2.watch('model');
+  const { data: rateCardData } = useQuery<{ rateCard: { services: Array<{ id: string; service_name: string; labor_cost: number }> } | null }>({
+    queryKey: ['rate-card-lookup', watchBrand, watchModel],
+    queryFn: () => apiClient.get(`/ratecards/lookup?brand=${encodeURIComponent(watchBrand)}&model=${encodeURIComponent(watchModel)}`),
+    enabled: step >= 3 && watchBrand.length > 0 && watchModel.length > 0
   });
 
   // Photo handlers
@@ -255,10 +269,27 @@ export default function NewRepair() {
     if (finalStaffId) formData.append('staffId', finalStaffId);
     
     if (values.notes) formData.append('notes', values.notes);
+    // Attach selected service line items
+    const services = selectedServices;
+    if (services.length) formData.append('services', JSON.stringify(services));
     if (frontPhoto) formData.append('frontPhoto', frontPhoto);
     if (backPhoto) formData.append('backPhoto', backPhoto);
 
     createRepairMutation.mutate(formData);
+  };
+
+  // Toggle a service on/off from rate card; auto-update estimate when services change
+  const toggleService = (svc: { service_name: string; labor_cost: number }) => {
+    setSelectedServices((prev) => {
+      const exists = prev.find((s) => s.service_name === svc.service_name);
+      const next = exists
+        ? prev.filter((s) => s.service_name !== svc.service_name)
+        : [...prev, svc];
+      // Auto-fill estimate field with sum of selected services
+      const total = next.reduce((sum, s) => sum + s.labor_cost, 0);
+      if (total > 0) form3.setValue('estimate', total, { shouldValidate: true });
+      return next;
+    });
   };
 
   // Dynamic balance calculations
@@ -617,10 +648,45 @@ export default function NewRepair() {
               <div className="sm:col-span-2 p-4 bg-secondary/35 border border-border/60 rounded-xl flex items-center justify-between mt-2">
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Balance Outstanding</h4>
-                  <p className="text-2xl font-extrabold text-white mt-1">${balance.toFixed(2)}</p>
+                  <p className="text-2xl font-extrabold text-white mt-1">₹{balance.toFixed(2)}</p>
                 </div>
                 <span className="text-[10px] text-muted-foreground">Balance = Estimate - Advance</span>
               </div>
+
+              {/* Rate Card Service Picker */}
+              {rateCardData?.rateCard?.services && rateCardData.rateCard.services.length > 0 && (
+                <div className="sm:col-span-2 space-y-3 border border-primary/20 rounded-xl p-4 bg-primary/5">
+                  <div className="flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-bold text-primary uppercase tracking-wider">Rate Card Services — select to auto-fill estimate</span>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {rateCardData.rateCard.services.map((svc) => {
+                      const isSelected = selectedServices.some((s) => s.service_name === svc.service_name);
+                      return (
+                        <button
+                          key={svc.id}
+                          type="button"
+                          onClick={() => toggleService({ service_name: svc.service_name, labor_cost: svc.labor_cost })}
+                          className={`flex items-center justify-between p-2.5 rounded-lg border text-left text-xs transition-all ${
+                            isSelected
+                              ? 'bg-primary/15 border-primary text-white'
+                              : 'bg-secondary/20 border-border/60 text-muted-foreground hover:border-primary/40 hover:text-white'
+                          }`}
+                        >
+                          <span className="font-semibold">{svc.service_name}</span>
+                          <span className="font-bold text-primary">₹{Number(svc.labor_cost).toFixed(0)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selectedServices.length > 0 && (
+                    <div className="text-xs text-white font-semibold border-t border-border/30 pt-2">
+                      Selected: {selectedServices.length} service(s) → Total: ₹{selectedServices.reduce((sum, s) => sum + s.labor_cost, 0).toFixed(2)}
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
 
             <div className="p-6 pt-0 border-t border-border/40 pt-4 flex justify-between mt-4">

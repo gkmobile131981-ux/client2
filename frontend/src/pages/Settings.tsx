@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import RateCards from './RateCards';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -463,6 +464,19 @@ export default function SettingsPage({ defaultTab = 'shop' }: SettingsPageProps)
             }`}
           >
             <Shield className="h-4 w-4" /> System Audit Logs
+          </button>
+        )}
+
+        {isOwner && (
+          <button
+            onClick={() => setActiveTab('ratecards')}
+            className={`px-4 py-2 text-sm font-semibold border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === 'ratecards'
+                ? 'border-primary text-primary font-bold'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Smartphone className="h-4 w-4" /> Service Rate Cards
           </button>
         )}
       </div>
@@ -966,6 +980,19 @@ export default function SettingsPage({ defaultTab = 'shop' }: SettingsPageProps)
                 )}
               </CardContent>
             </Card>
+          </div>
+        )}
+
+        {/* Tab 5: Rate Cards (Owner only) */}
+        {activeTab === 'ratecards' && isOwner && (
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-bold text-foreground">Service Rate Cards</h3>
+              <p className="text-sm text-muted-foreground">
+                Define repair services and their ₹ labor costs per device model. Used for auto-filling estimates on repair tickets.
+              </p>
+            </div>
+            <RateCards />
           </div>
         )}
       </div>

@@ -249,7 +249,7 @@ export default function Dashboard() {
               <DollarSign className="h-5 w-5 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-white tracking-tight">${Number(stats.revenueCollected).toFixed(2)}</div>
+              <div className="text-3xl font-black text-white tracking-tight">₹{Number(stats.revenueCollected).toFixed(2)}</div>
               <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
                 <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
                 <span>Collected cash advances today</span>
@@ -265,7 +265,7 @@ export default function Dashboard() {
               <DollarSign className="h-5 w-5 text-red-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-white tracking-tight">${Number(stats.totalOutstandingBalance).toFixed(2)}</div>
+              <div className="text-3xl font-black text-white tracking-tight">₹{Number(stats.totalOutstandingBalance).toFixed(2)}</div>
               <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
                 <AlertCircle className="h-3.5 w-3.5 text-red-500" />
                 <span>Outstanding dues for active jobs</span>
