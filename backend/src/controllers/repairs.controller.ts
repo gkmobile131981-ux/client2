@@ -118,6 +118,86 @@ export async function getAllRepairs(req: Request, res: Response): Promise<void> 
       query = query.lte('created_at', dateEnd);
     }
 
+    // Apply database-level search filtering
+    if (search) {
+      const searchByPhone = req.query.searchByPhone === 'true';
+      const searchByIMEI = req.query.searchByIMEI === 'true';
+
+      let customerIds: string[] = [];
+      let orConditions: string[] = [];
+
+      if (searchByPhone && searchByIMEI) {
+        // Search by phone OR IMEI
+        const { data: customers } = await supabaseAdmin
+          .from('customers')
+          .select('id')
+          .eq('shop_id', user.shop_id)
+          .ilike('phone', `%${search}%`);
+        customerIds = customers?.map(c => c.id) || [];
+        
+        orConditions.push(`imei.ilike.%${search}%`);
+        if (customerIds.length > 0) {
+          orConditions.push(`customer_id.in.(${customerIds.join(',')})`);
+        }
+      } else if (searchByPhone) {
+        // Search ONLY by phone
+        const { data: customers } = await supabaseAdmin
+          .from('customers')
+          .select('id')
+          .eq('shop_id', user.shop_id)
+          .ilike('phone', `%${search}%`);
+        customerIds = customers?.map(c => c.id) || [];
+        
+        if (customerIds.length > 0) {
+          orConditions.push(`customer_id.in.(${customerIds.join(',')})`);
+        } else {
+          // Force no match since phone filter didn't match any customer
+          orConditions.push(`customer_id.eq.00000000-0000-0000-0000-000000000000`);
+        }
+      } else if (searchByIMEI) {
+        // Search ONLY by IMEI
+        orConditions.push(`imei.ilike.%${search}%`);
+      } else {
+        // Default search: job_number, customer name, brand, model, serial_number
+        const { data: customers } = await supabaseAdmin
+          .from('customers')
+          .select('id')
+          .eq('shop_id', user.shop_id)
+          .ilike('name', `%${search}%`);
+        customerIds = customers?.map(c => c.id) || [];
+
+        orConditions.push(`brand.ilike.%${search}%`);
+        orConditions.push(`model.ilike.%${search}%`);
+        orConditions.push(`serial_number.ilike.%${search}%`);
+        if (customerIds.length > 0) {
+          orConditions.push(`customer_id.in.(${customerIds.join(',')})`);
+        }
+      }
+
+      let matchedDeviceIds: string[] = [];
+      if (orConditions.length > 0) {
+        const { data: devices } = await supabaseAdmin
+          .from('devices')
+          .select('id')
+          .or(orConditions.join(','));
+        matchedDeviceIds = devices?.map(d => d.id) || [];
+      }
+
+      if (searchByPhone || searchByIMEI) {
+        if (matchedDeviceIds.length > 0) {
+          query = query.in('device_id', matchedDeviceIds);
+        } else {
+          query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+        }
+      } else {
+        if (matchedDeviceIds.length > 0) {
+          query = query.or(`job_number.ilike.%${search}%,device_id.in.(${matchedDeviceIds.join(',')})`);
+        } else {
+          query = query.ilike('job_number', `%${search}%`);
+        }
+      }
+    }
+
     const { data: repairs, count, error } = await query
       .order('created_at', { ascending: false })
       .range(from, to);
@@ -127,33 +207,8 @@ export async function getAllRepairs(req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // 4. Client-side search matching job number, customer name, phone, or imei
-    let filteredRepairs = repairs || [];
-    if (search) {
-      const lowerSearch = search.toLowerCase();
-      const searchByPhone = req.query.searchByPhone === 'true';
-      const searchByIMEI = req.query.searchByIMEI === 'true';
-
-      filteredRepairs = filteredRepairs.filter((r: any) => {
-        const matchesJob = r.job_number?.toLowerCase().includes(lowerSearch);
-        const matchesCustomer = r.device?.customer?.name?.toLowerCase().includes(lowerSearch);
-        const matchesPhone = r.device?.customer?.phone?.toLowerCase().includes(lowerSearch);
-        const matchesImei = r.device?.imei?.toLowerCase().includes(lowerSearch);
-
-        if (searchByPhone && searchByIMEI) {
-          return matchesPhone || matchesImei;
-        } else if (searchByPhone) {
-          return matchesPhone;
-        } else if (searchByIMEI) {
-          return matchesImei;
-        } else {
-          return matchesJob || matchesCustomer;
-        }
-      });
-    }
-
     res.json({
-      repairs: filteredRepairs,
+      repairs: repairs || [],
       pagination: {
         page,
         limit,
