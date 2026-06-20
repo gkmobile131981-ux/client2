@@ -172,9 +172,12 @@ export default function RepairDetail() {
   // Mutation to trigger backend WhatsApp notification manually
   const triggerWhatsAppMutation = useMutation({
     mutationFn: () => 
-      apiClient.post(`/repairs/${id}/whatsapp/trigger`, {}),
-    onSuccess: () => {
+      apiClient.post<{ success: boolean; isSandbox?: boolean; whatsappUrl?: string }>(`/repairs/${id}/whatsapp/trigger`, {}),
+    onSuccess: (data) => {
       toast.success('WhatsApp notification dispatched successfully!');
+      if (data?.isSandbox && data?.whatsappUrl) {
+        window.open(data.whatsappUrl, '_blank');
+      }
     },
     onError: (err: any) => {
       toast.error(err.message || 'Failed to trigger notification');
@@ -586,19 +589,6 @@ export default function RepairDetail() {
                   <Clock className="h-4 w-4" />
                   {repair.status}
                 </span>
-                <Button
-                  onClick={() => triggerWhatsAppMutation.mutate()}
-                  disabled={triggerWhatsAppMutation.isPending}
-                  variant="ghost"
-                  className="w-full mt-1.5 h-8 text-[11px] text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-emerald-500/25 gap-1"
-                >
-                  {triggerWhatsAppMutation.isPending ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3 w-3" />
-                  )}
-                  <span>Dispatch Auto Update</span>
-                </Button>
               </div>
 
               <div className="space-y-1">

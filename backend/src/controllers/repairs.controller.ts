@@ -973,7 +973,7 @@ export async function triggerWhatsAppNotification(req: Request, res: Response): 
   try {
     const { data: fullRepair, error: fetchError } = await supabaseAdmin
       .from('repairs')
-      .select('*, device:devices(*, customer:customers(*)), shop:shops(*)')
+      .select('*, device:devices(*, customer:customers(*)), shop:shops(*), history:repair_history(*)')
       .eq('id', id)
       .eq('shop_id', user.shop_id)
       .single();
@@ -983,13 +983,29 @@ export async function triggerWhatsAppNotification(req: Request, res: Response): 
       return;
     }
 
-    const result = await sendWhatsAppUpdate(fullRepair, fullRepair.status, fullRepair.notes);
+    let progressNote = fullRepair.notes;
+    if (fullRepair.history && Array.isArray(fullRepair.history) && fullRepair.history.length > 0) {
+      const matchingLogs = fullRepair.history
+        .filter((h: any) => h.new_status === fullRepair.status && h.note && h.note !== 'Status updated')
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      
+      if (matchingLogs.length > 0) {
+        progressNote = matchingLogs[0].note;
+      }
+    }
+
+    const result = await sendWhatsAppUpdate(fullRepair, fullRepair.status, progressNote);
     if (!result.success) {
       res.status(500).json({ error: result.error || 'Failed to send WhatsApp message' });
       return;
     }
 
-    res.json({ message: 'WhatsApp notification triggered successfully', success: true });
+    res.json({ 
+      message: 'WhatsApp notification triggered successfully', 
+      success: true,
+      isSandbox: result.isSandbox,
+      whatsappUrl: result.whatsappUrl
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to trigger WhatsApp notification' });

@@ -82,7 +82,14 @@ function formatMessage(
   balance: number,
   notes?: string | null
 ): string {
-  const device = `${brand} ${model}`;
+  const cleanBrand = brand.trim();
+  const cleanModel = model.trim();
+  let device = `${cleanBrand} ${cleanModel}`;
+  if (cleanBrand.toLowerCase() === cleanModel.toLowerCase()) {
+    device = cleanBrand;
+  } else if (cleanModel.toLowerCase().startsWith(cleanBrand.toLowerCase())) {
+    device = cleanModel;
+  }
   
   let stageMsg = '';
   switch (status) {
@@ -146,7 +153,7 @@ export async function sendWhatsAppUpdate(
   },
   newStatus: string,
   statusNote?: string | null
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
+): Promise<{ success: boolean; messageId?: string; error?: string; isSandbox?: boolean; whatsappUrl?: string }> {
   const customer = repair.customer || repair.device?.customer;
   // If no customer data, we cannot notify
   if (!customer || !customer.phone) {
@@ -306,7 +313,19 @@ export async function sendWhatsAppUpdate(
         ...baseLog,
         status: 'sandbox'
       });
-      return { success: true, messageId: `mock-id-${Date.now()}` };
+
+      let phoneNum = customerPhone;
+      if (phoneNum.length === 10) {
+        phoneNum = '91' + phoneNum;
+      }
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneNum}&text=${encodeURIComponent(formattedText)}`;
+
+      return { 
+        success: true, 
+        messageId: `mock-id-${Date.now()}`,
+        isSandbox: true,
+        whatsappUrl
+      };
     }
   } catch (err: any) {
     console.error('[WhatsApp Service] Dispatch error:', err);
