@@ -1,0 +1,44 @@
+[
+  {
+    "id": "143df6f3-9b40-4bc2-93d9-8458bf770b42",
+    "timestamp": "2026-06-20T17:29:35.127Z",
+    "recipientName": "farhat",
+    "recipientPhone": "9344168518",
+    "jobNumber": "GK-20260620-001",
+    "deviceInfo": "iphone13 iphone13",
+    "shopName": "GK Mobile",
+    "stage": "ready",
+    "message": "Hello *farhat*,\n\nYour repair order *GK-20260620-001* for *iphone13 iphone13* is ready for pickup! 🎁 Balance due: ₹2003.00. Please bring your token to the shop.\n\n*Update Notes:* bezel replaced with tempered glass and updated software \n\nRegards,\n*GK Mobile*",
+    "notes": "bezel replaced with tempered glass and updated software ",
+    "provider": "mock",
+    "status": "sandbox"
+  },
+  {
+    "id": "143df6f3-9b40-4bc2-93d9-8458bf770b42",
+    "timestamp": "2026-06-20T17:25:20.143Z",
+    "recipientName": "farhat",
+    "recipientPhone": "9344168518",
+    "jobNumber": "GK-20260620-001",
+    "deviceInfo": "iphone13 iphone13",
+    "shopName": "GK Mobile",
+    "stage": "ready",
+    "message": "Hello *farhat*,\n\nYour repair order *GK-20260620-001* for *iphone13 iphone13* is ready for pickup! 🎁 Balance due: ₹2003.00. Please bring your token to the shop.\n\n*Update Notes:* bezel replaced with tempered glass and updated software \n\nRegards,\n*GK Mobile*",
+    "notes": "bezel replaced with tempered glass and updated software ",
+    "provider": "mock",
+    "status": "sandbox"
+  },
+  {
+    "id": "143df6f3-9b40-4bc2-93d9-8458bf770b42",
+    "timestamp": "2026-06-20T17:24:45.775Z",
+    "recipientName": "farhat",
+    "recipientPhone": "9344168518",
+    "jobNumber": "GK-20260620-001",
+    "deviceInfo": "iphone13 iphone13",
+    "shopName": "GK Mobile",
+    "stage": "ready",
+    "message": "Hello *farhat*,\n\nYour repair order *GK-20260620-001* for *iphone13 iphone13* is ready for pickup! 🎁 Balance due: ₹2003.00. Please bring your token to the shop.\n\n*Update Notes:* bezel replaced with tempered glass and updated software \n\nRegards,\n*GK Mobile*",
+    "notes": "bezel replaced with tempered glass and updated software ",
+    "provider": "mock",
+    "status": "sandbox"
+  }
+]

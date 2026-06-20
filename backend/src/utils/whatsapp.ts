@@ -130,6 +130,10 @@ export async function sendWhatsAppUpdate(
     device?: {
       brand: string;
       model: string;
+      customer?: {
+        name: string;
+        phone: string;
+      } | null;
     } | null;
     customer?: {
       name: string;
@@ -143,13 +147,14 @@ export async function sendWhatsAppUpdate(
   newStatus: string,
   statusNote?: string | null
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const customer = repair.customer || repair.device?.customer;
   // If no customer data, we cannot notify
-  if (!repair.customer || !repair.customer.phone) {
+  if (!customer || !customer.phone) {
     return { success: false, error: 'No customer phone contact available.' };
   }
 
-  const customerName = repair.customer.name;
-  const customerPhone = repair.customer.phone.replace(/\D/g, ''); // standard digits only
+  const customerName = customer.name;
+  const customerPhone = customer.phone.replace(/\D/g, ''); // standard digits only
   const jobNumber = repair.job_number;
   const brand = repair.device?.brand || 'Unknown';
   const model = repair.device?.model || 'Device';
@@ -174,7 +179,7 @@ export async function sendWhatsAppUpdate(
     id: repair.id,
     timestamp: new Date().toISOString(),
     recipientName: customerName,
-    recipientPhone: repair.customer.phone,
+    recipientPhone: customer.phone,
     jobNumber,
     deviceInfo: `${brand} ${model}`,
     shopName,
