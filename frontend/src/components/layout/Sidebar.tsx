@@ -24,6 +24,7 @@ interface NavItem {
   to: string;
   icon: React.ComponentType<{ className?: string }>;
   ownerOnly?: boolean;
+  superAdminOnly?: boolean;
   end?: boolean;
 }
 
@@ -34,11 +35,22 @@ const navigation: NavItem[] = [
   { name: 'Reports', to: '/reports', icon: TrendingUp, ownerOnly: true },
   { name: 'Repairing Price List', to: '/settings/price-list', icon: ClipboardList, ownerOnly: true },
   { name: 'Settings', to: '/settings', icon: Settings, end: true },
+  { name: 'Super Admin', to: '/superadmin', icon: UserSquare2, superAdminOnly: true },
 ];
 
 export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
-  const { role } = useAuth();
-  const filteredNavigation = navigation.filter(item => !item.ownerOnly || role === 'owner');
+  const { role, user } = useAuth();
+  const superAdminEmails = [
+    'niamaran218@gmail.com',
+    'admin@gkrepair.com',
+    'test@gkrepair.com'
+  ];
+  const isSuperAdmin = user && ((user.role as string) === 'superadmin' || (user.email && superAdminEmails.includes(user.email)));
+  const filteredNavigation = navigation.filter(item => {
+    if (item.superAdminOnly) return isSuperAdmin;
+    if (item.ownerOnly) return role === 'owner' || isSuperAdmin;
+    return true;
+  });
   return (
     <>
       {/* Mobile overlay backdrop */}

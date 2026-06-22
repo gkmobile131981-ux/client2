@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
-import { ProtectedRoute, OwnerRoute } from './components/auth/ProtectedRoute';
+import { ProtectedRoute, OwnerRoute, SuperAdminRoute } from './components/auth/ProtectedRoute';
 import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import Repairs from './pages/Repairs';
@@ -17,6 +17,7 @@ import StaffSettings from './pages/StaffSettings';
 import SettingsPage from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import SuperAdminDashboard from './pages/SuperAdminDashboard';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,6 +61,11 @@ export default function App() {
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/settings/staff" element={<SettingsPage defaultTab="staff" />} />
                   <Route path="/settings/price-list" element={<SettingsPage defaultTab="price-list" />} />
+                </Route>
+
+                {/* Super Admin exclusive controls */}
+                <Route element={<SuperAdminRoute />}>
+                  <Route path="/superadmin" element={<SuperAdminDashboard />} />
                 </Route>
               </Route>
             </Route>

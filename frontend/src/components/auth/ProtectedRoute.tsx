@@ -52,3 +52,36 @@ export const OwnerRoute: React.FC<{ children?: React.ReactNode }> = ({ children 
 
   return children ? <>{children}</> : <Outlet />;
 };
+
+export const SuperAdminRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-tr from-primary to-purple-600 shadow-md shadow-primary/20 animate-bounce">
+            <Smartphone className="h-6 w-6 text-white" />
+          </div>
+          <span className="text-xs font-semibold text-muted-foreground tracking-wider uppercase animate-pulse">
+            Checking Permissions...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  const superAdminEmails = [
+    'niamaran218@gmail.com',
+    'admin@gkrepair.com',
+    'test@gkrepair.com'
+  ];
+
+  const isSuperAdmin = user && ((user.role as string) === 'superadmin' || (user.email && superAdminEmails.includes(user.email)));
+
+  if (!user || !isSuperAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children ? <>{children}</> : <Outlet />;
+};

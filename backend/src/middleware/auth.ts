@@ -92,3 +92,27 @@ export function requireStaff(
 
   next();
 }
+
+export function requireSuperAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
+  if (!req.user) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+
+  const superAdminEmails = [
+    'niamaran218@gmail.com',
+    'admin@gkrepair.com',
+    'test@gkrepair.com'
+  ];
+
+  if ((req.user.role as string) === 'superadmin' || (req.user.email && superAdminEmails.includes(req.user.email))) {
+    next();
+    return;
+  }
+
+  res.status(403).json({ error: 'Forbidden: Super Admin role required' });
+}
