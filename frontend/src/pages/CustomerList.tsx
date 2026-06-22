@@ -114,7 +114,7 @@ export default function CustomerList() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-2xl font-extrabold text-foreground tracking-tight flex items-center gap-2">
             <Users className="h-6 w-6 text-primary" /> Customer Directory
           </h2>
           <p className="text-muted-foreground text-sm">
@@ -170,7 +170,7 @@ export default function CustomerList() {
                   </div>
 
                   <div className="space-y-1.5 flex-1 min-w-0">
-                    <h3 className="font-bold text-base text-white truncate group-hover:text-primary transition-colors">
+                    <h3 className="font-bold text-base text-foreground truncate group-hover:text-primary transition-colors">
                       {cust.name}
                     </h3>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -194,7 +194,7 @@ export default function CustomerList() {
 
                   {/* Frequency Indicator */}
                   <div className="bg-secondary/40 border border-border/50 rounded-xl px-3 py-1.5 text-center min-w-[60px]">
-                    <span className="block text-base font-bold text-white leading-none">
+                    <span className="block text-base font-bold text-foreground leading-none">
                       {cust.repairsCount}
                     </span>
                     <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider mt-0.5 block">
@@ -234,7 +234,7 @@ export default function CustomerList() {
       ) : (
         <div className="text-center py-20 border border-border border-dashed rounded-xl bg-secondary/5">
           <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-          <h3 className="text-sm font-semibold text-white">No customers found</h3>
+          <h3 className="text-sm font-semibold text-foreground">No customers found</h3>
           <p className="text-xs text-muted-foreground mt-1">
             Try correcting your search or register a new customer above.
           </p>
