@@ -201,11 +201,11 @@ export default function Dashboard() {
   ].filter(d => d.value > 0);
 
   const statusColors: Record<string, string> = {
-    pending: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-    repairing: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-    ready: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
-    delivered: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
-    cancelled: 'bg-red-500/10 text-red-500 border-red-500/20'
+    pending: 'bg-amber-500/10 text-amber-600 dark:text-amber-500 border-amber-500/20',
+    repairing: 'bg-blue-500/10 text-blue-600 dark:text-blue-500 border-blue-500/20',
+    ready: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border-emerald-500/20',
+    delivered: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20',
+    cancelled: 'bg-red-500/10 text-red-600 dark:text-red-500 border-red-500/20'
   };
 
   const statusDot: Record<string, string> = {
@@ -231,14 +231,14 @@ export default function Dashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <h2 className="text-3xl font-black text-white tracking-tight bg-gradient-to-r from-white via-neutral-200 to-neutral-400 bg-clip-text text-transparent">
+            <h2 className="text-3xl font-black text-foreground tracking-tight">
               Shop Overview
             </h2>
             <span className="px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-primary-foreground bg-primary rounded-full uppercase shadow-[0_0_15px_rgba(168,85,247,0.35)]">
               {authRole}
             </span>
           </div>
-          <p className="text-muted-foreground text-xs flex items-center gap-1.5 mt-1">
+          <p className="text-muted-foreground text-xs flex items-center gap-1.5 mt-1.5">
             <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Real-time shop diagnostics &bull; {todayDate}</span>
           </p>
@@ -249,7 +249,7 @@ export default function Dashboard() {
             size="sm"
             onClick={handleRefresh}
             disabled={refreshing}
-            className="gap-1.5 border-border/80 text-white bg-secondary/15 hover:bg-secondary/40"
+            className="gap-1.5 border-border/80 text-foreground bg-secondary/15 hover:bg-secondary/40"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
@@ -265,18 +265,18 @@ export default function Dashboard() {
       {stats && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* Card 1: Today's New Repairs */}
-          <Card className="relative overflow-hidden bg-gradient-to-br from-card/30 to-secondary/30 border border-border/80 hover:border-amber-500/30 transition-all duration-300 group">
+          <Card className="relative overflow-hidden bg-gradient-to-br from-card/30 to-secondary/30 border border-border/85 hover:border-amber-500/30 transition-all duration-300 group">
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-none bg-clip-border text-current">
                 Today&apos;s New Repairs
               </CardTitle>
-              <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_12px_rgba(245,158,11,0.25)]">
+              <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-550 border border-amber-500/20 transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_12px_rgba(245,158,11,0.25)]">
                 <Wrench className="h-4.5 w-4.5" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-white tracking-tight">
+              <div className="text-3xl font-black text-foreground tracking-tight">
                 {stats.newRepairs}
               </div>
               <p className="text-[10px] text-muted-foreground mt-2.5 flex items-center gap-1.5">
@@ -287,18 +287,18 @@ export default function Dashboard() {
           </Card>
 
           {/* Card 2: Ready for Pickup */}
-          <Card className="relative overflow-hidden bg-gradient-to-br from-card/30 to-secondary/30 border border-border/80 hover:border-emerald-500/30 transition-all duration-300 group">
+          <Card className="relative overflow-hidden bg-gradient-to-br from-card/30 to-secondary/30 border border-border/85 hover:border-emerald-500/30 transition-all duration-300 group">
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-none bg-clip-border text-current">
                 Ready for Pickup
               </CardTitle>
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_12px_rgba(16,185,129,0.25)]">
+              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 border border-emerald-500/20 transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_12px_rgba(16,185,129,0.25)]">
                 <Clock className="h-4.5 w-4.5" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-white tracking-tight">
+              <div className="text-3xl font-black text-foreground tracking-tight">
                 {stats.pendingDeliveries}
               </div>
               <p className="text-[10px] text-muted-foreground mt-2.5 flex items-center gap-1.5">
@@ -309,7 +309,7 @@ export default function Dashboard() {
           </Card>
 
           {/* Card 3: Today's Advances */}
-          <Card className="relative overflow-hidden bg-gradient-to-br from-card/30 to-secondary/30 border border-border/80 hover:border-primary/30 transition-all duration-300 group">
+          <Card className="relative overflow-hidden bg-gradient-to-br from-card/30 to-secondary/30 border border-border/85 hover:border-primary/30 transition-all duration-300 group">
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-none bg-clip-border text-current">
@@ -320,7 +320,7 @@ export default function Dashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-white tracking-tight">
+              <div className="text-3xl font-black text-foreground tracking-tight">
                 ₹{Number(stats.revenueCollected).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
               <p className="text-[10px] text-muted-foreground mt-2.5 flex items-center gap-1.5">
@@ -331,18 +331,18 @@ export default function Dashboard() {
           </Card>
 
           {/* Card 4: Outstanding Balance */}
-          <Card className="relative overflow-hidden bg-gradient-to-br from-card/30 to-secondary/30 border border-border/80 hover:border-red-500/30 transition-all duration-300 group">
+          <Card className="relative overflow-hidden bg-gradient-to-br from-card/30 to-secondary/30 border border-border/85 hover:border-red-500/30 transition-all duration-300 group">
             <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-red-500/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground bg-none bg-clip-border text-current">
                 Outstanding Balance
               </CardTitle>
-              <div className="p-2 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_12px_rgba(239,68,68,0.25)]">
+              <div className="p-2 rounded-lg bg-red-500/10 text-red-650 dark:text-red-500 border border-red-500/20 transition-all duration-300 group-hover:scale-110 group-hover:shadow-[0_0_12px_rgba(239,68,68,0.25)]">
                 <DollarSign className="h-4.5 w-4.5" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-black text-white tracking-tight">
+              <div className="text-3xl font-black text-foreground tracking-tight">
                 ₹{Number(stats.totalOutstandingBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </div>
               <p className="text-[10px] text-muted-foreground mt-2.5 flex items-center gap-1.5">
@@ -355,18 +355,18 @@ export default function Dashboard() {
       )}
 
       {/* QUICK ACTIONS ROW */}
-      <div className="flex flex-wrap items-center gap-3 bg-secondary/10 border border-border/40 p-2 rounded-xl w-fit">
+      <div className="flex flex-wrap items-center gap-3 bg-secondary/10 border border-border/40 p-2.5 rounded-xl w-fit">
         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-2">Quick Filters:</span>
         <button
           onClick={() => navigate('/repairs?status=pending')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/10 hover:border-amber-500/30 transition-all duration-200"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-amber-700 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all duration-200"
         >
           <Clock className="h-3.5 w-3.5 text-amber-500" />
           <span>Pending Pipeline</span>
         </button>
         <button
           onClick={() => navigate('/repairs?status=ready')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/10 hover:border-emerald-500/30 transition-all duration-200"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition-all duration-200"
         >
           <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
           <span>Ready for Pickup</span>
@@ -378,7 +378,7 @@ export default function Dashboard() {
         {/* Dual Axis Monthly Revenue chart */}
         <Card className="md:col-span-2">
           <CardHeader className="border-b border-border/40 pb-4">
-            <CardTitle className="text-base text-white">Monthly Repair & Revenues</CardTitle>
+            <CardTitle className="text-base text-foreground bg-none bg-clip-border text-current font-bold">Monthly Repair & Revenues</CardTitle>
             <CardDescription>Aggregate orders and estimated values over the last 6 months.</CardDescription>
           </CardHeader>
           <CardContent className="h-80 pt-6">
@@ -395,8 +395,8 @@ export default function Dashboard() {
                       <stop offset="100%" stopColor="#10b981" stopOpacity={0.15}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                  <XAxis dataKey="month" stroke="rgba(255,255,255,0.3)" fontSize={10} tickLine={false} axisLine={false} dy={4} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(156, 163, 175, 0.15)" vertical={false} />
+                  <XAxis dataKey="month" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} dy={4} />
                   <YAxis yAxisId="left" orientation="left" stroke="#a855f7" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}`} dx={-4} />
                   <YAxis yAxisId="right" orientation="right" stroke="#10b981" fontSize={10} tickLine={false} axisLine={false} dx={4} />
                   <Tooltip content={<CustomTooltip />} />
@@ -415,7 +415,7 @@ export default function Dashboard() {
         {/* Donut Chart: Repairs by status */}
         <Card>
           <CardHeader className="border-b border-border/40 pb-4">
-            <CardTitle className="text-base text-white">Repairs by Status</CardTitle>
+            <CardTitle className="text-base text-foreground bg-none bg-clip-border text-current font-bold">Repairs by Status</CardTitle>
             <CardDescription>Status breakdown of repair orders.</CardDescription>
           </CardHeader>
           <CardContent className="h-80 flex flex-col justify-between pt-6">
@@ -423,7 +423,7 @@ export default function Dashboard() {
               <>
                 <div className="h-44 relative flex items-center justify-center">
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-2">
-                    <span className="text-2xl font-black text-white tracking-tight">{totalActiveRepairs}</span>
+                    <span className="text-2xl font-black text-foreground tracking-tight">{totalActiveRepairs}</span>
                     <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">Active</span>
                   </div>
                   <ResponsiveContainer width="100%" height="100%">
@@ -438,7 +438,7 @@ export default function Dashboard() {
                         dataKey="value"
                       >
                         {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.3)" strokeWidth={2} />
+                          <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.15)" strokeWidth={2} />
                         ))}
                       </Pie>
                       <Tooltip content={<CustomTooltip />} />
@@ -451,7 +451,7 @@ export default function Dashboard() {
                       <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
                       <div className="flex flex-col min-w-0">
                         <span className="text-[9px] text-muted-foreground font-semibold uppercase truncate">{d.name}</span>
-                        <span className="text-xs font-bold text-white font-mono leading-none mt-0.5">{d.value}</span>
+                        <span className="text-xs font-bold text-foreground font-mono leading-none mt-0.5">{d.value}</span>
                       </div>
                     </div>
                   ))}
@@ -468,7 +468,7 @@ export default function Dashboard() {
         {/* Bar Chart: Top 5 Brands */}
         <Card className="md:col-span-3">
           <CardHeader className="border-b border-border/40 pb-4">
-            <CardTitle className="text-base text-white">Top Hardware Brands</CardTitle>
+            <CardTitle className="text-base text-foreground bg-none bg-clip-border text-current font-bold">Top Hardware Brands</CardTitle>
             <CardDescription>Frequency breakdown of device brands.</CardDescription>
           </CardHeader>
           <CardContent className="h-64 pt-6">
@@ -481,9 +481,9 @@ export default function Dashboard() {
                       <stop offset="100%" stopColor="#ec4899" stopOpacity={0.45}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
-                  <XAxis type="number" stroke="rgba(255,255,255,0.3)" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis dataKey="brand" type="category" stroke="rgba(255,255,255,0.3)" fontSize={10} width={80} tickLine={false} axisLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(156, 163, 175, 0.15)" vertical={false} />
+                  <XAxis type="number" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis dataKey="brand" type="category" stroke="#888888" fontSize={10} width={80} tickLine={false} axisLine={false} />
                   <Tooltip content={<CustomTooltip />} />
                   <Bar dataKey="count" fill="url(#brandGradient)" name="Orders Checked" radius={[0, 4, 4, 0]} barSize={16} />
                 </BarChart>
@@ -502,10 +502,10 @@ export default function Dashboard() {
         <CardHeader className="border-b border-border/40 pb-4">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-base text-white">Recent Repair Orders</CardTitle>
+              <CardTitle className="text-base text-foreground bg-none bg-clip-border text-current font-bold">Recent Repair Orders</CardTitle>
               <CardDescription>Overview of the last 5 registered repairs.</CardDescription>
             </div>
-            <Button variant="outline" size="sm" asChild className="gap-1 border-border/80 text-white bg-secondary/15 hover:bg-secondary/40">
+            <Button variant="outline" size="sm" asChild className="gap-1 border-border/80 text-foreground bg-secondary/15 hover:bg-secondary/40">
               <Link to="/repairs">
                 <span>All Repairs</span> <ArrowUpRight className="h-4 w-4" />
               </Link>
@@ -536,7 +536,7 @@ export default function Dashboard() {
                           <Smartphone className="h-4 w-4" />
                         </div>
                         <div>
-                          <div className="font-bold text-white text-xs">
+                          <div className="font-bold text-foreground text-xs">
                             {r.device ? `${r.device.brand} ${r.device.model}` : 'Unknown Device'}
                           </div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">
@@ -553,7 +553,7 @@ export default function Dashboard() {
                     </TableCell>
                     <TableCell className="py-4 px-6 text-xs text-muted-foreground">
                       {r.assigned_staff ? (
-                        <span className="font-medium text-white">{r.assigned_staff.name}</span>
+                        <span className="font-semibold text-foreground">{r.assigned_staff.name}</span>
                       ) : (
                         <span className="italic text-muted-foreground/60">Unassigned</span>
                       )}
@@ -567,7 +567,7 @@ export default function Dashboard() {
                             setSelectedRepairId(r.id);
                             setSelectedStatus(r.status);
                           }}
-                          className="h-8 text-[11px] font-semibold border-border/85 text-neutral-300 hover:text-white bg-secondary/10 hover:bg-secondary/35"
+                          className="h-8 text-[11px] font-semibold border-border/85 text-foreground bg-secondary/10 hover:bg-secondary/35"
                         >
                           Quick Status
                         </Button>
@@ -626,7 +626,7 @@ export default function Dashboard() {
               value={statusNote}
               onChange={(e) => setStatusNote(e.target.value)}
               rows={3}
-              className="flex w-full rounded-md border border-input bg-secondary/50 px-3 py-2 text-sm text-white focus:border-primary focus-visible:outline-none"
+              className="flex w-full rounded-md border border-input bg-secondary/50 px-3 py-2 text-sm text-foreground focus:border-primary focus-visible:outline-none"
             />
           </div>
 
