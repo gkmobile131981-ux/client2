@@ -37,13 +37,30 @@ app.use(
 // Cors setup — allow any localhost in development
 const allowedOrigins = process.env.NODE_ENV === 'production'
   ? [FRONTEND_URL]
-  : [FRONTEND_URL, 'http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173'];
+  : [
+      FRONTEND_URL,
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5180',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:5180'
+    ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (curl, Postman, mobile apps)
       if (!origin) return callback(null, true);
+      
+      // In development, allow any localhost/127.0.0.1 origin dynamically
+      if (process.env.NODE_ENV !== 'production') {
+        const isLocalhost = origin.startsWith('http://localhost:') || 
+                            origin.startsWith('http://127.0.0.1:') || 
+                            origin === 'http://localhost' || 
+                            origin === 'http://127.0.0.1';
+        if (isLocalhost) return callback(null, true);
+      }
+      
       if (allowedOrigins.includes(origin)) return callback(null, true);
       callback(new Error(`CORS: origin ${origin} not allowed`));
     },

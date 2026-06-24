@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../lib/api';
 import logo from '../logo.png';
+import cardFrontTemplate from '../card-front-template.png';
+import cardBackTemplate from '../card-back-template.png';
 import {
   User,
   Phone,
@@ -141,63 +143,19 @@ export default function OwnerIdCard() {
                 ═══════════════════════════════════════ */}
                 <div className="id-card-front" style={{
                   position: 'relative', width: CW, height: CH,
-                  borderRadius: 14, border: `5px solid ${OG}`,
-                  background: 'white', overflow: 'hidden',
+                  borderRadius: 14,
+                  backgroundImage: `url(${cardFrontTemplate})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  overflow: 'hidden',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.55)', flexShrink: 0,
                 }}>
 
-                  {/* ── Layer 0: full-height orange left column ── */}
+                  {/* ── Photo box: placed exactly inside the pre-rendered white frame ── */}
                   <div style={{
-                    position: 'absolute', top: 0, left: 0, bottom: 0,
-                    width: LW, background: OG, zIndex: 0,
-                  }} />
-
-                  {/* ── Layer 1a: white right section at top (logo area) ── */}
-                  <div style={{
-                    position: 'absolute', top: 0, left: LW, right: 0,
-                    height: LH, background: 'white', zIndex: 1,
-                  }} />
-
-                  {/* ── Layer 1b: blue right section in body ── */}
-                  <div style={{
-                    position: 'absolute', top: LH, left: LW, right: 0,
-                    bottom: FH, background: BL, zIndex: 1,
-                  }} />
-
-                  {/* ── Layer 1c: white footer ── */}
-                  <div style={{
-                    position: 'absolute', bottom: 0, left: 0, right: 0,
-                    height: FH, background: 'white',
-                    borderTop: `1px solid rgba(245,166,35,0.5)`, zIndex: 2,
-                  }} />
-
-                  {/* ── Logo image: RIGHT portion only (Tamil text area) ── */}
-                  <div style={{
-                    position: 'absolute', top: 2, left: LW + 2, right: 2,
-                    height: LH - 4, overflow: 'hidden', zIndex: 3,
-                  }}>
-                    <img src={logo} alt="Logo" style={{
-                      height: '100%', width: 'auto',
-                      objectFit: 'contain', objectPosition: 'left center',
-                    }} />
-                  </div>
-
-                  {/* ── "47/2018" label in orange column ── */}
-                  <div style={{
-                    position: 'absolute', top: LH + 3, left: 6,
-                    fontSize: 8, fontWeight: 800, color: '#1a1a1a',
-                    zIndex: 4, letterSpacing: 0.4,
-                  }}>47/2018</div>
-
-                  {/* ── Photo box: in orange column, below "47/2018" ──
-                       top = LH + 15 = 80
-                       height = 91  →  bottom = 171
-                       footer starts at CH - FH = 177  →  6px gap ✓
-                  */}
-                  <div style={{
-                    position: 'absolute', top: LH + 15, left: 8,
-                    width: LW - 18, height: CH - LH - FH - 21, // 91px
-                    background: 'white', border: '2px solid #888',
+                    position: 'absolute', top: 81, left: 11,
+                    width: 88, height: 108,
+                    background: 'transparent',
                     overflow: 'hidden',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     zIndex: 4,
@@ -208,65 +166,45 @@ export default function OwnerIdCard() {
                     }
                   </div>
 
-                  {/* ── "அடையாள அட்டை" badge ── */}
+                  {/* ── Dynamic name next to "பெயர் :" ── */}
                   <div style={{
-                    position: 'absolute', top: LH + 5, left: LW + 10,
-                    background: OG, borderRadius: 20,
-                    padding: '3px 13px',
-                    fontSize: 9, fontWeight: 800, color: '#111',
-                    whiteSpace: 'nowrap', zIndex: 4,
-                  }}>அடையாள அட்டை</div>
-
-                  {/* ── Right content block (Name, Shop, Email, Aadhar)
-                       Starts at: top = LH + 27 = 92
-                       Ends at:   CH - FH - 5 = 172
-                       Available height = 172 - 92 = 80px for 4 rows
-                  ── */}
-                  <div style={{
-                    position: 'absolute',
-                    top: LH + 27,       // 92px from top
-                    left: LW + 8,       // 118px from left
-                    right: 6,
-                    display: 'flex', flexDirection: 'column', gap: 0,
+                    position: 'absolute', top: 96, left: 148,
                     zIndex: 4,
                   }}>
-                    {/* Row: Name */}
-                    <div style={{ marginBottom: 5 }}>
-                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>பெயர் : </span>
-                      <span style={{ fontSize: 12, color: 'white', fontWeight: 800 }}>{user?.name || ''}</span>
-                    </div>
-                    {/* Row: Shop */}
-                    <div style={{ marginBottom: 6 }}>
-                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>கடை  : </span>
-                      <span style={{ fontSize: 11, color: 'white', fontWeight: 700 }}>{shop?.name || ''}</span>
-                    </div>
-                    {/* Row: Email */}
-                    <div style={{ marginBottom: 5 }}>
-                      <span style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>Email   : </span>
-                      <span style={{
-                        fontSize: 8.5, color: 'rgba(255,255,255,0.92)', fontWeight: 400,
-                        display: 'inline-block', maxWidth: 130,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        verticalAlign: 'bottom',
-                      }}>{user?.email || ''}</span>
-                    </div>
-                    {/* Row: Aadhar */}
-                    <div>
-                      <span style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.75)', fontWeight: 600 }}>Aadhar : </span>
-                      <span style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.92)', fontFamily: 'monospace', fontWeight: 500 }}>
-                        {aadharNumber || ''}
-                      </span>
-                    </div>
+                    <span style={{ fontSize: 12, color: 'white', fontWeight: 800 }}>{user?.name || ''}</span>
                   </div>
 
-                  {/* ── Footer: President / Secretary ── */}
+                  {/* ── Dynamic shop next to "கடை :" ── */}
                   <div style={{
-                    position: 'absolute', bottom: 4, left: 12, right: 12,
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    position: 'absolute', top: 126, left: 142,
                     zIndex: 4,
                   }}>
-                    <span style={{ fontSize: 10, color: BL, fontWeight: 800 }}>தலைவர்</span>
-                    <span style={{ fontSize: 10, color: BL, fontWeight: 800 }}>செயலாளர்</span>
+                    <span style={{ fontSize: 11, color: 'white', fontWeight: 700 }}>{shop?.name || ''}</span>
+                  </div>
+
+                  {/* ── Dynamic Email ── */}
+                  <div style={{
+                    position: 'absolute', top: 148, left: 109,
+                    zIndex: 4,
+                  }}>
+                    <span style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Email: </span>
+                    <span style={{
+                      fontSize: 8.5, color: 'white', fontWeight: 500,
+                      display: 'inline-block', maxWidth: 200,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      verticalAlign: 'bottom',
+                    }}>{user?.email || ''}</span>
+                  </div>
+
+                  {/* ── Dynamic Aadhar ── */}
+                  <div style={{
+                    position: 'absolute', top: 164, left: 109,
+                    zIndex: 4,
+                  }}>
+                    <span style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Aadhar: </span>
+                    <span style={{ fontSize: 8.5, color: 'white', fontFamily: 'monospace', fontWeight: 600 }}>
+                      {aadharNumber || ''}
+                    </span>
                   </div>
                 </div>
 
@@ -275,65 +213,50 @@ export default function OwnerIdCard() {
                 ═══════════════════════════════════════ */}
                 <div className="id-card-back" style={{
                   position: 'relative', width: CW, height: CH,
-                  borderRadius: 14, border: `5px solid ${OG}`,
-                  background: 'white', overflow: 'hidden',
+                  borderRadius: 14,
+                  backgroundImage: `url(${cardBackTemplate})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  overflow: 'hidden',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.55)', flexShrink: 0,
                 }}>
-                  {/* Orange diagonal — top-left */}
-                  <div style={{
-                    position: 'absolute', top: 0, left: 0,
-                    width: 85, height: 85,
-                    background: OG,
-                    clipPath: 'polygon(0 0, 100% 0, 0 100%)',
-                    zIndex: 0,
-                  }} />
-
-                  {/* Orange diagonal — bottom-right */}
-                  <div style={{
-                    position: 'absolute', bottom: 0, right: 0,
-                    width: 115, height: 85,
-                    background: OG,
-                    clipPath: 'polygon(100% 0, 100% 100%, 0 100%)',
-                    zIndex: 0,
-                  }} />
-
-                  {/* Content area: padded away from the triangles */}
+                  {/* ── Dynamic address: placed under the pre-rendered "வீட்டு முகவரி :" ── */}
                   <div style={{
                     position: 'absolute',
-                    top: 16, bottom: 16, left: 20, right: 20,
-                    zIndex: 1,
-                    display: 'flex', flexDirection: 'column',
-                    justifyContent: 'space-between',
+                    top: 44, left: 50, width: 230,
+                    maxHeight: 60, overflow: 'hidden',
+                    zIndex: 4,
                   }}>
-                    {/* Home address section */}
-                    <div>
-                      <div style={{ fontSize: 13, color: BL, fontWeight: 800, marginBottom: 6 }}>
-                        வீட்டு முகவரி :
-                      </div>
-                      <div style={{
-                        fontSize: 10, color: '#333',
-                        lineHeight: 1.55, paddingLeft: 2,
-                        maxHeight: 56, overflow: 'hidden',
-                      }}>
-                        {homeAddress || ''}
-                      </div>
+                    <div style={{
+                      fontSize: 10, color: '#1E469C', fontWeight: 600,
+                      lineHeight: 1.4,
+                    }}>
+                      {homeAddress || ''}
                     </div>
+                  </div>
 
-                    {/* Bottom three fields */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <div style={{ fontSize: 12, color: BL, fontWeight: 800 }}>
-                        இரத்த வகை :{' '}
-                        <span style={{ color: '#222', fontWeight: 500 }}>{bloodGroup || ''}</span>
-                      </div>
-                      <div style={{ fontSize: 12, color: BL, fontWeight: 800 }}>
-                        பிறந்த தேதி :{' '}
-                        <span style={{ color: '#222', fontWeight: 500 }}>{formatDob(dob)}</span>
-                      </div>
-                      <div style={{ fontSize: 12, color: BL, fontWeight: 800 }}>
-                        செல் நெம்பர் :{' '}
-                        <span style={{ color: '#222', fontWeight: 500 }}>{personalPhone || ''}</span>
-                      </div>
-                    </div>
+                  {/* ── Dynamic Blood Group: next to "இரத்த வகை :" ── */}
+                  <div style={{
+                    position: 'absolute', top: 123, left: 125,
+                    zIndex: 4,
+                  }}>
+                    <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 700 }}>{bloodGroup || ''}</span>
+                  </div>
+
+                  {/* ── Dynamic Date of Birth: next to "பிறந்த தேதி :" ── */}
+                  <div style={{
+                    position: 'absolute', top: 145, left: 125,
+                    zIndex: 4,
+                  }}>
+                    <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 700 }}>{formatDob(dob)}</span>
+                  </div>
+
+                  {/* ── Dynamic Cell Number: next to "செல் நெம்பர் :" ── */}
+                  <div style={{
+                    position: 'absolute', top: 167, left: 125,
+                    zIndex: 4,
+                  }}>
+                    <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 700 }}>{personalPhone || ''}</span>
                   </div>
                 </div>
 
