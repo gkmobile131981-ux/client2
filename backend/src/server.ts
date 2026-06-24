@@ -9,6 +9,7 @@ import customerRoutes from './routes/customers.routes';
 import reportsRoutes from './routes/reports.routes';
 import rateCardsRoutes from './routes/ratecards.routes';
 import superadminRoutes from './routes/superadmin.routes';
+import carouselRoutes from './routes/carousel.routes';
 import { sanitizeMiddleware } from './middleware/sanitize';
 
 dotenv.config();
@@ -90,6 +91,7 @@ app.use('/api/repairs', repairRoutes);
 app.use('/api', reportsRoutes);
 app.use('/api/ratecards', rateCardsRoutes);
 app.use('/api/superadmin', superadminRoutes);
+app.use('/api/carousel', carouselRoutes);
 
 // 404 Route handler
 app.use((_req: Request, res: Response) => {

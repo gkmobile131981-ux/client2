@@ -170,12 +170,14 @@ export default function Register() {
       <div className="absolute bottom-1/4 right-1/4 h-72 w-72 rounded-full bg-purple-500/10 blur-[100px] pointer-events-none" />
 
       <Card className="w-full max-w-2xl bg-card/45 backdrop-blur-xl border-border/80 shadow-2xl">
-        <CardHeader className="space-y-3.5 text-center">
-          <img src={logo} alt="GK Repair Logo" className="mx-auto h-12 w-12 object-contain rounded-xl bg-card" />
+        <CardHeader className="space-y-3.5 text-center flex flex-col items-center">
+          <div className="mx-auto h-12 w-full max-w-[240px] overflow-hidden bg-white rounded-lg p-1.5 flex items-center justify-center">
+            <img src={logo} alt="Association Logo" className="h-full w-full object-contain" />
+          </div>
           <div className="space-y-1">
             <CardTitle className="text-2xl font-bold tracking-tight">Register Owner & Shop</CardTitle>
             <CardDescription className="text-muted-foreground text-xs">
-              Initialize a new GK Repair terminal node. Start managing jobs instantly.
+              Initialize a new Association terminal node. Start managing jobs instantly.
             </CardDescription>
           </div>
         </CardHeader>

@@ -12,6 +12,12 @@ interface UserProfile {
   is_active: boolean;
   community_username?: string | null;
   created_at: string;
+  home_address?: string | null;
+  blood_group?: string | null;
+  dob?: string | null;
+  personal_phone?: string | null;
+  aadhar_number?: string | null;
+  photo_url?: string | null;
 }
 
 interface ShopProfile {
@@ -60,7 +66,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         staff_id: profile.staff_id,
         shop_id: profile.shop_id,
         is_active: profile.is_active,
-        created_at: profile.created_at
+        created_at: profile.created_at,
+        home_address: profile.home_address,
+        blood_group: profile.blood_group,
+        dob: profile.dob,
+        personal_phone: profile.personal_phone,
+        aadhar_number: profile.aadhar_number,
+        photo_url: profile.photo_url
       });
       setRole(profile.role);
       setShop(profile.shop);

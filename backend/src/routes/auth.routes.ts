@@ -11,6 +11,7 @@ import {
   getStaff,
   toggleStaffStatus,
   updateProfile,
+  updateOwnerIdCard,
   changePassword,
   resetStaffPassword,
   updateShop
@@ -21,6 +22,13 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
     fileSize: 1 * 1024 * 1024 // 1MB logo limit
+  }
+});
+
+const uploadPhotoCard = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 2 * 1024 * 1024 // 2MB photo limit
   }
 });
 
@@ -37,6 +45,7 @@ router.get('/staff', authenticateToken, requireOwner, getStaff);
 router.put('/staff/:id', authenticateToken, requireOwner, toggleStaffStatus);
 
 router.put('/update-profile', authenticateToken, updateProfile);
+router.put('/profile/id-card', authenticateToken, uploadPhotoCard.single('photo'), updateOwnerIdCard);
 router.post('/change-password', authenticateToken, changePassword);
 router.post('/reset-staff-password', authenticateToken, requireOwner, resetStaffPassword);
 router.put('/shop', authenticateToken, requireOwner, upload.single('logo'), updateShop);

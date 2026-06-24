@@ -92,45 +92,65 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const { role: authRole, user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
+
+  const superAdminEmails = [
+    'niamaran218@gmail.com',
+    'admin@gkrepair.com',
+    'test@gkrepair.com'
+  ];
+  const isSuperAdmin = user && ((user.role as string) === 'superadmin' || (user.email && superAdminEmails.includes(user.email)));
   
   // Status update modal state
   const [selectedRepairId, setSelectedRepairId] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState('');
   const [statusNote, setStatusNote] = useState('');
-
+  
   // Slide Carousel State
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  const slides = [
+  const defaultSlides = [
     {
       title: "Boost Shop Operations & Pick-up Speed",
       description: "Utilize status filters to quickly identify device statuses. Proactively follow up on 'Ready' jobs to speed up customer collection and minimize workspace load.",
       color: "from-primary/25 to-secondary/15 border-primary/30",
       textColor: "text-primary",
-      icon: <Clock className="h-6 w-6 text-primary" />
+      icon: <Clock className="h-6 w-6 text-primary" />,
+      image_url: null
     },
     {
       title: "Original (OG) vs Copy (Ditto) Rates",
       description: "Double column service rates are live! Inform customers of warranty and performance differences between Original and Copy parts to secure higher satisfaction.",
       color: "from-emerald-500/20 to-secondary/15 border-emerald-500/25",
       textColor: "text-emerald-500",
-      icon: <DollarSign className="h-6 w-6 text-emerald-400" />
+      icon: <DollarSign className="h-6 w-6 text-emerald-400" />,
+      image_url: null
     },
     {
       title: "Confirm Device Security & Signatures",
-      description: "Protect client privacy. Make sure you lock the device with pattern patterns, complete full KYC front/back images, and capture picker signatures on delivery.",
+      description: "Protect client privacy. Make sure you lock the device with pattern patterns, complete KYC front/back images, and capture picker signatures on delivery.",
       color: "from-amber-500/20 to-secondary/15 border-amber-500/25",
       textColor: "text-amber-500",
-      icon: <Wrench className="h-6 w-6 text-amber-500" />
+      icon: <Wrench className="h-6 w-6 text-amber-500" />,
+      image_url: null
     }
   ];
 
+  const { data: responseData } = useQuery<any>({
+    queryKey: ['carousel-slides'],
+    queryFn: () => apiClient.get('/carousel'),
+    staleTime: 5 * 60 * 1000
+  });
+
+  const dbSlides = responseData?.slides || [];
+  const activeSlides = dbSlides.length > 0 ? dbSlides : defaultSlides;
+
   useEffect(() => {
+    if (activeSlides.length === 0) return;
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
+      setCurrentSlide((prev) => (prev + 1) % activeSlides.length);
     }, 6000);
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [activeSlides.length]);
 
   // 1. Fetch dashboard stats with 5 min staleTime
   const { data, isLoading, refetch } = useQuery<DashboardData>({
@@ -296,22 +316,41 @@ export default function Dashboard() {
       </div>
 
       {/* Slide Carousel Banner */}
-      <div className={`relative overflow-hidden p-5 rounded-2xl border bg-gradient-to-br ${slides[currentSlide].color} transition-all duration-500 shadow-md flex items-start gap-4`}>
-        <div className="p-3 rounded-xl bg-secondary/50 border border-border/40 shrink-0 shadow-sm">
-          {slides[currentSlide].icon}
+      <div 
+        style={activeSlides[currentSlide]?.image_url ? { 
+          backgroundImage: `linear-gradient(to right, rgba(0, 0, 0, 0.85) 30%, rgba(0, 0, 0, 0.4) 100%), url(${activeSlides[currentSlide].image_url})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        } : undefined}
+        className={`relative overflow-hidden p-6 rounded-2xl border transition-all duration-500 shadow-md flex items-center gap-4 min-h-[140px] ${
+          !activeSlides[currentSlide]?.image_url 
+            ? (activeSlides[currentSlide].color || 'from-primary/25 to-secondary/15 border-primary/30') 
+            : 'border-border/85'
+        }`}
+      >
+        {isSuperAdmin && (
+          <Link 
+            to="/superadmin?tab=carousel" 
+            className="absolute top-4 right-4 z-20 px-2.5 py-1 rounded bg-black/60 hover:bg-primary text-[10px] font-bold text-white transition-colors flex items-center gap-1 uppercase tracking-wider"
+          >
+            Edit Slides
+          </Link>
+        )}
+        <div className="p-3 rounded-xl bg-secondary/50 border border-border/40 shrink-0 shadow-sm relative z-10">
+          {activeSlides[currentSlide].icon || <Smartphone className="h-6 w-6 text-primary" />}
         </div>
-        <div className="space-y-1.5 flex-1 min-w-0 pr-12">
-          <h4 className="text-sm font-black tracking-tight text-foreground uppercase">
-            {slides[currentSlide].title}
+        <div className="space-y-1.5 flex-1 min-w-0 pr-12 relative z-10">
+          <h4 className="text-sm font-black tracking-tight text-white uppercase">
+            {activeSlides[currentSlide].title}
           </h4>
-          <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
-            {slides[currentSlide].description}
+          <p className="text-xs text-neutral-200 dark:text-muted-foreground leading-relaxed max-w-2xl">
+            {activeSlides[currentSlide].description}
           </p>
         </div>
         
         {/* Carousel controls */}
         <div className="absolute right-4 bottom-4 flex items-center gap-1.5 z-10">
-          {slides.map((_, idx) => (
+          {activeSlides.map((_: any, idx: number) => (
             <button
               key={idx}
               type="button"

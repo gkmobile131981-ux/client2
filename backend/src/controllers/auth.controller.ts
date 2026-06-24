@@ -200,7 +200,13 @@ export async function login(req: Request, res: Response): Promise<void> {
         staff_id: profile.staff_id,
         shop_id: profile.shop_id,
         is_active: profile.is_active,
-        created_at: profile.created_at
+        created_at: profile.created_at,
+        home_address: profile.home_address,
+        blood_group: profile.blood_group,
+        dob: profile.dob,
+        personal_phone: profile.personal_phone,
+        aadhar_number: profile.aadhar_number,
+        photo_url: profile.photo_url
       },
       shop: profile.shop
     });
@@ -475,6 +481,84 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
       return;
     }
     res.status(500).json({ error: 'Failed to update profile' });
+  }
+}
+
+export async function updateOwnerIdCard(req: Request, res: Response): Promise<void> {
+  const userId = req.user?.id;
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const schema = z.object({
+    homeAddress: z.string().optional().nullable(),
+    bloodGroup: z.string().optional().nullable(),
+    dob: z.string().optional().nullable(),
+    personalPhone: z.string().optional().nullable(),
+    aadharNumber: z.string().optional().nullable()
+  });
+
+  try {
+    const data = schema.parse(req.body);
+
+    let photoUrl: string | null = null;
+    if (req.file) {
+      try {
+        photoUrl = await uploadPhoto(req.file as Express.Multer.File, 'owner-photos');
+      } catch (uploadErr: any) {
+        console.error('Owner photo upload failed:', uploadErr);
+        res.status(400).json({ error: uploadErr.message || 'Failed to upload photo' });
+        return;
+      }
+    }
+
+    // Prepare update payload
+    const updatePayload: any = {
+      home_address: data.homeAddress || null,
+      blood_group: data.bloodGroup || null,
+      dob: data.dob || null,
+      personal_phone: data.personalPhone || null,
+      aadhar_number: data.aadharNumber || null
+    };
+
+    if (photoUrl) {
+      updatePayload.photo_url = photoUrl;
+    }
+
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('users')
+      .update(updatePayload)
+      .eq('id', userId)
+      .select('*, shop:shops!fk_users_shop(*)')
+      .single();
+
+    if (profileError || !profile) {
+      if (photoUrl) {
+        try {
+          const path = photoUrl.split('/owner-photos/')[1];
+          if (path) {
+            await supabaseAdmin.storage.from('owner-photos').remove([path]);
+          }
+        } catch (e) {
+          console.error('Failed to cleanup owner photo:', e);
+        }
+      }
+      res.status(400).json({ error: profileError?.message || 'Failed to update owner ID details' });
+      return;
+    }
+
+    res.json({
+      message: 'Owner ID card details updated successfully',
+      profile
+    });
+  } catch (err) {
+    if (err instanceof z.ZodError) {
+      res.status(400).json({ error: 'Validation failed', details: err.errors });
+      return;
+    }
+    console.error('Failed to update owner ID card details:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 }
 

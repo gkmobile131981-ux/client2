@@ -45,6 +45,7 @@ const repairOrderSchema = z.object({
   accessoryKeyboardMouse: z.boolean().optional().default(false),
   accessoryOther: z.boolean().optional().default(false),
   serialNumber: z.string().optional().nullable(),
+  imei: z.string().optional().nullable(),
   warranty: z.string().optional().nullable(),
   estimate: z.number().positive('Estimate cost must be positive'),
   advance: z.number().nonnegative('Paid/Advance payment must be positive or zero'),
@@ -96,6 +97,7 @@ export default function NewRepair() {
   const [phoneSearch, setPhoneSearch] = useState('');
   const [selectedServices, setSelectedServices] = useState<Array<{ service_name: string; labor_cost: number }>>([]);
   const [customProblem, setCustomProblem] = useState('');
+  const [deviceSearchText, setDeviceSearchText] = useState('');
 
   // Date and Time Fields Displays
   const [repairDateDisplay, setRepairDateDisplay] = useState('');
@@ -149,6 +151,7 @@ export default function NewRepair() {
       accessoryKeyboardMouse: false,
       accessoryOther: false,
       serialNumber: '',
+      imei: '',
       warranty: '',
       estimate: 0,
       advance: 0,
@@ -408,6 +411,7 @@ export default function NewRepair() {
     formData.append('accessoryKeyboardMouse', String(values.accessoryKeyboardMouse));
     formData.append('accessoryOther', String(values.accessoryOther));
     if (values.serialNumber) formData.append('serialNumber', values.serialNumber);
+    if (values.imei) formData.append('imei', values.imei);
     if (values.warranty) formData.append('warranty', values.warranty);
 
     formData.append('estimate', String(values.estimate));
@@ -579,20 +583,25 @@ export default function NewRepair() {
             <input
               type="text"
               placeholder="Model (e.g. Apple iPhone 14)"
-              {...register('model')}
+              value={deviceSearchText}
               onChange={(e) => {
                 const val = e.target.value;
-                const splitIdx = val.indexOf(' ');
+                setDeviceSearchText(val);
+                
+                const trimmed = val.trim();
+                const splitIdx = trimmed.indexOf(' ');
                 if (splitIdx > 0) {
-                  setValue('brand', val.substring(0, splitIdx).trim());
-                  setValue('model', val.substring(splitIdx + 1).trim());
+                  setValue('brand', trimmed.substring(0, splitIdx).trim(), { shouldValidate: true });
+                  setValue('model', trimmed.substring(splitIdx + 1).trim(), { shouldValidate: true });
                 } else {
-                  setValue('brand', val.trim());
-                  setValue('model', val.trim());
+                  setValue('brand', trimmed, { shouldValidate: true });
+                  setValue('model', trimmed, { shouldValidate: true });
                 }
               }}
               className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold text-white"
             />
+            <input type="hidden" {...register('brand')} />
+            <input type="hidden" {...register('model')} />
             {errors.model && (
               <p className="text-[11px] text-red-500 mt-1 font-semibold">{errors.model.message}</p>
             )}
@@ -901,22 +910,31 @@ export default function NewRepair() {
           </div>
         </div>
 
-        {/* SERIAL NUMBERS & TECH ASSIGNMENT */}
+        {/* SERIAL NUMBERS, IMEI & TECH ASSIGNMENT */}
         <div className="space-y-4">
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Serial numbers (OPTIONAL)"
+                {...register('serialNumber')}
+                className="flex-1 bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold text-white"
+              />
+              <Button
+                type="button"
+                onClick={() => toast.success('Mock barcode scanner triggered')}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold uppercase text-xs px-4"
+              >
+                SCAN
+              </Button>
+            </div>
+            
             <input
               type="text"
-              placeholder="Serial numbers (OPTIONAL)"
-              {...register('serialNumber')}
-              className="flex-1 bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold text-white"
+              placeholder="IMEI number (OPTIONAL)"
+              {...register('imei')}
+              className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold text-white"
             />
-            <Button
-              type="button"
-              onClick={() => toast.success('Mock barcode scanner triggered')}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold uppercase text-xs px-4"
-            >
-              SCAN
-            </Button>
           </div>
 
           {authRole === 'owner' ? (

@@ -18,6 +18,7 @@ import SettingsPage from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
+import OwnerIdCard from './pages/OwnerIdCard';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +62,7 @@ export default function App() {
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/settings/staff" element={<SettingsPage defaultTab="staff" />} />
                   <Route path="/settings/price-list" element={<SettingsPage defaultTab="price-list" />} />
+                  <Route path="/id-card" element={<OwnerIdCard />} />
                 </Route>
 
                 {/* Super Admin exclusive controls */}

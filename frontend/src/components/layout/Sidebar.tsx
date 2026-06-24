@@ -11,7 +11,8 @@ import {
   X,
   Smartphone,
   TrendingUp,
-  ClipboardList
+  ClipboardList,
+  Contact
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -34,6 +35,7 @@ const navigation: NavItem[] = [
   { name: 'Customers', to: '/customers', icon: Users },
   { name: 'Reports', to: '/reports', icon: TrendingUp, ownerOnly: true },
   { name: 'Repairing Price List', to: '/settings/price-list', icon: ClipboardList, ownerOnly: true },
+  { name: 'Owner ID Card', to: '/id-card', icon: Contact, ownerOnly: true },
   { name: 'Settings', to: '/settings', icon: Settings, end: true },
   { name: 'Super Admin', to: '/superadmin', icon: UserSquare2, superAdminOnly: true },
 ];
@@ -68,13 +70,9 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         }`}
       >
         {/* Header (Brand) */}
-        <div className="flex h-16 items-center justify-between px-6 border-b border-border">
-          <div className="flex items-center gap-2.5">
-            <img src={logo} alt="GK Repair Logo" className="h-9 w-9 object-contain rounded-lg bg-card" />
-            <div>
-              <h1 className="font-bold text-sm leading-none tracking-wide text-foreground">GK REPAIR</h1>
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">Management</span>
-            </div>
+        <div className="flex h-16 items-center justify-between px-4 border-b border-border">
+          <div className="flex items-center justify-center flex-1 max-w-[220px] h-12 overflow-hidden bg-white rounded-lg p-1">
+            <img src={logo} alt="Association Logo" className="h-full w-full object-contain" />
           </div>
 
           <button
@@ -118,7 +116,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         {/* Footer info */}
         <div className="p-4 border-t border-border bg-secondary/10">
           <div className="rounded-lg bg-card/40 border border-border/40 p-3.5 text-center">
-            <p className="text-[11px] font-medium text-muted-foreground">GK Repair System v1.0</p>
+            <p className="text-[11px] font-medium text-muted-foreground">Association Repair System v1.0</p>
             <p className="text-[9px] text-muted-foreground/60 mt-0.5">Free Tier Cloud Hosting</p>
           </div>
         </div>
