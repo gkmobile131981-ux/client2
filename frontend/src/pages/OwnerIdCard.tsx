@@ -168,7 +168,7 @@ export default function OwnerIdCard() {
 
                   {/* ── Dynamic name next to "பெயர் :" ── */}
                   <div style={{
-                    position: 'absolute', top: 96, left: 148,
+                    position: 'absolute', top: 80, left: 148,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 12, color: 'white', fontWeight: 800 }}>{user?.name || ''}</span>
@@ -176,7 +176,7 @@ export default function OwnerIdCard() {
 
                   {/* ── Dynamic shop next to "கடை :" ── */}
                   <div style={{
-                    position: 'absolute', top: 126, left: 142,
+                    position: 'absolute', top: 109, left: 148,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: 'white', fontWeight: 700 }}>{shop?.name || ''}</span>
@@ -184,26 +184,37 @@ export default function OwnerIdCard() {
 
                   {/* ── Dynamic Email ── */}
                   <div style={{
-                    position: 'absolute', top: 148, left: 109,
+                    position: 'absolute', top: 131, left: 99,
+                    width: 44, textAlign: 'right', whiteSpace: 'nowrap',
                     zIndex: 4,
                   }}>
-                    <span style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Email: </span>
-                    <span style={{
-                      fontSize: 8.5, color: 'white', fontWeight: 500,
-                      display: 'inline-block', maxWidth: 200,
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      verticalAlign: 'bottom',
-                    }}>{user?.email || ''}</span>
+                    <span style={{ fontSize: 11, color: 'white', fontWeight: 700 }}>Email :</span>
+                  </div>
+                  <div style={{
+                    position: 'absolute', top: 131, left: 148,
+                    width: 165,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    zIndex: 4,
+                  }}>
+                    <span style={{ fontSize: 11, color: 'white', fontWeight: 700 }}>{user?.email || ''}</span>
                   </div>
 
                   {/* ── Dynamic Aadhar ── */}
                   <div style={{
-                    position: 'absolute', top: 164, left: 109,
+                    position: 'absolute', top: 153, left: 107,
+                    width: 44, textAlign: 'right', whiteSpace: 'nowrap',
                     zIndex: 4,
                   }}>
-                    <span style={{ fontSize: 8.5, color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Aadhar: </span>
-                    <span style={{ fontSize: 8.5, color: 'white', fontFamily: 'monospace', fontWeight: 600 }}>
-                      {aadharNumber || ''}
+                    <span style={{ fontSize: 11, color: 'white', fontWeight: 700 }}>Aadhar :</span>
+                  </div>
+                  <div style={{
+                    position: 'absolute', top: 153, left: 156,
+                    width: 157,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    zIndex: 4,
+                  }}>
+                    <span style={{ fontSize: 11, color: 'white', fontWeight: 700 }}>
+                      {aadharNumber ? aadharNumber.replace(/\s+/g, '').replace(/(\d{4})(?=\d)/g, '$1 ').trim() : ''}
                     </span>
                   </div>
                 </div>
@@ -237,7 +248,7 @@ export default function OwnerIdCard() {
 
                   {/* ── Dynamic Blood Group: next to "இரத்த வகை :" ── */}
                   <div style={{
-                    position: 'absolute', top: 123, left: 125,
+                    position: 'absolute', top: 123, left: 135,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 700 }}>{bloodGroup || ''}</span>
@@ -245,7 +256,7 @@ export default function OwnerIdCard() {
 
                   {/* ── Dynamic Date of Birth: next to "பிறந்த தேதி :" ── */}
                   <div style={{
-                    position: 'absolute', top: 145, left: 125,
+                    position: 'absolute', top: 145, left: 135,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 700 }}>{formatDob(dob)}</span>
@@ -253,7 +264,7 @@ export default function OwnerIdCard() {
 
                   {/* ── Dynamic Cell Number: next to "செல் நெம்பர் :" ── */}
                   <div style={{
-                    position: 'absolute', top: 167, left: 125,
+                    position: 'absolute', top: 167, left: 135,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 700 }}>{personalPhone || ''}</span>
