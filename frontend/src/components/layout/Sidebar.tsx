@@ -125,7 +125,7 @@ export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       {/* Mobile Bottom Tab Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 flex h-16 border-t border-border bg-card/85 backdrop-blur-lg lg:hidden justify-around items-center px-1 pb-safe shadow-lg">
         {filteredNavigation
-          .filter((item) => item.to !== '/settings/staff' && item.to !== '/settings/price-list')
+          .filter((item) => ['/', '/repairs', '/customers', '/settings'].includes(item.to))
           .map((item) => (
             <NavLink
               key={item.name}

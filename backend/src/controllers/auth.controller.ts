@@ -342,7 +342,12 @@ export async function getMe(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    res.json({ profile });
+    res.json({ 
+      profile: {
+        ...profile,
+        email: user.email
+      } 
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch identity profile' });
   }
