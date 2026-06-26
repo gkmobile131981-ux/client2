@@ -104,7 +104,7 @@ export default function SuperAdminDashboard() {
       // Reset file input element
       const fileInput = document.getElementById('slide-image') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
-      refetchSlides();
+      queryClient.invalidateQueries({ queryKey: ['carousel-slides'] });
     },
     onError: (err: any) => {
       if (err.details && Array.isArray(err.details)) {
@@ -121,7 +121,7 @@ export default function SuperAdminDashboard() {
     mutationFn: (slideId: string) => apiClient.delete(`/carousel/${slideId}`),
     onSuccess: (res: any) => {
       toast.success(res.message || 'Slide deleted successfully');
-      refetchSlides();
+      queryClient.invalidateQueries({ queryKey: ['carousel-slides'] });
     },
     onError: (err: any) => {
       toast.error(err.message || 'Failed to delete slide');
@@ -444,6 +444,7 @@ export default function SuperAdminDashboard() {
                         <Plus className="h-6 w-6 text-muted-foreground mb-2" />
                         <p className="text-xs text-muted-foreground font-semibold">Click to upload banner</p>
                         <p className="text-[10px] text-muted-foreground/60 mt-1">PNG, JPG or WEBP (Max 5MB)</p>
+                        <p className="text-[9px] text-primary font-medium mt-0.5">Landscape (16:9 / ~1200x500px) recommended</p>
                       </div>
                       <input 
                         id="slide-image"

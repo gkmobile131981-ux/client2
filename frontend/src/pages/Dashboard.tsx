@@ -208,7 +208,10 @@ export default function Dashboard() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await refetch();
+    await Promise.all([
+      refetch(),
+      queryClient.invalidateQueries({ queryKey: ['carousel-slides'] })
+    ]);
     setRefreshing(false);
     toast.success('Dashboard metrics refreshed!');
   };
@@ -318,13 +321,13 @@ export default function Dashboard() {
       {/* Slide Carousel Banner */}
       <div 
         style={activeSlides[currentSlide]?.image_url ? { 
-          backgroundImage: `linear-gradient(to right, rgba(0, 0, 0, 0.85) 30%, rgba(0, 0, 0, 0.4) 100%), url(${activeSlides[currentSlide].image_url})`,
+          backgroundImage: `linear-gradient(to right, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.1) 100%), url(${activeSlides[currentSlide].image_url})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center'
         } : undefined}
         className={`relative overflow-hidden p-6 rounded-2xl border transition-all duration-500 shadow-md flex items-center gap-4 min-h-[140px] ${
           !activeSlides[currentSlide]?.image_url 
-            ? (activeSlides[currentSlide].color || 'from-primary/25 to-secondary/15 border-primary/30') 
+            ? ('bg-gradient-to-r ' + (activeSlides[currentSlide].color || 'from-primary/25 to-secondary/15 border-primary/30')) 
             : 'border-border/85'
         }`}
       >
