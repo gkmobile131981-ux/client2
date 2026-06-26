@@ -33,6 +33,25 @@ const refreshSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required')
 });
 
+// Helper to extract clean error message from Supabase or custom errors
+function getErrorMessage(error: any, fallback: string): string {
+  if (!error) return fallback;
+  if (typeof error === 'string') return error;
+  if (typeof error.message === 'string' && error.message.trim() !== '' && error.message !== '{}') {
+    return error.message;
+  }
+  if (typeof error.error_description === 'string' && error.error_description.trim() !== '') {
+    return error.error_description;
+  }
+  if (typeof error.error === 'string' && error.error.trim() !== '') {
+    return error.error;
+  }
+  if (error.name === 'AuthRetryableFetchError' || error.status === 500) {
+    return 'The authentication service encountered an issue. The email may already be registered, or there is a temporary database connection issue. Please try another email or log in.';
+  }
+  return error.name || fallback;
+}
+
 // Controllers
 export async function registerOwner(req: Request, res: Response): Promise<void> {
   try {
@@ -56,7 +75,7 @@ export async function registerOwner(req: Request, res: Response): Promise<void> 
     });
 
     if (authError || !authData.user) {
-      res.status(400).json({ error: authError?.message || 'Failed to create auth user' });
+      res.status(400).json({ error: getErrorMessage(authError, 'Failed to create auth user') });
       return;
     }
 
@@ -93,7 +112,7 @@ export async function registerOwner(req: Request, res: Response): Promise<void> 
         }
       }
       await supabaseAdmin.auth.admin.deleteUser(userId);
-      res.status(400).json({ error: shopError?.message || 'Failed to create shop' });
+      res.status(400).json({ error: getErrorMessage(shopError, 'Failed to create shop') });
       return;
     }
 
@@ -112,7 +131,7 @@ export async function registerOwner(req: Request, res: Response): Promise<void> 
       // Cleanup
       await supabaseAdmin.from('shops').delete().eq('id', shop.id);
       await supabaseAdmin.auth.admin.deleteUser(userId);
-      res.status(400).json({ error: userError?.message || 'Failed to link user to shop' });
+      res.status(400).json({ error: getErrorMessage(userError, 'Failed to link user to shop') });
       return;
     }
 
@@ -123,7 +142,7 @@ export async function registerOwner(req: Request, res: Response): Promise<void> 
     });
 
     if (sessionError || !sessionData.session) {
-      res.status(400).json({ error: sessionError?.message || 'Failed to sign in after registration' });
+      res.status(400).json({ error: getErrorMessage(sessionError, 'Failed to sign in after registration') });
       return;
     }
 
@@ -148,7 +167,7 @@ export async function registerOwner(req: Request, res: Response): Promise<void> 
       return;
     }
     console.error('Registration error:', err);
-    res.status(500).json({ error: 'Registration internal server error', message: (err as any).message });
+    res.status(500).json({ error: 'Registration internal server error', message: getErrorMessage(err, 'Internal server error') });
   }
 }
 
@@ -163,7 +182,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     });
 
     if (sessionError || !sessionData.user || !sessionData.session) {
-      res.status(401).json({ error: sessionError?.message || 'Invalid credentials' });
+      res.status(401).json({ error: getErrorMessage(sessionError, 'Invalid credentials') });
       return;
     }
 
@@ -258,7 +277,7 @@ export async function createStaff(req: Request, res: Response): Promise<void> {
     });
 
     if (authError || !authData.user) {
-      res.status(400).json({ error: authError?.message || 'Failed to create staff credentials' });
+      res.status(400).json({ error: getErrorMessage(authError, 'Failed to create staff credentials') });
       return;
     }
 
@@ -293,7 +312,7 @@ export async function refresh(req: Request, res: Response): Promise<void> {
     });
 
     if (error || !data.session) {
-      res.status(401).json({ error: error?.message || 'Invalid refresh token' });
+      res.status(401).json({ error: getErrorMessage(error, 'Invalid refresh token') });
       return;
     }
 
@@ -450,7 +469,7 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
     );
 
     if (authError || !authData.user) {
-      res.status(400).json({ error: authError?.message || 'Failed to update credentials' });
+      res.status(400).json({ error: getErrorMessage(authError, 'Failed to update credentials') });
       return;
     }
 
@@ -462,7 +481,7 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
       .single();
 
     if (profileError || !profile) {
-      res.status(400).json({ error: profileError?.message || 'Failed to update profile name' });
+      res.status(400).json({ error: getErrorMessage(profileError, 'Failed to update profile name') });
       return;
     }
 
@@ -549,7 +568,7 @@ export async function updateOwnerIdCard(req: Request, res: Response): Promise<vo
           console.error('Failed to cleanup owner photo:', e);
         }
       }
-      res.status(400).json({ error: profileError?.message || 'Failed to update owner ID details' });
+      res.status(400).json({ error: getErrorMessage(profileError, 'Failed to update owner ID details') });
       return;
     }
 
@@ -599,7 +618,7 @@ export async function changePassword(req: Request, res: Response): Promise<void>
     );
 
     if (updateError) {
-      res.status(400).json({ error: updateError.message });
+      res.status(400).json({ error: getErrorMessage(updateError, 'Failed to update password') });
       return;
     }
 
@@ -651,7 +670,7 @@ export async function resetStaffPassword(req: Request, res: Response): Promise<v
     });
 
     if (resetError) {
-      res.status(400).json({ error: resetError.message });
+      res.status(400).json({ error: getErrorMessage(resetError, 'Failed to reset password') });
       return;
     }
 
@@ -734,7 +753,7 @@ export async function updateShop(req: Request, res: Response): Promise<void> {
       .single();
 
     if (updateError || !updatedShop) {
-      res.status(400).json({ error: updateError?.message || 'Failed to update shop' });
+      res.status(400).json({ error: getErrorMessage(updateError, 'Failed to update shop') });
       return;
     }
 

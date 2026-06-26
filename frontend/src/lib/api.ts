@@ -43,8 +43,14 @@ async function request<T>(
     
     try {
       const errorData = await response.json();
-      errorMessage = errorData.error || errorMessage;
-      details = errorData.details || null;
+      if (errorData) {
+        if (typeof errorData.error === 'string' && errorData.error.trim() !== '' && errorData.error !== '{}') {
+          errorMessage = errorData.error;
+        } else if (typeof errorData.message === 'string' && errorData.message.trim() !== '' && errorData.message !== '{}') {
+          errorMessage = errorData.message;
+        }
+        details = errorData.details || null;
+      }
     } catch {
       // Response wasn't JSON
     }
