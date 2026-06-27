@@ -88,9 +88,14 @@ export default function Login() {
 
             {/* Password Field */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
-                <Lock className="h-3.5 w-3.5" /> Password
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5" /> Password
+                </label>
+                <Link to="/forgot-password" className="text-[11px] text-primary hover:underline font-semibold">
+                  Forgot Password?
+                </Link>
+              </div>
               <Input
                 type="password"
                 placeholder="••••••••"

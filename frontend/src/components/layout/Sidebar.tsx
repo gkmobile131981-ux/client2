@@ -43,7 +43,7 @@ const navigation: NavItem[] = [
 export default function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const { role, user } = useAuth();
   const superAdminEmails = [
-    'niamaran218@gmail.com',
+    'gkmobile131981@gmail.com',
     'admin@gkrepair.com',
     'test@gkrepair.com'
   ];

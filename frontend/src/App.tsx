@@ -17,6 +17,8 @@ import StaffSettings from './pages/StaffSettings';
 import SettingsPage from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import OwnerIdCard from './pages/OwnerIdCard';
 
@@ -38,6 +40,8 @@ export default function App() {
             {/* Public authentication gateways */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Protected application views */}
             <Route element={<ProtectedRoute />}>

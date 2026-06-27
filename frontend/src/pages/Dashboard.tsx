@@ -94,7 +94,7 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
 
   const superAdminEmails = [
-    'niamaran218@gmail.com',
+    'gkmobile131981@gmail.com',
     'admin@gkrepair.com',
     'test@gkrepair.com'
   ];
