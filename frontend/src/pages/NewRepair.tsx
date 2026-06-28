@@ -1097,6 +1097,7 @@ export default function NewRepair() {
                   <input
                     type="file"
                     accept="image/*"
+                    capture="environment"
                     onChange={(e) => handleFileUpload(e, 'idCardFront')}
                     className="hidden"
                   />
@@ -1118,6 +1119,7 @@ export default function NewRepair() {
                   <input
                     type="file"
                     accept="image/*"
+                    capture="environment"
                     onChange={(e) => handleFileUpload(e, 'idCardBack')}
                     className="hidden"
                   />
@@ -1139,6 +1141,7 @@ export default function NewRepair() {
                   <input
                     type="file"
                     accept="image/*"
+                    capture="environment"
                     onChange={(e) => handleFileUpload(e, 'mobileFront', true)}
                     className="hidden"
                   />
@@ -1160,6 +1163,7 @@ export default function NewRepair() {
                   <input
                     type="file"
                     accept="image/*"
+                    capture="environment"
                     onChange={(e) => handleFileUpload(e, 'mobileBack', true)}
                     className="hidden"
                   />
