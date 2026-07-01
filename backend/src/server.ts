@@ -70,8 +70,8 @@ app.use(
   })
 );
 
-// Body parser with 5MB limit
-app.use(express.json({ limit: '5mb' }));
+// Body parser with 50MB limit
+app.use(express.json({ limit: '50mb' }));
 
 // Global input HTML sanitization middleware
 app.use(sanitizeMiddleware);

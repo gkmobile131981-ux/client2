@@ -14,6 +14,7 @@ interface RateCardService {
   service_name: string;
   og_cost: number;
   ditto_cost: number;
+  copy_cost: number;
   sort_order: number;
 }
 
@@ -26,17 +27,32 @@ interface RateCard {
 }
 
 const DEFAULT_SERVICES: RateCardService[] = [
-  { service_name: 'Display Replacement', og_cost: 0, ditto_cost: 0, sort_order: 0 },
-  { service_name: 'Battery Replacement', og_cost: 0, ditto_cost: 0, sort_order: 1 },
-  { service_name: 'Charging Port Repair', og_cost: 0, ditto_cost: 0, sort_order: 2 },
-  { service_name: 'Speaker Replacement', og_cost: 0, ditto_cost: 0, sort_order: 3 },
-  { service_name: 'Microphone Repair', og_cost: 0, ditto_cost: 0, sort_order: 4 },
-  { service_name: 'Back Cover Replacement', og_cost: 0, ditto_cost: 0, sort_order: 5 },
-  { service_name: 'Camera Repair', og_cost: 0, ditto_cost: 0, sort_order: 6 },
-  { service_name: 'Button / Switch Repair', og_cost: 0, ditto_cost: 0, sort_order: 7 },
-  { service_name: 'Software / Flash', og_cost: 0, ditto_cost: 0, sort_order: 8 },
-  { service_name: 'Water Damage Treatment', og_cost: 0, ditto_cost: 0, sort_order: 9 },
+  { service_name: 'Display Replacement', og_cost: 0, ditto_cost: 0, copy_cost: 0, sort_order: 0 },
+  { service_name: 'Battery Replacement', og_cost: 0, ditto_cost: 0, copy_cost: 0, sort_order: 1 },
+  { service_name: 'Charging Port Repair', og_cost: 0, ditto_cost: 0, copy_cost: 0, sort_order: 2 },
+  { service_name: 'Speaker Replacement', og_cost: 0, ditto_cost: 0, copy_cost: 0, sort_order: 3 },
+  { service_name: 'Microphone Repair', og_cost: 0, ditto_cost: 0, copy_cost: 0, sort_order: 4 },
+  { service_name: 'Back Cover Replacement', og_cost: 0, ditto_cost: 0, copy_cost: 0, sort_order: 5 },
+  { service_name: 'Camera Repair', og_cost: 0, ditto_cost: 0, copy_cost: 0, sort_order: 6 },
+  { service_name: 'Button / Switch Repair', og_cost: 0, ditto_cost: 0, copy_cost: 0, sort_order: 7 },
+  { service_name: 'Software / Flash', og_cost: 0, ditto_cost: 0, copy_cost: 0, sort_order: 8 },
+  { service_name: 'Water Damage Treatment', og_cost: 0, ditto_cost: 0, copy_cost: 0, sort_order: 9 },
 ];
+
+const getBrandLogoUrl = (brand: string) => {
+  const name = brand.toLowerCase().trim();
+  if (name.includes('apple') || name.includes('iphone')) return 'https://cdn.simpleicons.org/apple/currentColor';
+  if (name.includes('samsung')) return 'https://cdn.simpleicons.org/samsung/1428A0';
+  if (name.includes('google') || name.includes('pixel')) return 'https://cdn.simpleicons.org/google/4285F4';
+  if (name.includes('oneplus')) return 'https://cdn.simpleicons.org/oneplus/F50F20';
+  if (name.includes('xiaomi') || name.includes('redmi') || name.includes('poco')) return 'https://cdn.simpleicons.org/xiaomi/FF6700';
+  if (name.includes('oppo')) return 'https://cdn.simpleicons.org/oppo/008148';
+  if (name.includes('vivo')) return 'https://cdn.simpleicons.org/vivo/415FFF';
+  if (name.includes('realme')) return 'https://cdn.simpleicons.org/realme/FFC900';
+  if (name.includes('huawei')) return 'https://cdn.simpleicons.org/huawei/FF0000';
+  if (name.includes('motorola') || name.includes('moto')) return 'https://cdn.simpleicons.org/motorola/001438';
+  return null;
+};
 
 export default function RateCards() {
   const queryClient = useQueryClient();
@@ -105,6 +121,7 @@ export default function RateCards() {
         ...s, 
         og_cost: s.og_cost ?? (s as any).labor_cost ?? 0,
         ditto_cost: s.ditto_cost ?? (s as any).labor_cost ?? 0,
+        copy_cost: s.copy_cost ?? (s as any).labor_cost ?? 0,
         sort_order: i 
       })));
     } else {
@@ -137,7 +154,7 @@ export default function RateCards() {
     }
   };
 
-  const updateServiceRow = (idx: number, field: 'service_name' | 'og_cost' | 'ditto_cost', value: string | number) => {
+  const updateServiceRow = (idx: number, field: 'service_name' | 'og_cost' | 'ditto_cost' | 'copy_cost', value: string | number) => {
     setEditServices((prev) =>
       prev.map((s, i) => (i === idx ? { ...s, [field]: value } : s))
     );
@@ -146,7 +163,7 @@ export default function RateCards() {
   const addServiceRow = () => {
     setEditServices((prev) => [
       ...prev,
-      { service_name: '', og_cost: 0, ditto_cost: 0, sort_order: prev.length },
+      { service_name: '', og_cost: 0, ditto_cost: 0, copy_cost: 0, sort_order: prev.length },
     ]);
   };
 
@@ -156,6 +173,7 @@ export default function RateCards() {
 
   const totalOgLabor = editServices.reduce((sum, s) => sum + Number(s.og_cost || 0), 0);
   const totalDittoLabor = editServices.reduce((sum, s) => sum + Number(s.ditto_cost || 0), 0);
+  const totalCopyLabor = editServices.reduce((sum, s) => sum + Number(s.copy_cost || 0), 0);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-full text-foreground">
@@ -264,12 +282,28 @@ export default function RateCards() {
           </div>
         ) : (
           <Card className="h-full">
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  {/* Device Image */}
-                  <div className="relative group">
-                    <div className="h-16 w-16 rounded-xl overflow-hidden bg-secondary/50 border border-border flex items-center justify-center">
+            <CardHeader className="pb-4 border-b border-border/40">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-4">
+                  {/* Brand Photo / Logo */}
+                  <div className="h-16 w-16 rounded-2xl bg-secondary/35 border border-border flex items-center justify-center p-3.5 shrink-0 shadow-inner">
+                    {getBrandLogoUrl(selectedCard.brand) ? (
+                      <img 
+                        src={getBrandLogoUrl(selectedCard.brand)!} 
+                        alt={selectedCard.brand} 
+                        className="max-h-full max-w-full object-contain dark:invert-0" 
+                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                      />
+                    ) : (
+                      <span className="text-sm font-black text-primary uppercase tracking-tight">
+                        {selectedCard.brand.substring(0, 2)}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Device / Model Image */}
+                  <div className="relative group shrink-0">
+                    <div className="h-16 w-20 rounded-2xl overflow-hidden bg-secondary/50 border border-border flex items-center justify-center">
                       {editImageFile ? (
                         <img src={URL.createObjectURL(editImageFile)} alt="Preview" className="h-full w-full object-cover" />
                       ) : selectedCard.model_image_url ? (
@@ -278,11 +312,12 @@ export default function RateCards() {
                         <ImageIcon className="h-8 w-8 text-muted-foreground" />
                       )}
                     </div>
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl cursor-pointer">
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl cursor-pointer">
                       <Upload className="h-5 w-5 text-white" />
                       <input type="file" accept="image/*" className="hidden" onChange={(e) => setEditImageFile(e.target.files?.[0] || null)} />
                     </label>
                   </div>
+
                   <div>
                     <CardTitle className="text-base text-foreground bg-none bg-clip-border text-current font-bold">{selectedCard.brand} {selectedCard.model}</CardTitle>
                     <CardDescription>Edit service names and their ₹ labor costs</CardDescription>
@@ -316,17 +351,18 @@ export default function RateCards() {
 
             <CardContent className="space-y-4">
               {/* Table header */}
-              <div className="grid grid-cols-[1fr_120px_120px_40px] gap-2 px-1">
+              <div className="grid grid-cols-[1fr_100px_100px_100px_40px] gap-2 px-1">
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Service Name</span>
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">OG Cost (₹)</span>
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ditto Cost (₹)</span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Copy Cost (₹)</span>
                 <span />
               </div>
 
               {/* Service Rows */}
               <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
                 {editServices.map((svc, idx) => (
-                  <div key={idx} className="grid grid-cols-[1fr_120px_120px_40px] gap-2 items-center">
+                  <div key={idx} className="grid grid-cols-[1fr_100px_100px_100px_40px] gap-2 items-center">
                     <Input
                       placeholder={`Service ${idx + 1}`}
                       value={svc.service_name}
@@ -339,7 +375,7 @@ export default function RateCards() {
                         placeholder="0"
                         value={svc.og_cost || ''}
                         onChange={(e) => updateServiceRow(idx, 'og_cost', parseFloat(e.target.value) || 0)}
-                        className="pl-8 text-foreground"
+                        className="pl-8 text-foreground font-semibold text-white"
                       />
                     </div>
                     <div className="relative">
@@ -349,7 +385,17 @@ export default function RateCards() {
                         placeholder="0"
                         value={svc.ditto_cost || ''}
                         onChange={(e) => updateServiceRow(idx, 'ditto_cost', parseFloat(e.target.value) || 0)}
-                        className="pl-8 text-foreground"
+                        className="pl-8 text-foreground font-semibold text-white"
+                      />
+                    </div>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">₹</span>
+                      <Input
+                        type="number"
+                        placeholder="0"
+                        value={svc.copy_cost || ''}
+                        onChange={(e) => updateServiceRow(idx, 'copy_cost', parseFloat(e.target.value) || 0)}
+                        className="pl-8 text-foreground font-semibold text-white"
                       />
                     </div>
                     <button
@@ -377,6 +423,10 @@ export default function RateCards() {
                     <div>
                       <p className="text-[9px] text-muted-foreground uppercase font-bold">Total Ditto</p>
                       <p className="text-sm font-black text-emerald-500">₹{totalDittoLabor.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-muted-foreground uppercase font-bold">Total Copy</p>
+                      <p className="text-sm font-black text-rose-500">₹{totalCopyLabor.toFixed(2)}</p>
                     </div>
                   </div>
                   <Button

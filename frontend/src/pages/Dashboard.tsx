@@ -14,7 +14,8 @@ import {
   TrendingUp,
   Smartphone,
   CheckCircle,
-  Calendar
+  Calendar,
+  Search
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -30,6 +31,7 @@ import {
 } from 'recharts';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../components/ui/Table';
 import { Dialog } from '../components/ui/Dialog';
 import { useAuth } from '../context/AuthContext';
@@ -92,6 +94,43 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const { role: authRole, user } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchingBilling, setSearchingBilling] = useState(false);
+
+  const handleSearchBilling = async () => {
+    const queryStr = searchQuery.trim();
+    if (!queryStr) {
+      toast.error('Please enter a billing/job number');
+      return;
+    }
+
+    setSearchingBilling(true);
+    try {
+      const response = await apiClient.get<any>(`/repairs?search=${encodeURIComponent(queryStr)}&limit=10`);
+      const repairs = response.repairs || [];
+      
+      if (repairs.length === 0) {
+        toast.error(`No repairs found matching "${queryStr}"`);
+      } else {
+        const exactMatch = repairs.find((r: any) => r.job_number.toLowerCase() === queryStr.toLowerCase());
+        if (exactMatch) {
+          toast.success(`Found repair order ${exactMatch.job_number}`);
+          navigate(`/repairs/${exactMatch.id}`);
+        } else if (repairs.length === 1) {
+          toast.success(`Found repair order ${repairs[0].job_number}`);
+          navigate(`/repairs/${repairs[0].id}`);
+        } else {
+          toast.success(`Found ${repairs.length} potential matches`);
+          navigate(`/repairs?search=${encodeURIComponent(queryStr)}`);
+        }
+      }
+    } catch (err: any) {
+      console.error('Billing number search failed:', err);
+      toast.error(err.message || 'Error occurred while searching');
+    } finally {
+      setSearchingBilling(false);
+    }
+  };
 
   const superAdminEmails = [
     'gkmobile131981@gmail.com',
@@ -363,6 +402,36 @@ export default function Dashboard() {
               }`}
             />
           ))}
+        </div>
+      </div>
+
+      {/* Search Billing Number Bar */}
+      <div className="bg-gradient-to-r from-secondary/10 via-secondary/20 to-secondary/10 border border-border/85 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-md">
+        <div className="space-y-1">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">Search Billing Number</h3>
+          <p className="text-[11px] text-muted-foreground">Find a repair order instantly by entering its unique job ID.</p>
+        </div>
+        <div className="flex items-center gap-2 w-full md:max-w-md">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="e.g. GK-20260701-001"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSearchBilling();
+              }}
+              className="pl-9 bg-background/50 border-border/80 focus:border-primary text-foreground placeholder:text-muted-foreground text-xs font-semibold text-white"
+            />
+          </div>
+          <Button 
+            onClick={handleSearchBilling} 
+            disabled={searchingBilling}
+            className="shrink-0 text-xs font-bold uppercase tracking-wider px-4 shadow-[0_0_15px_rgba(168,85,247,0.15)] bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {searchingBilling ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Search'}
+          </Button>
         </div>
       </div>
 

@@ -57,6 +57,19 @@ export default function DeliverRepair() {
   const [receivedBy, setReceivedBy] = useState<'customer' | 'staff'>('customer');
   const [notes, setNotes] = useState('');
 
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const defaultDate = `${yyyy}-${mm}-${dd}`;
+  
+  const hh = String(today.getHours()).padStart(2, '0');
+  const min = String(today.getMinutes()).padStart(2, '0');
+  const defaultTime = `${hh}:${min}`;
+
+  const [deliveryDate, setDeliveryDate] = useState(defaultDate);
+  const [deliveryTime, setDeliveryTime] = useState(defaultTime);
+
   // Camera and Photo states
   const [cameraActive, setCameraActive] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
@@ -207,6 +220,11 @@ export default function DeliverRepair() {
       return;
     }
 
+    if (!capturedPhoto) {
+      toast.error('Recipient photo is required to close delivery');
+      return;
+    }
+
     if (!sigPadRef.current || sigPadRef.current.isEmpty()) {
       toast.error('Receiver signature is required to close delivery');
       return;
@@ -220,8 +238,10 @@ export default function DeliverRepair() {
       receiverPhone,
       receivedBy,
       notes,
-      receiverPhotoUrl: capturedPhoto, // Base64 data url or null
-      signatureDataUrl
+      receiverPhotoUrl: capturedPhoto, // Base64 data url
+      signatureDataUrl,
+      deliveryDate,
+      deliveryTime
     });
   };
 
@@ -433,6 +453,30 @@ export default function DeliverRepair() {
                 </div>
               </div>
 
+              {/* Delivery Date & Time */}
+              <div className="grid gap-4 sm:grid-cols-2 mt-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Delivery Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={deliveryDate}
+                    onChange={(e) => setDeliveryDate(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-secondary/50 px-3 py-2 text-sm text-white focus:border-primary focus-visible:outline-none font-semibold"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-muted-foreground">Delivery Time</label>
+                  <input
+                    type="time"
+                    required
+                    value={deliveryTime}
+                    onChange={(e) => setDeliveryTime(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-secondary/50 px-3 py-2 text-sm text-white focus:border-primary focus-visible:outline-none font-semibold"
+                  />
+                </div>
+              </div>
+
               {/* Delivery notes */}
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground">Handoff Notes (Optional)</label>
@@ -453,7 +497,7 @@ export default function DeliverRepair() {
               <CardTitle className="text-base text-white flex items-center gap-2">
                 <Camera className="h-4.5 w-4.5 text-primary" /> Recipient Handoff Photo
               </CardTitle>
-              <CardDescription>Optional photographic verification of the recipient.</CardDescription>
+              <CardDescription>Photographic verification of the recipient (Required).</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Media viewer frame */}

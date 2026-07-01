@@ -215,11 +215,19 @@ export default function NewRepair() {
   // Fetch Rate Cards based on Brand and Model
   const watchBrand = watch('brand');
   const watchModel = watch('model');
-  const { data: rateCardData } = useQuery<{ rateCard: { services: Array<{ id: string; service_name: string; og_cost: number; ditto_cost: number }> } | null }>({
+  const { data: rateCardData } = useQuery<{ rateCard: { services: Array<{ id: string; service_name: string; og_cost: number; ditto_cost: number; copy_cost: number }> } | null }>({
     queryKey: ['rate-card-lookup', watchBrand, watchModel],
     queryFn: () => apiClient.get(`/ratecards/lookup?brand=${encodeURIComponent(watchBrand)}&model=${encodeURIComponent(watchModel)}`),
     enabled: watchBrand.length > 0 && watchModel.length > 0
   });
+
+  // Fetch Expected Sequential Job Number
+  const { data: nextJobNumberData } = useQuery<{ nextJobNumber: string }>({
+    queryKey: ['next-job-number'],
+    queryFn: () => apiClient.get('/repairs/next-job-number'),
+    staleTime: 0
+  });
+  const nextJobNumber = nextJobNumberData?.nextJobNumber;
 
   // Dynamic balance calculations
   const watchEstimate = watch('estimate');
@@ -263,6 +271,13 @@ export default function NewRepair() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check size limit: 50MB for video, 5MB for other files
+    const limit = key === 'video' ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > limit) {
+      toast.error(`File size exceeds ${limit / (1024 * 1024)}MB limit`);
+      return;
+    }
+    
     if (isDevicePhoto) {
       if (key === 'mobileFront') setMobileFrontFile(file);
       if (key === 'mobileBack') setMobileBackFile(file);
@@ -285,13 +300,22 @@ export default function NewRepair() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Prevent scrolling on touch screens
+    if ('touches' in e) {
+      if (e.cancelable) e.preventDefault();
+    }
+
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
 
     const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+    const clientX = ('touches' in e) ? e.touches[0].clientX : e.clientX;
+    const clientY = ('touches' in e) ? e.touches[0].clientY : e.clientY;
+    
+    // Scale coordinates based on actual rendering dimensions vs internal canvas resolution
+    const x = ((clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((clientY - rect.top) / rect.height) * canvas.height;
 
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -305,9 +329,18 @@ export default function NewRepair() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Prevent scrolling on touch screens
+    if ('touches' in e) {
+      if (e.cancelable) e.preventDefault();
+    }
+
     const rect = canvas.getBoundingClientRect();
-    const x = ('touches' in e) ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
-    const y = ('touches' in e) ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+    const clientX = ('touches' in e) ? e.touches[0].clientX : e.clientX;
+    const clientY = ('touches' in e) ? e.touches[0].clientY : e.clientY;
+    
+    // Scale coordinates based on actual rendering dimensions vs internal canvas resolution
+    const x = ((clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((clientY - rect.top) / rect.height) * canvas.height;
 
     ctx.lineTo(x, y);
     ctx.stroke();
@@ -458,10 +491,16 @@ export default function NewRepair() {
           >
             <ArrowLeft className="h-5 w-5 text-white" />
           </button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-xl font-black tracking-tight text-white uppercase">Add New Customer Details</h1>
             <p className="text-white/80 text-xs mt-0.5">Structured repair order logging terminal</p>
           </div>
+          {nextJobNumber && (
+            <div className="bg-white/10 border border-white/20 px-3.5 py-1.5 rounded-xl text-right shrink-0">
+              <span className="text-[10px] text-white/70 block uppercase font-bold tracking-wider">Billing ID (Generated)</span>
+              <span className="font-mono text-sm font-black text-white">{nextJobNumber}</span>
+            </div>
+          )}
         </div>
         <div className="absolute right-4 top-4 opacity-10 pointer-events-none">
           <Smile className="h-16 w-16 text-white" />
@@ -638,13 +677,15 @@ export default function NewRepair() {
                 {rateCardData.rateCard.services.map((svc: any) => {
                   const ogName = `${svc.service_name} (OG)`;
                   const dittoName = `${svc.service_name} (Ditto)`;
+                  const copyName = `${svc.service_name} (Copy)`;
                   const isOgSelected = selectedServices.some(s => s.service_name === ogName);
                   const isDittoSelected = selectedServices.some(s => s.service_name === dittoName);
+                  const isCopySelected = selectedServices.some(s => s.service_name === copyName);
 
                   return (
-                    <div key={svc.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 rounded-lg bg-secondary/20 border border-border/40">
+                    <div key={svc.id} className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 p-2.5 rounded-lg bg-secondary/20 border border-border/40">
                       <span className="text-xs font-bold text-foreground">{svc.service_name}</span>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <button
                           type="button"
                           onClick={() => toggleService({ service_name: ogName, labor_cost: svc.og_cost ?? 0 })}
@@ -666,6 +707,17 @@ export default function NewRepair() {
                           }`}
                         >
                           <span>Ditto: ₹{svc.ditto_cost ?? 0}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleService({ service_name: copyName, labor_cost: svc.copy_cost ?? 0 })}
+                          className={`px-3 py-1.5 rounded-lg border text-[11px] font-extrabold transition-all flex items-center gap-1.5 ${
+                            isCopySelected
+                              ? 'bg-rose-600 text-white border-transparent shadow-[0_0_10px_rgba(244,63,94,0.3)]'
+                              : 'bg-secondary/40 border-border/80 text-muted-foreground hover:text-foreground hover:border-rose-500/50'
+                          }`}
+                        >
+                          <span>Copy: ₹{svc.copy_cost ?? 0}</span>
                         </button>
                       </div>
                     </div>
@@ -1075,9 +1127,20 @@ export default function NewRepair() {
       {kycModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-background border border-border/80 w-full max-w-lg rounded-3xl p-6 space-y-6 relative max-h-[90vh] overflow-y-auto shadow-2xl">
-            <h2 className="text-xl font-extrabold text-primary tracking-tight text-center border-b border-border/60 pb-3">
-              Customer KYC Terminal
-            </h2>
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <button
+                type="button"
+                onClick={() => setKycModalOpen(false)}
+                className="p-2 rounded-full bg-secondary/35 hover:bg-secondary/50 transition-colors"
+                title="Back"
+              >
+                <ArrowLeft className="h-5 w-5 text-white" />
+              </button>
+              <h2 className="text-xl font-extrabold text-primary tracking-tight uppercase">
+                Customer KYC Terminal
+              </h2>
+              <div className="w-9" /> {/* Spacer to center the title */}
+            </div>
             
             {/* Grid of KYC Capture points */}
             <div className="grid grid-cols-2 gap-4">
@@ -1197,9 +1260,7 @@ export default function NewRepair() {
                 <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Take Video</span>
                 <label className="border border-border/80 rounded-xl p-3.5 bg-secondary/15 relative h-28 flex flex-col justify-center items-center cursor-pointer hover:border-primary/50 overflow-hidden">
                   {kycData.video ? (
-                    <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold uppercase">
-                      <Video className="h-4 w-4" /> Ready
-                    </div>
+                    <video src={kycData.video} className="h-full w-full object-cover rounded-lg" autoPlay loop muted playsInline />
                   ) : (
                     <>
                       <Video className="h-5 w-5 text-primary" />

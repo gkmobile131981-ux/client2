@@ -692,8 +692,10 @@ export async function deliverRepair(req: Request, res: Response): Promise<void> 
     receiverPhone: z.string().min(1, 'Receiver phone is required'),
     receivedBy: z.enum(['staff', 'customer']),
     notes: z.string().optional().nullable(),
-    receiverPhotoUrl: z.string().optional().nullable(),
-    signatureDataUrl: z.string().min(1, 'Signature is required')
+    receiverPhotoUrl: z.string().min(1, 'Receiver photo is required'),
+    signatureDataUrl: z.string().min(1, 'Signature is required'),
+    deliveryDate: z.string().optional().nullable(),
+    deliveryTime: z.string().optional().nullable()
   });
 
   try {
@@ -750,6 +752,14 @@ export async function deliverRepair(req: Request, res: Response): Promise<void> 
       receiverPhotoUrl = await uploadPhoto(fakePhotoFile, 'delivery-photos');
     }
 
+    // Parse custom delivery date and time if provided
+    let deliveredAt = new Date().toISOString();
+    if (validated.deliveryDate) {
+      const timeStr = validated.deliveryTime || '00:00';
+      // Create local date string and parse to ISO
+      deliveredAt = new Date(`${validated.deliveryDate}T${timeStr}`).toISOString();
+    }
+
     // 4. Update the repair order status
     const deliverySummary = `Received by ${validated.receivedBy}. Notes: ${validated.notes || 'No notes'}`;
 
@@ -761,7 +771,7 @@ export async function deliverRepair(req: Request, res: Response): Promise<void> 
         receiver_phone: validated.receiverPhone,
         receiver_photo_url: receiverPhotoUrl,
         signature_url: signatureUrl,
-        delivered_at: new Date().toISOString(),
+        delivered_at: deliveredAt,
         notes: validated.notes || existing.notes,
         updated_by: user.id,
         updated_at: new Date().toISOString()
@@ -1009,6 +1019,28 @@ export async function triggerWhatsAppNotification(req: Request, res: Response): 
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to trigger WhatsApp notification' });
+  }
+}
+
+// GET /api/repairs/next-job-number — get next sequential job number for the shop
+export async function getNextJobNumber(req: Request, res: Response): Promise<void> {
+  const user = req.user;
+  if (!user || !user.shop_id) {
+    res.status(400).json({ error: 'User must be associated with a shop' });
+    return;
+  }
+
+  try {
+    const { data: jobNum, error } = await supabaseAdmin.rpc('generate_job_number', {
+      p_shop_id: user.shop_id
+    });
+
+    if (error) throw error;
+
+    res.json({ nextJobNumber: jobNum });
+  } catch (err: any) {
+    console.error('Failed to generate next job number:', err);
+    res.status(500).json({ error: err.message || 'Failed to generate billing number' });
   }
 }
 

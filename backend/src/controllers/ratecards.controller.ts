@@ -12,6 +12,7 @@ const serviceItemSchema = z.object({
   service_name: z.string().min(1, 'Service name is required'),
   og_cost: z.number().nonnegative('Cost must be 0 or positive').optional().default(0),
   ditto_cost: z.number().nonnegative('Cost must be 0 or positive').optional().default(0),
+  copy_cost: z.number().nonnegative('Cost must be 0 or positive').optional().default(0),
   sort_order: z.number().int().optional().default(0),
 });
 
@@ -287,6 +288,7 @@ export async function upsertRateCardServices(req: Request, res: Response): Promi
         service_name: svc.service_name,
         og_cost: svc.og_cost ?? 0,
         ditto_cost: svc.ditto_cost ?? 0,
+        copy_cost: svc.copy_cost ?? 0,
         sort_order: svc.sort_order ?? idx,
       }));
 

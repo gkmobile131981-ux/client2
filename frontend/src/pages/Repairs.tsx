@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Wrench, 
   Plus, 
@@ -62,8 +62,9 @@ interface RepairsResponse {
 
 export default function Repairs() {
   const navigate = useNavigate();
-  const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get('search') || '');
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get('search') || '');
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
   const [searchByPhone, setSearchByPhone] = useState(false);
