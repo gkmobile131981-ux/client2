@@ -178,7 +178,7 @@ export default function RateCards() {
   return (
     <div className="flex flex-col lg:flex-row gap-6 h-full text-foreground">
       {/* LEFT PANEL: Rate Card List */}
-      <div className="lg:w-72 xl:w-80 space-y-4 flex-shrink-0">
+      <div className={`lg:w-72 xl:w-80 space-y-4 flex-shrink-0 ${selectedCard ? 'hidden lg:block' : 'block'}`}>
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">Device Models</h3>
           <Button size="sm" onClick={() => setIsCreating(true)} className="gap-1.5 h-8 text-xs">
@@ -273,7 +273,7 @@ export default function RateCards() {
       </div>
 
       {/* RIGHT PANEL: Service Editor */}
-      <div className="flex-1">
+      <div className={`flex-1 ${!selectedCard ? 'hidden lg:block' : 'block'}`}>
         {!selectedCard ? (
           <div className="flex flex-col items-center justify-center h-full py-24 text-center border border-dashed border-border rounded-xl">
             <Edit3 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
@@ -350,62 +350,66 @@ export default function RateCards() {
             </CardHeader>
 
             <CardContent className="space-y-4">
-              {/* Table header */}
-              <div className="grid grid-cols-[1fr_100px_100px_100px_40px] gap-2 px-1">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Service Name</span>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">OG Cost (₹)</span>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ditto Cost (₹)</span>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Copy Cost (₹)</span>
-                <span />
-              </div>
-
-              {/* Service Rows */}
-              <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-                {editServices.map((svc, idx) => (
-                  <div key={idx} className="grid grid-cols-[1fr_100px_100px_100px_40px] gap-2 items-center">
-                    <Input
-                      placeholder={`Service ${idx + 1}`}
-                      value={svc.service_name}
-                      onChange={(e) => updateServiceRow(idx, 'service_name', e.target.value)}
-                    />
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">₹</span>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={svc.og_cost || ''}
-                        onChange={(e) => updateServiceRow(idx, 'og_cost', parseFloat(e.target.value) || 0)}
-                        className="pl-8 text-foreground font-semibold text-white"
-                      />
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">₹</span>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={svc.ditto_cost || ''}
-                        onChange={(e) => updateServiceRow(idx, 'ditto_cost', parseFloat(e.target.value) || 0)}
-                        className="pl-8 text-foreground font-semibold text-white"
-                      />
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">₹</span>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={svc.copy_cost || ''}
-                        onChange={(e) => updateServiceRow(idx, 'copy_cost', parseFloat(e.target.value) || 0)}
-                        className="pl-8 text-foreground font-semibold text-white"
-                      />
-                    </div>
-                    <button
-                      onClick={() => removeServiceRow(idx)}
-                      className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
+              <div className="overflow-x-auto -mx-4 px-4 pb-2 scrollbar-thin">
+                <div className="min-w-[600px] space-y-4">
+                  {/* Table header */}
+                  <div className="grid grid-cols-[1fr_120px_120px_120px_40px] gap-2 px-1">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Service Name</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">OG Cost (₹)</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ditto Cost (₹)</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Copy Cost (₹)</span>
+                    <span />
                   </div>
-                ))}
+
+                  {/* Service Rows */}
+                  <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+                    {editServices.map((svc, idx) => (
+                      <div key={idx} className="grid grid-cols-[1fr_120px_120px_120px_40px] gap-2 items-center">
+                        <Input
+                          placeholder={`Service ${idx + 1}`}
+                          value={svc.service_name}
+                          onChange={(e) => updateServiceRow(idx, 'service_name', e.target.value)}
+                        />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">₹</span>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={svc.og_cost || ''}
+                            onChange={(e) => updateServiceRow(idx, 'og_cost', parseFloat(e.target.value) || 0)}
+                            className="pl-8 text-foreground font-semibold text-white"
+                          />
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">₹</span>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={svc.ditto_cost || ''}
+                            onChange={(e) => updateServiceRow(idx, 'ditto_cost', parseFloat(e.target.value) || 0)}
+                            className="pl-8 text-foreground font-semibold text-white"
+                          />
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">₹</span>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={svc.copy_cost || ''}
+                            onChange={(e) => updateServiceRow(idx, 'copy_cost', parseFloat(e.target.value) || 0)}
+                            className="pl-8 text-foreground font-semibold text-white"
+                          />
+                        </div>
+                        <button
+                          onClick={() => removeServiceRow(idx)}
+                          className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Add Row + Total + Save */}
