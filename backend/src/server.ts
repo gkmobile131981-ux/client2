@@ -62,7 +62,10 @@ app.use(
         if (isLocalhost) return callback(null, true);
       }
       
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+      // Allow any Vercel domain dynamically to facilitate easy frontend deployments
+      const isVercelOrigin = origin.endsWith('.vercel.app') || origin.includes('vercel.app');
+      
+      if (allowedOrigins.includes(origin) || isVercelOrigin) return callback(null, true);
       callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,
