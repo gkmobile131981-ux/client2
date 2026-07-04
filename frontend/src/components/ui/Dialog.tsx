@@ -25,7 +25,7 @@ export const Dialog: React.FC<DialogProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 light text-foreground">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/35 transition-opacity duration-300"
+        className="absolute inset-0 bg-transparent transition-opacity duration-300"
         onClick={onClose}
       />
 

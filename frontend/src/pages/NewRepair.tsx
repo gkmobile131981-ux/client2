@@ -1285,7 +1285,7 @@ export default function NewRepair() {
       </form>
 
       {kycModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center p-3 light text-foreground overflow-y-auto light text-foreground">
+        <div className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-3 light text-foreground overflow-y-auto light text-foreground">
           <div className="bg-card border border-border w-[92%] sm:w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl relative max-h-[85vh] flex flex-col">
             {/* Sticky Header */}
             <div className="bg-secondary/10 border-b border-border/60 p-4 flex items-center justify-between shrink-0">
@@ -1354,7 +1354,7 @@ export default function NewRepair() {
       )}
 
       {signatureOpen && (
-        <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center p-3 light text-foreground">
+        <div className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-3 light text-foreground">
           <div className="bg-card border border-border w-[92%] sm:w-full max-w-sm rounded-2xl p-4 sm:p-6 space-y-4 shadow-2xl">
             <h3 className="text-sm font-bold text-foreground uppercase tracking-widest text-center border-b border-border/60 pb-2">
               Draw Signature on Screen
@@ -1405,7 +1405,7 @@ export default function NewRepair() {
           PATTERN LOCK DRAWING GRID MODAL
          ---------------------------------------------------- */}
       {patternLockOpen && (
-        <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center p-3 light text-foreground">
+        <div className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-3 light text-foreground">
           <div className="bg-card border border-border w-[92%] sm:w-full max-w-xs rounded-2xl p-4 sm:p-5 space-y-5 shadow-2xl relative text-center">
             <h3 className="text-sm font-bold text-primary uppercase tracking-widest border-b border-border/60 pb-2">
               Draw Pattern Lock
@@ -1507,7 +1507,7 @@ export default function NewRepair() {
           INLINE REGISTER NEW CUSTOMER MODAL
          ---------------------------------------------------- */}
       {newCustomerOpen && (
-        <div className="fixed inset-0 z-50 bg-black/35 flex items-center justify-center p-3 light text-foreground">
+        <div className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-3 light text-foreground">
           <div className="bg-card border border-border w-[92%] sm:w-full max-w-sm rounded-2xl p-4 sm:p-6 space-y-4 shadow-2xl">
             <h3 className="text-sm font-extrabold text-foreground uppercase tracking-widest text-center border-b border-border/60 pb-2">
               Register New Customer
