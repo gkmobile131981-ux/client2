@@ -108,6 +108,7 @@ export default function NewRepair() {
   const [signatureOpen, setSignatureOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [showLockCode, setShowLockCode] = useState(false);
+  const [showPattern, setShowPattern] = useState(true);
 
   // Core Data States
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -1029,15 +1030,24 @@ export default function NewRepair() {
           </Button>
         </div>
         {watch('patternLock') && (
-          <div className="flex flex-col items-center gap-3 p-4 bg-primary/10 rounded-2xl border border-primary/25">
-            <div className="text-[10px] text-muted-foreground font-black uppercase tracking-widest text-center">
+          <div className="flex flex-col items-center gap-3 p-4 bg-primary/10 rounded-2xl border border-primary/25 relative">
+            <button
+              type="button"
+              onClick={() => setShowPattern(!showPattern)}
+              className="absolute top-3 right-3 text-muted-foreground hover:text-foreground transition-colors p-1"
+              title={showPattern ? 'Hide pattern preview' : 'Show pattern preview'}
+            >
+              {showPattern ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+            </button>
+
+            <div className="text-[10px] text-muted-foreground font-black uppercase tracking-widest text-center pr-6">
               Selected Pattern Lock Preview
             </div>
             
             {/* Visual Mini Grid Preview */}
             <div className="relative w-24 h-24 bg-secondary/15 rounded-xl border border-border/80 p-2 flex items-center justify-center">
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                {(() => {
+                {showPattern && (() => {
                   const nodes = (watch('patternLock') || '').split('-').map(Number);
                   return nodes.map((node, index) => {
                     if (index === 0) return null;
@@ -1068,7 +1078,7 @@ export default function NewRepair() {
                 {Array.from({ length: 9 }).map((_, idx) => {
                   const n = idx + 1;
                   const nodes = (watch('patternLock') || '').split('-').map(Number);
-                  const isSelected = nodes.includes(n);
+                  const isSelected = showPattern && nodes.includes(n);
                   const r = Math.floor((n - 1) / 3);
                   const c = (n - 1) % 3;
                   const x = 16 + c * 32;
@@ -1087,7 +1097,7 @@ export default function NewRepair() {
             </div>
             
             <div className="text-xs font-mono text-center text-primary/95">
-              Sequence: <span className="font-extrabold text-foreground">{watch('patternLock')}</span>
+              Sequence: <span className="font-extrabold text-foreground">{showPattern ? watch('patternLock') : '••••••••'}</span>
             </div>
           </div>
         )}
