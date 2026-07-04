@@ -20,7 +20,9 @@ import {
   Clock,
   Sparkles,
   Smartphone,
-  MessageSquare
+  MessageSquare,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -105,6 +107,7 @@ export default function NewRepair() {
   const [kycModalOpen, setKycModalOpen] = useState(false);
   const [signatureOpen, setSignatureOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
+  const [showLockCode, setShowLockCode] = useState(false);
 
   // Core Data States
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
@@ -999,11 +1002,22 @@ export default function NewRepair() {
         <div className="grid grid-cols-2 gap-4 items-end">
           <div className="space-y-1">
             <label className="text-xs font-bold text-primary uppercase tracking-wider block">Lock Code (optional)</label>
-            <Input
-              type="text"
-              placeholder="PIN / Password"
-              {...register('lockCode')}
-            />
+            <div className="relative">
+              <Input
+                type={showLockCode ? 'text' : 'password'}
+                placeholder="PIN / Password"
+                {...register('lockCode')}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowLockCode(!showLockCode)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                title={showLockCode ? 'Hide password' : 'Show password'}
+              >
+                {showLockCode ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+              </button>
+            </div>
           </div>
 
           <Button
