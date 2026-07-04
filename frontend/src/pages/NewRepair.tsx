@@ -123,6 +123,9 @@ export default function NewRepair() {
 
   // Pattern Lock State
   const [patternNodes, setPatternNodes] = useState<number[]>([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [pointerCoords, setPointerCoords] = useState<{ x: number; y: number } | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   // KYC Files & Signature States
   const [kycData, setKycData] = useState<{
@@ -386,14 +389,45 @@ export default function NewRepair() {
     toast.success('Customer KYC Details captured!');
   };
 
-  // Pattern Lock Grid node tap/click
-  const handlePatternNodeClick = (node: number) => {
-    if (patternNodes.includes(node)) {
-      if (patternNodes[patternNodes.length - 1] === node) {
-        setPatternNodes(prev => prev.slice(0, -1));
+  // Pattern Lock Grid dragging handlers
+  const handlePointerDownPattern = (node: number) => {
+    setIsDrawing(true);
+    setPatternNodes([node]);
+    if (navigator.vibrate) {
+      navigator.vibrate(20);
+    }
+  };
+
+  const handlePointerMovePattern = (e: React.PointerEvent) => {
+    if (!isDrawing || !gridRef.current) return;
+    const rect = gridRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Clamp to boundaries of w-60 h-60 (240x240 pixels)
+    const clampedX = Math.max(0, Math.min(240, x));
+    const clampedY = Math.max(0, Math.min(240, y));
+    setPointerCoords({ x: clampedX, y: clampedY });
+
+    // Hit test 3x3 nodes
+    for (let n = 1; n <= 9; n++) {
+      const row = Math.floor((n - 1) / 3);
+      const col = (n - 1) % 3;
+      const cx = 40 + col * 80;
+      const cy = 40 + row * 80;
+      
+      const dist = Math.hypot(clampedX - cx, clampedY - cy);
+      // Nodes are 48px wide, so let's use 28px hit test radius
+      if (dist < 28) {
+        setPatternNodes((prev) => {
+          if (prev.includes(n)) return prev;
+          const next = [...prev, n];
+          if (navigator.vibrate) {
+            navigator.vibrate(20);
+          }
+          return next;
+        });
       }
-    } else {
-      setPatternNodes(prev => [...prev, node]);
     }
   };
 
@@ -981,8 +1015,66 @@ export default function NewRepair() {
           </Button>
         </div>
         {watch('patternLock') && (
-          <div className="p-2.5 bg-primary/15 rounded-lg text-xs font-mono text-primary/95 border border-primary/20 text-center">
-            Selected Pattern Lock Sequence: <span className="font-black text-foreground">{watch('patternLock')}</span>
+          <div className="flex flex-col items-center gap-3 p-4 bg-primary/10 rounded-2xl border border-primary/25">
+            <div className="text-[10px] text-muted-foreground font-black uppercase tracking-widest text-center">
+              Selected Pattern Lock Preview
+            </div>
+            
+            {/* Visual Mini Grid Preview */}
+            <div className="relative w-24 h-24 bg-secondary/15 rounded-xl border border-border/80 p-2 flex items-center justify-center">
+              <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                {(() => {
+                  const nodes = (watch('patternLock') || '').split('-').map(Number);
+                  return nodes.map((node, index) => {
+                    if (index === 0) return null;
+                    const prevNode = nodes[index - 1];
+                    const getMiniCoords = (n: number) => {
+                      const r = Math.floor((n - 1) / 3);
+                      const c = (n - 1) % 3;
+                      return { x: 16 + c * 32, y: 16 + r * 32 };
+                    };
+                    const p1 = getMiniCoords(prevNode);
+                    const p2 = getMiniCoords(node);
+                    return (
+                      <line
+                        key={index}
+                        x1={p1.x}
+                        y1={p1.y}
+                        x2={p2.x}
+                        y2={p2.y}
+                        className="stroke-primary"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                      />
+                    );
+                  });
+                })()}
+                
+                {/* Visual nodes dots */}
+                {Array.from({ length: 9 }).map((_, idx) => {
+                  const n = idx + 1;
+                  const nodes = (watch('patternLock') || '').split('-').map(Number);
+                  const isSelected = nodes.includes(n);
+                  const r = Math.floor((n - 1) / 3);
+                  const c = (n - 1) % 3;
+                  const x = 16 + c * 32;
+                  const y = 16 + r * 32;
+                  return (
+                    <circle
+                      key={n}
+                      cx={x}
+                      cy={y}
+                      r={isSelected ? 4 : 2}
+                      className={isSelected ? "fill-primary" : "fill-muted-foreground/35"}
+                    />
+                  );
+                })}
+              </svg>
+            </div>
+            
+            <div className="text-xs font-mono text-center text-primary/95">
+              Sequence: <span className="font-extrabold text-foreground">{watch('patternLock')}</span>
+            </div>
           </div>
         )}
 
@@ -1401,33 +1493,38 @@ export default function NewRepair() {
         </div>
       )}
 
-      {/* ----------------------------------------------------
-          PATTERN LOCK DRAWING GRID MODAL
-         ---------------------------------------------------- */}
       {patternLockOpen && (
         <div className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-3 light text-foreground">
           <div className="bg-card border border-border w-[92%] sm:w-full max-w-xs rounded-2xl p-4 sm:p-5 space-y-5 shadow-2xl relative text-center">
             <h3 className="text-sm font-bold text-primary uppercase tracking-widest border-b border-border/60 pb-2">
               Draw Pattern Lock
             </h3>
-            <p className="text-[10px] text-muted-foreground italic">Tap nodes sequentially to record pattern lock</p>
+            <p className="text-[10px] text-muted-foreground italic">Drag across nodes sequentially to draw pattern</p>
 
             {/* Visual SVG connecting lines */}
-            <div className="relative w-60 h-60 mx-auto bg-secondary/10 rounded-2xl p-4 border border-border">
+            <div 
+              ref={gridRef}
+              className="relative w-60 h-60 mx-auto bg-secondary/10 rounded-2xl p-4 border border-border touch-none select-none cursor-crosshair"
+              onPointerMove={handlePointerMovePattern}
+              onPointerUp={() => {
+                setIsDrawing(false);
+                setPointerCoords(null);
+              }}
+              onPointerLeave={() => {
+                setIsDrawing(false);
+                setPointerCoords(null);
+              }}
+            >
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                {/* Connected nodes lines */}
                 {patternNodes.map((node, index) => {
                   if (index === 0) return null;
                   const prevNode = patternNodes[index - 1];
-                  
                   const getCoords = (n: number) => {
                     const row = Math.floor((n - 1) / 3);
                     const col = (n - 1) % 3;
-                    return {
-                      x: `${16.66 + col * 33.33}%`,
-                      y: `${16.66 + row * 33.33}%`
-                    };
+                    return { x: 40 + col * 80, y: 40 + row * 80 };
                   };
-                  
                   const p1 = getCoords(prevNode);
                   const p2 = getCoords(node);
                   
@@ -1438,12 +1535,36 @@ export default function NewRepair() {
                       y1={p1.y}
                       x2={p2.x}
                       y2={p2.y}
-                      className="stroke-primary animate-pulse"
-                      strokeWidth="5"
+                      className="stroke-primary"
+                      strokeWidth="6"
                       strokeLinecap="round"
                     />
                   );
                 })}
+                {/* Active line to cursor */}
+                {isDrawing && patternNodes.length > 0 && pointerCoords && (
+                  (() => {
+                    const lastNode = patternNodes[patternNodes.length - 1];
+                    const getCoords = (n: number) => {
+                      const row = Math.floor((n - 1) / 3);
+                      const col = (n - 1) % 3;
+                      return { x: 40 + col * 80, y: 40 + row * 80 };
+                    };
+                    const p1 = getCoords(lastNode);
+                    return (
+                      <line
+                        x1={p1.x}
+                        y1={p1.y}
+                        x2={pointerCoords.x}
+                        y2={pointerCoords.y}
+                        className="stroke-primary/60"
+                        strokeWidth="5"
+                        strokeLinecap="round"
+                        strokeDasharray="4 4"
+                      />
+                    );
+                  })()
+                )}
               </svg>
 
               {/* Grid Nodes */}
@@ -1455,8 +1576,8 @@ export default function NewRepair() {
                     <button
                       key={n}
                       type="button"
-                      onClick={() => handlePatternNodeClick(n)}
-                      className={`flex items-center justify-center rounded-full w-12 h-12 text-sm font-black transition-all ${
+                      onPointerDown={() => handlePointerDownPattern(n)}
+                      className={`flex items-center justify-center rounded-full w-12 h-12 text-sm font-black transition-all pointer-events-auto ${
                         isSelected
                           ? 'bg-primary text-white scale-110 shadow-lg shadow-primary/35 border-2 border-white/20'
                           : 'bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-foreground border border-border/40'
@@ -1486,16 +1607,18 @@ export default function NewRepair() {
               <button
                 type="button"
                 onClick={handleSavePatternLock}
-                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground py-2.5 rounded-xl text-xs font-bold uppercase"
+                className="flex-1 bg-primary hover:bg-primary/95 text-white py-2.5 rounded-xl text-xs font-bold uppercase"
               >
                 Save
               </button>
             </div>
-
             <button
               type="button"
-              onClick={() => setPatternLockOpen(false)}
-              className="w-full text-center text-xs text-muted-foreground uppercase font-bold tracking-wider hover:text-white"
+              onClick={() => {
+                setPatternNodes([]);
+                setPatternLockOpen(false);
+              }}
+              className="text-xs text-muted-foreground uppercase font-black tracking-widest hover:text-white pt-2 border-t border-border/40 block w-full text-center"
             >
               Cancel
             </button>
