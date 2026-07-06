@@ -1493,7 +1493,7 @@ export default function NewRepair() {
               <button
                 type="button"
                 onClick={clearSignature}
-                className="flex-1 bg-secondary hover:bg-secondary/80 text-white py-2.5 rounded-xl text-xs font-bold uppercase"
+                className="flex-1 bg-secondary/55 hover:bg-secondary/75 text-foreground py-2.5 rounded-xl text-xs font-bold uppercase"
               >
                 Clear
               </button>
@@ -1624,7 +1624,7 @@ export default function NewRepair() {
               <button
                 type="button"
                 onClick={() => setPatternNodes([])}
-                className="flex-1 bg-secondary hover:bg-secondary/80 text-white py-2.5 rounded-xl text-xs font-bold uppercase"
+                className="flex-1 bg-secondary/55 hover:bg-secondary/75 text-foreground py-2.5 rounded-xl text-xs font-bold uppercase"
               >
                 Clear
               </button>
