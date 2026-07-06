@@ -155,7 +155,7 @@ export default function OwnerIdCard() {
 
                   {/* ── Dynamic name next to "பெயர் :" ── */}
                   <div style={{
-                    position: 'absolute', top: 82, left: 162,
+                    position: 'absolute', top: 82, left: 148,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 12, color: 'white', fontWeight: 500 }}>{ownerName || ''}</span>
@@ -163,7 +163,7 @@ export default function OwnerIdCard() {
  
                   {/* ── Dynamic shop next to "கடை :" ── */}
                   <div style={{
-                    position: 'absolute', top: 111, left: 162,
+                    position: 'absolute', top: 111, left: 148,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: 'white', fontWeight: 500 }}>{shopName || ''}</span>
@@ -171,15 +171,15 @@ export default function OwnerIdCard() {
  
                   {/* ── Dynamic Email ── */}
                   <div style={{
-                    position: 'absolute', top: 135, left: 112,
-                    width: 45, textAlign: 'right', whiteSpace: 'nowrap',
+                    position: 'absolute', top: 135, left: 98,
+                    width: 44, textAlign: 'right', whiteSpace: 'nowrap',
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: 'white', fontWeight: 500 }}>Email :</span>
                   </div>
                   <div style={{
-                    position: 'absolute', top: 135, left: 162,
-                    width: 151,
+                    position: 'absolute', top: 135, left: 148,
+                    width: 165,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     zIndex: 4,
                   }}>
@@ -234,7 +234,7 @@ export default function OwnerIdCard() {
  
                   {/* ── Dynamic Blood Group: next to "இரத்த வகை :" ── */}
                   <div style={{
-                    position: 'absolute', top: 132, left: 135,
+                    position: 'absolute', top: 130, left: 135,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500 }}>{bloodGroup || ''}</span>
@@ -242,7 +242,7 @@ export default function OwnerIdCard() {
  
                   {/* ── Dynamic Date of Birth: next to "பிறந்த தேதி :" ── */}
                   <div style={{
-                    position: 'absolute', top: 154, left: 135,
+                    position: 'absolute', top: 151, left: 135,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500 }}>{formatDob(dob)}</span>
@@ -250,7 +250,7 @@ export default function OwnerIdCard() {
  
                   {/* ── Dynamic Cell Number: next to "செல் நெம்பர் :" ── */}
                   <div style={{
-                    position: 'absolute', top: 176, left: 135,
+                    position: 'absolute', top: 172, left: 135,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500 }}>{personalPhone || ''}</span>
