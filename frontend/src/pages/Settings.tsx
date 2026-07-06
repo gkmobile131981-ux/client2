@@ -116,7 +116,7 @@ export default function SettingsPage({ defaultTab }: SettingsPageProps = {}) {
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isStaffMgmtOpen, setIsStaffMgmtOpen] = useState(defaultTab === 'staff');
-  const [isRateCardsOpen, setIsRateCardsOpen] = useState(defaultTab === 'price-list');
+  const [isRateCardsOpen, setIsRateCardsOpen] = useState(defaultTab === 'create-price');
   const [isWhatsAppOpen, setIsWhatsAppOpen] = useState(defaultTab === 'whatsapp');
 
   // WhatsApp logs state
@@ -865,7 +865,7 @@ export default function SettingsPage({ defaultTab }: SettingsPageProps = {}) {
         isOpen={isRateCardsOpen}
         onClose={() => {
           setIsRateCardsOpen(false);
-          if (defaultTab === 'price-list') {
+          if (defaultTab === 'create-price') {
             navigate('/settings');
           }
         }}

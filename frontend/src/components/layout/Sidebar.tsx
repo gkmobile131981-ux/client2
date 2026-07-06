@@ -12,14 +12,15 @@ import {
   Smartphone,
   TrendingUp,
   ClipboardList,
-  Contact
+  Contact,
+  BookOpen
 } from 'lucide-react';
-
+ 
 interface SidebarProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
 }
-
+ 
 interface NavItem {
   name: string;
   to: string;
@@ -28,13 +29,14 @@ interface NavItem {
   superAdminOnly?: boolean;
   end?: boolean;
 }
-
+ 
 const navigation: NavItem[] = [
   { name: 'Dashboard', to: '/', icon: LayoutDashboard, end: true },
   { name: 'Repair Jobs', to: '/repairs', icon: Wrench },
   { name: 'Customers', to: '/customers', icon: Users },
   { name: 'Reports', to: '/reports', icon: TrendingUp, ownerOnly: true },
-  { name: 'Repairing Price List', to: '/settings/price-list', icon: ClipboardList, ownerOnly: true },
+  { name: 'Repair Price List', to: '/price-list', icon: BookOpen },
+  { name: 'Create Repair Price', to: '/settings/create-price', icon: ClipboardList, ownerOnly: true },
   { name: 'Owner ID Card', to: '/id-card', icon: Contact, superAdminOnly: true },
   { name: 'Settings', to: '/settings', icon: Settings, end: true },
   { name: 'Super Admin', to: '/superadmin', icon: UserSquare2, superAdminOnly: true },

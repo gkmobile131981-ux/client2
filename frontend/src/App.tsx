@@ -15,6 +15,7 @@ import CustomerProfile from './pages/CustomerProfile';
 import Reports from './pages/Reports';
 import StaffSettings from './pages/StaffSettings';
 import SettingsPage from './pages/Settings';
+import RepairPriceList from './pages/RepairPriceList';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
@@ -59,13 +60,14 @@ export default function App() {
                 <Route path="/repairs/:id" element={<RepairDetail />} />
                 <Route path="/repairs/:id/deliver" element={<DeliverRepair />} />
                 
+                <Route path="/price-list" element={<RepairPriceList />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 
                 {/* Owner exclusive controls */}
                 <Route element={<OwnerRoute />}>
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/settings/staff" element={<SettingsPage defaultTab="staff" />} />
-                  <Route path="/settings/price-list" element={<SettingsPage defaultTab="price-list" />} />
+                  <Route path="/settings/create-price" element={<SettingsPage defaultTab="create-price" />} />
                 </Route>
 
                 {/* Super Admin exclusive controls */}
