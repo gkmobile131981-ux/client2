@@ -551,7 +551,7 @@ export default function Dashboard() {
           <CardContent className="h-80 pt-6">
             {monthlyRevenue.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyRevenue} margin={{ left: -10, right: -10, top: 10 }}>
+                <BarChart data={monthlyRevenue} margin={{ left: -10, right: -10, top: 10 }} barGap={6}>
                   <defs>
                     <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.85}/>
@@ -561,14 +561,20 @@ export default function Dashboard() {
                       <stop offset="0%" stopColor="#10b981" stopOpacity={0.85}/>
                       <stop offset="100%" stopColor="#10b981" stopOpacity={0.15}/>
                     </linearGradient>
+                    <filter id="columnGlow" x="-10%" y="-10%" width="120%" height="120%">
+                      <feDropShadow dx="0" dy="1" stdDeviation="3" floodColor="hsl(var(--primary))" floodOpacity="0.25" />
+                    </filter>
+                    <filter id="emeraldGlow" x="-10%" y="-10%" width="120%" height="120%">
+                      <feDropShadow dx="0" dy="1" stdDeviation="3" floodColor="#10b981" floodOpacity="0.25" />
+                    </filter>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(156, 163, 175, 0.15)" vertical={false} />
-                  <XAxis dataKey="month" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} dy={4} />
-                  <YAxis yAxisId="left" orientation="left" stroke="#a855f7" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}`} dx={-4} />
-                  <YAxis yAxisId="right" orientation="right" stroke="#10b981" fontSize={10} tickLine={false} axisLine={false} dx={4} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar yAxisId="left" dataKey="revenue" fill="url(#revenueGradient)" name="Revenue Forecast" radius={[4, 4, 0, 0]} barSize={28} />
-                  <Bar yAxisId="right" dataKey="repairsCount" fill="url(#repairsCountGradient)" name="Repairs Count" radius={[4, 4, 0, 0]} barSize={28} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} />
+                  <XAxis dataKey="month" stroke="currentColor" opacity={0.6} fontSize={9} tickLine={false} axisLine={false} dy={4} />
+                  <YAxis yAxisId="left" orientation="left" stroke="hsl(var(--primary))" fontSize={9} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}`} dx={-4} />
+                  <YAxis yAxisId="right" orientation="right" stroke="#10b981" fontSize={9} tickLine={false} axisLine={false} dx={4} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.03)', radius: 6 }} />
+                  <Bar yAxisId="left" dataKey="revenue" fill="url(#revenueGradient)" name="Revenue Forecast" radius={[6, 6, 0, 0]} barSize={16} filter="url(#columnGlow)" />
+                  <Bar yAxisId="right" dataKey="repairsCount" fill="url(#repairsCountGradient)" name="Repairs Count" radius={[6, 6, 0, 0]} barSize={16} filter="url(#emeraldGlow)" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -578,17 +584,17 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
-
+ 
         {/* Donut Chart: Repairs by status */}
         <Card>
           <CardHeader className="border-b border-border/40 pb-4">
             <CardTitle className="text-base text-foreground bg-none bg-clip-border text-current font-bold">Repairs by Status</CardTitle>
-            <CardDescription>Status breakdown of repair orders.</CardDescription>
+            <CardDescription>Visual breakdown of current active queue status.</CardDescription>
           </CardHeader>
-          <CardContent className="h-80 flex flex-col justify-between pt-6">
+          <CardContent className="h-80 pt-6 flex flex-col justify-between">
             {pieData.length > 0 ? (
               <>
-                <div className="h-44 relative flex items-center justify-center">
+                <div className="h-44 w-full relative">
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-2">
                     <span className="text-2xl font-black text-foreground tracking-tight">{totalActiveRepairs}</span>
                     <span className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">Active</span>
@@ -641,18 +647,21 @@ export default function Dashboard() {
           <CardContent className="h-64 pt-6">
             {topDeviceBrands.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={topDeviceBrands} layout="vertical" margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
+                <BarChart data={topDeviceBrands} layout="vertical" margin={{ left: 5, right: 10, top: 5, bottom: 5 }}>
                   <defs>
                     <linearGradient id="brandGradient" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.85}/>
-                      <stop offset="100%" stopColor="#ec4899" stopOpacity={0.45}/>
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.9}/>
+                      <stop offset="100%" stopColor="#f43f5e" stopOpacity={0.5}/>
                     </linearGradient>
+                    <filter id="brandGlow" x="-10%" y="-10%" width="120%" height="120%">
+                      <feDropShadow dx="1" dy="0" stdDeviation="3" floodColor="hsl(var(--primary))" floodOpacity="0.3" />
+                    </filter>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(156, 163, 175, 0.15)" vertical={false} />
-                  <XAxis type="number" stroke="#888888" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis dataKey="brand" type="category" stroke="#888888" fontSize={10} width={80} tickLine={false} axisLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="count" fill="url(#brandGradient)" name="Orders Checked" radius={[0, 4, 4, 0]} barSize={16} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" vertical={false} horizontal={false} />
+                  <XAxis type="number" stroke="currentColor" opacity={0.5} fontSize={9} tickLine={false} axisLine={false} />
+                  <YAxis dataKey="brand" type="category" stroke="currentColor" opacity={0.8} fontSize={9} width={75} tickLine={false} axisLine={false} tick={{ fill: 'currentColor', fontWeight: 700 }} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.02)', radius: 6 }} />
+                  <Bar dataKey="count" fill="url(#brandGradient)" name="Orders Checked" radius={[0, 6, 6, 0]} barSize={12} filter="url(#brandGlow)" background={{ fill: 'rgba(255, 255, 255, 0.03)', radius: 6 }} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
