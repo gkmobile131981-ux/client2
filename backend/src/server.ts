@@ -103,7 +103,7 @@ app.use('/api', limiter);
 app.use('/api/auth', authLimiter);
 
 // Health Check Route
-app.get('/health', (_req: Request, res: Response) => {
+app.get(['/health', '/api/health'], (_req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
