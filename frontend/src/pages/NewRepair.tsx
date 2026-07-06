@@ -918,7 +918,7 @@ export default function NewRepair() {
                               : 'bg-secondary/40 border-border/80 text-muted-foreground hover:text-foreground hover:border-rose-500/50'
                           }`}
                         >
-                          <span>Copy: ₹{svc.copy_cost ?? 0}</span>
+                          <span translate="no" className="notranslate">Copy: ₹{svc.copy_cost ?? 0}</span>
                         </button>
                       </div>
                     </div>

@@ -437,7 +437,7 @@ export default function RateCards() {
                   <div className="grid grid-cols-[1fr_120px_120px_40px] gap-2 px-1">
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Service Name</span>
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">OG Cost (₹)</span>
-                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Copy Cost (₹)</span>
+                    <span translate="no" className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider notranslate">Copy Cost (₹)</span>
                     <span />
                   </div>
 
