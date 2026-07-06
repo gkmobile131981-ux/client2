@@ -171,14 +171,14 @@ export default function OwnerIdCard() {
  
                   {/* ── Dynamic Email ── */}
                   <div style={{
-                    position: 'absolute', top: 140, left: 112,
+                    position: 'absolute', top: 135, left: 112,
                     width: 45, textAlign: 'right', whiteSpace: 'nowrap',
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: 'white', fontWeight: 500 }}>Email :</span>
                   </div>
                   <div style={{
-                    position: 'absolute', top: 140, left: 162,
+                    position: 'absolute', top: 135, left: 162,
                     width: 151,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     zIndex: 4,
@@ -216,7 +216,7 @@ export default function OwnerIdCard() {
  
                   {/* ── Dynamic Aadhar on the Backside ── */}
                   <div style={{
-                    position: 'absolute', top: 110, left: 36,
+                    position: 'absolute', top: 110, left: 50,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500 }}>Aadhar :</span>
