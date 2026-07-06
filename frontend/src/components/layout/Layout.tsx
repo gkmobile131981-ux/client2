@@ -25,7 +25,7 @@ export default function Layout({ children }: LayoutProps) {
           shopName={shop?.name || undefined}
           onLogout={logout}
         />
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 sm:py-8 pb-24 lg:pb-8">
+        <main className="flex-1 overflow-y-auto px-4 pt-6 pb-36 sm:px-6 sm:pt-8 lg:pb-8">
           <div className="mx-auto max-w-7xl">
             <ErrorBoundary>
               {children || <Outlet />}

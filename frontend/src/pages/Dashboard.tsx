@@ -187,7 +187,7 @@ export default function Dashboard() {
     if (activeSlides.length === 0) return;
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % activeSlides.length);
-    }, 6000);
+    }, 4000);
     return () => clearInterval(timer);
   }, [activeSlides.length]);
 
@@ -381,17 +381,36 @@ export default function Dashboard() {
 
       {/* Slide Carousel Banner */}
       <div 
-        style={activeSlides[currentSlide]?.image_url ? { 
-          backgroundImage: `linear-gradient(to right, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.1) 100%), url(${activeSlides[currentSlide].image_url})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        } : undefined}
-        className={`relative overflow-hidden p-6 sm:p-8 rounded-2xl border transition-all duration-500 shadow-md flex items-center gap-4 min-h-[200px] sm:min-h-[260px] md:min-h-[300px] ${
-          !activeSlides[currentSlide]?.image_url 
-            ? ('bg-gradient-to-r ' + (activeSlides[currentSlide].color || 'from-primary/25 to-secondary/15 border-primary/30')) 
-            : 'border-border/85'
-        }`}
+        className="relative overflow-hidden p-6 sm:p-8 rounded-2xl border border-border/85 shadow-md flex items-center gap-4 min-h-[200px] sm:min-h-[260px] md:min-h-[300px]"
       >
+        {/* Preload and crossfade background layers */}
+        {activeSlides.map((slide: any, idx: number) => {
+          const isActive = currentSlide === idx;
+          if (slide.image_url) {
+            return (
+              <div
+                key={idx}
+                style={{
+                  backgroundImage: `linear-gradient(to right, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.1) 100%), url(${slide.image_url})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center'
+                }}
+                className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+                  isActive ? 'opacity-100 z-0' : 'opacity-0 pointer-events-none'
+                }`}
+              />
+            );
+          } else {
+            return (
+              <div
+                key={idx}
+                className={`absolute inset-0 bg-gradient-to-r ${slide.color || 'from-primary/25 to-secondary/15 border-primary/30'} transition-opacity duration-700 ease-in-out ${
+                  isActive ? 'opacity-100 z-0' : 'opacity-0 pointer-events-none'
+                }`}
+              />
+            );
+          }
+        })}
         {isSuperAdmin && (
           <Link 
             to="/superadmin?tab=carousel" 
