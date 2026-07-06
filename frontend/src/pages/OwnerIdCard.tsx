@@ -157,48 +157,48 @@ export default function OwnerIdCard() {
 
                   {/* ── Dynamic name next to "பெயர் :" ── */}
                   <div style={{
-                    position: 'absolute', top: 80, left: 148,
+                    position: 'absolute', top: 80, left: 162,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 12, color: 'white', fontWeight: 500 }}>{ownerName || ''}</span>
                   </div>
-
+ 
                   {/* ── Dynamic shop next to "கடை :" ── */}
                   <div style={{
-                    position: 'absolute', top: 109, left: 148,
+                    position: 'absolute', top: 109, left: 162,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: 'white', fontWeight: 500 }}>{shopName || ''}</span>
                   </div>
-
+ 
                   {/* ── Dynamic Email ── */}
                   <div style={{
-                    position: 'absolute', top: 131, left: 99,
-                    width: 44, textAlign: 'right', whiteSpace: 'nowrap',
+                    position: 'absolute', top: 131, left: 112,
+                    width: 45, textAlign: 'right', whiteSpace: 'nowrap',
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: 'white', fontWeight: 500 }}>Email :</span>
                   </div>
                   <div style={{
-                    position: 'absolute', top: 131, left: 148,
-                    width: 165,
+                    position: 'absolute', top: 131, left: 162,
+                    width: 151,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: 'white', fontWeight: 500 }}>{emailAddress || ''}</span>
                   </div>
-
+ 
                   {/* ── Dynamic Aadhar ── */}
                   <div style={{
-                    position: 'absolute', top: 153, left: 99,
-                    width: 44, textAlign: 'right', whiteSpace: 'nowrap',
+                    position: 'absolute', top: 153, left: 112,
+                    width: 45, textAlign: 'right', whiteSpace: 'nowrap',
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: 'white', fontWeight: 500 }}>Aadhar :</span>
                   </div>
                   <div style={{
-                    position: 'absolute', top: 153, left: 148,
-                    width: 165,
+                    position: 'absolute', top: 153, left: 162,
+                    width: 151,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     zIndex: 4,
                   }}>
