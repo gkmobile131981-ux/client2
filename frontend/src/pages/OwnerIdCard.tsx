@@ -77,7 +77,7 @@ export default function OwnerIdCard() {
     if (!s) return '';
     try {
       const d = new Date(s);
-      return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
+      return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
     } catch { return s; }
   };
 
@@ -155,20 +155,20 @@ export default function OwnerIdCard() {
 
                   {/* ── Dynamic name next to "பெயர் :" ── */}
                   <div style={{
-                    position: 'absolute', top: 81, left: 148,
+                    position: 'absolute', top: 79, left: 148,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 12, color: 'white', fontWeight: 500 }}>{ownerName || ''}</span>
                   </div>
- 
+
                   {/* ── Dynamic shop next to "கடை :" ── */}
                   <div style={{
-                    position: 'absolute', top: 106, left: 148,
+                    position: 'absolute', top: 104, left: 148,
                     zIndex: 4,
                   }}>
                     <span style={{ fontSize: 11, color: 'white', fontWeight: 500 }}>{shopName || ''}</span>
                   </div>
- 
+
                   {/* ── Dynamic Email ── */}
                   <div style={{
                     position: 'absolute', top: 135, left: 98,
@@ -186,7 +186,7 @@ export default function OwnerIdCard() {
                     <span style={{ fontSize: 11, color: 'white', fontWeight: 500 }}>{emailAddress || ''}</span>
                   </div>
                 </div>
- 
+
                 {/* ═══════════════════════════════════════
                     BACK CARD — exactly 325 × 204 px
                 ═══════════════════════════════════════ */}
@@ -216,7 +216,7 @@ export default function OwnerIdCard() {
                       {homeAddress || ''}
                     </div>
                   </div>
- 
+
                   {/* ── Dynamic Aadhar on the Backside ── */}
                   <div style={{
                     position: 'absolute', top: 110, left: 50,
@@ -234,7 +234,7 @@ export default function OwnerIdCard() {
                       {aadharNumber ? aadharNumber.replace(/\s+/g, '').replace(/(\d{4})(?=\d)/g, '$1 ').trim() : ''}
                     </span>
                   </div>
- 
+
                   {/* ── Dynamic Blood Group: next to "இரத்த வகை :" ── */}
                   <div style={{
                     position: 'absolute', top: 130, left: 135,
@@ -242,7 +242,7 @@ export default function OwnerIdCard() {
                   }}>
                     <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500 }}>{bloodGroup || ''}</span>
                   </div>
- 
+
                   {/* ── Dynamic Date of Birth: next to "பிறந்த தேதி :" ── */}
                   <div style={{
                     position: 'absolute', top: 151, left: 135,
@@ -250,7 +250,7 @@ export default function OwnerIdCard() {
                   }}>
                     <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500 }}>{formatDob(dob)}</span>
                   </div>
- 
+
                   {/* ── Dynamic Cell Number: next to "செல் நெம்பர் :" ── */}
                   <div style={{
                     position: 'absolute', top: 172, left: 135,
@@ -356,7 +356,7 @@ export default function OwnerIdCard() {
                     <select value={bloodGroup} onChange={e => setBloodGroup(e.target.value)}
                       className="flex h-9 w-full rounded-md border border-border/80 bg-secondary/35 px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary text-white">
                       <option className="bg-neutral-900 text-white" value="">Select Blood Group</option>
-                      {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(g =>
+                      {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(g =>
                         <option key={g} className="bg-neutral-900 text-white" value={g}>{g}</option>
                       )}
                     </select>
