@@ -1420,16 +1420,6 @@ export default function NewRepair() {
           </div>
         </div>
 
-        {/* ADD ID PROOF / DEVICE PHOTO TRIGGER */}
-        <div
-          onClick={() => setKycModalOpen(true)}
-          className="border-2 border-dashed border-border/80 hover:border-primary/80 transition-colors rounded-2xl p-6 text-center cursor-pointer bg-secondary/5 space-y-1.5"
-        >
-          <Camera className="h-6 w-6 text-muted-foreground mx-auto" />
-          <span className="text-xs font-bold text-foreground block">Add ID Proof / Device Photo (Optional)</span>
-          <span className="text-[10px] text-muted-foreground block">Capture front/back documentation in KYC file</span>
-        </div>
-
         {/* ADDITIONAL DETAILS OPTIONAL TEXTAREA */}
         <div className="space-y-1">
           <textarea
