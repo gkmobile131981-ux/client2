@@ -52,22 +52,30 @@ export async function getCustomers(req: Request, res: Response): Promise<void> {
     }
 
     // Load repair metrics (total repairs & last repair date) for each customer
-    // We can do this efficiently by fetching count/date summaries from repairs table
     const customersWithStats = await Promise.all(
       (customers || []).map(async (cust) => {
-        const { data: repairsData } = await supabaseAdmin
-          .from('repairs')
-          .select('created_at')
-          .eq('shop_id', user.shop_id)
-          .eq('device_id', (
-            // Select all device IDs belonging to this customer
-            supabaseAdmin.from('devices').select('id').eq('customer_id', cust.id)
-          ) as any);
+        // Fetch all device IDs belonging to this customer
+        const { data: devices } = await supabaseAdmin
+          .from('devices')
+          .select('id')
+          .eq('customer_id', cust.id);
+        
+        const deviceIds = (devices || []).map(d => d.id);
+        let repairCount = 0;
+        let lastRepairDate: string | null = null;
 
-        const repairCount = repairsData?.length || 0;
-        const lastRepairDate = repairsData && repairsData.length > 0
-          ? repairsData.reduce((latest, r) => (r.created_at > latest ? r.created_at : latest), repairsData[0].created_at)
-          : null;
+        if (deviceIds.length > 0) {
+          const { data: repairsData } = await supabaseAdmin
+            .from('repairs')
+            .select('created_at')
+            .eq('shop_id', user.shop_id)
+            .in('device_id', deviceIds);
+
+          repairCount = repairsData?.length || 0;
+          lastRepairDate = repairsData && repairsData.length > 0
+            ? repairsData.reduce((latest, r) => (r.created_at > latest ? r.created_at : latest), repairsData[0].created_at)
+            : null;
+        }
 
         return {
           ...cust,
