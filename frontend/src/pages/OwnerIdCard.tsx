@@ -49,6 +49,7 @@ export default function OwnerIdCard() {
   const [photoScale, setPhotoScale] = useState(1.0);
   const [photoX, setPhotoX] = useState(0);
   const [photoY, setPhotoY] = useState(0);
+  const [serialNumber, setSerialNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -85,6 +86,12 @@ export default function OwnerIdCard() {
       return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
     } catch { return s; }
   };
+
+  function formatAadhar(value?: string): string {
+    if (!value) return '';
+    const digits = value.replace(/\D/g, '').slice(0, 12);
+    return digits.replace(/(\d{4})(?=\d)/g, '$1 ');
+  }
 
   return (
     <div className="space-y-6">
@@ -162,6 +169,19 @@ export default function OwnerIdCard() {
                         }} />
                       : <User style={{ width: 28, height: 28, color: '#bbb' }} />
                     }
+                  </div>
+
+                  {/* ── Serial Number (top-right area on front) ── */}
+                  <div style={{
+                    position: 'absolute', top: 63, right: 12,
+                    zIndex: 4,
+                  }}>
+                    <span style={{
+                      fontSize: 10, color: 'white', fontWeight: 700,
+                      background: 'rgba(0,0,0,0.25)',
+                      padding: '1px 6px', borderRadius: 4,
+                      letterSpacing: 1,
+                    }}>{serialNumber || 'SL.NO'}</span>
                   </div>
 
                   {/* ── Dynamic name next to "பெயர் :" ── */}
@@ -251,63 +271,47 @@ export default function OwnerIdCard() {
                   overflow: 'hidden',
                   boxShadow: '0 8px 32px rgba(0,0,0,0.55)', flexShrink: 0,
                 }}>
-                  {/* ── Dynamic address: placed under the pre-rendered "வீட்டு முகவரி :" ── */}
-                  <div style={{
-                    position: 'absolute',
-                    top: 44, left: 50, width: 230,
-                    maxHeight: 60, overflow: 'hidden',
-                    zIndex: 4,
-                  }}>
-                    <div style={{
-                      fontSize: 10, color: '#1E469C', fontWeight: 500,
-                      lineHeight: 1.4,
-                      wordBreak: 'break-all',
-                      overflowWrap: 'break-word',
-                      whiteSpace: 'normal',
-                    }}>
+                  {/* ── Address value below template's "வீட்டு முகவரி :" ── */}
+                  <div style={{ position: 'absolute', top: 44, left: 50, width: 230, maxHeight: 60, overflow: 'hidden', zIndex: 4 }}>
+                    <div style={{ fontSize: 10, color: '#1E469C', fontWeight: 500, lineHeight: 1.4, wordBreak: 'break-all', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
                       {homeAddress || ''}
                     </div>
                   </div>
 
-                  {/* ── Dynamic Aadhar on the Backside ── */}
-                  <div style={{
-                    position: 'absolute', top: 110, left: 50,
-                    zIndex: 4,
-                  }}>
-                    <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 700 }}>ஆதார் :</span>
-                  </div>
-                  <div style={{
-                    position: 'absolute', top: 110, left: 135,
-                    width: 175,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                    zIndex: 4,
-                  }}>
-                    <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500 }}>
-                      {aadharNumber ? aadharNumber.replace(/\s+/g, '').replace(/(\d{4})(?=\d)/g, '$1 ').trim() : ''}
+                  {/* ── White cover to hide the original "ஆதார் :" text and colon ── */}
+                  <div style={{ position: 'absolute', top: 109, left: 45, width: 85, height: 16, background: 'white', zIndex: 3 }} />
+
+                  {/* ── Aadhaar Label (Aligned left with other labels, font size reduced to fit before colon) ── */}
+                  <div style={{ position: 'absolute', top: 110, left: 50, zIndex: 4 }}>
+                    <span style={{ fontSize: 9.5, color: '#1E469C', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                      ஆதார் கார்டு
                     </span>
                   </div>
 
-                  {/* ── Dynamic Blood Group: next to "இரத்த வகை :" ── */}
-                  <div style={{
-                    position: 'absolute', top: 130, left: 135,
-                    zIndex: 4,
-                  }}>
+                  {/* ── Aadhaar Colon (Aligned with other colons) ── */}
+                  <div style={{ position: 'absolute', top: 110, left: 124, zIndex: 4 }}>
+                    <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 700 }}>:</span>
+                  </div>
+
+                  {/* ── Aadhaar Value (Aligned with other values) ── */}
+                  <div style={{ position: 'absolute', top: 110, left: 135, width: 157, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', zIndex: 4 }}>
+                    <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500 }}>
+                      {formatAadhar(aadharNumber)}
+                    </span>
+                  </div>
+
+                  {/* ── Blood Group value: next to template's "இரத்த வகை :" ── */}
+                  <div style={{ position: 'absolute', top: 130, left: 135, zIndex: 4 }}>
                     <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500 }}>{bloodGroup || ''}</span>
                   </div>
 
-                  {/* ── Dynamic Date of Birth: next to "பிறந்த தேதி :" ── */}
-                  <div style={{
-                    position: 'absolute', top: 151, left: 135,
-                    zIndex: 4,
-                  }}>
+                  {/* ── DOB value: next to template's "பிறந்த தேதி :" ── */}
+                  <div style={{ position: 'absolute', top: 151, left: 135, zIndex: 4 }}>
                     <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500 }}>{formatDob(dob)}</span>
                   </div>
 
-                  {/* ── Dynamic Cell Number: next to "செல் நெம்பர் :" ── */}
-                  <div style={{
-                    position: 'absolute', top: 172, left: 135,
-                    zIndex: 4,
-                  }}>
+                  {/* ── Phone value: next to template's "செல் நெம்பர் :" ── */}
+                  <div style={{ position: 'absolute', top: 172, left: 135, zIndex: 4 }}>
                     <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500 }}>{personalPhone || ''}</span>
                   </div>
                 </div>
@@ -335,6 +339,12 @@ export default function OwnerIdCard() {
 
                 {/* Manual details */}
                 <div className="space-y-3 border-b border-border/40 pb-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">Serial Number</label>
+                    <Input placeholder="e.g. 47/2025" value={serialNumber}
+                      onChange={e => setSerialNumber(e.target.value)}
+                      className="bg-secondary/35 border-border/80 text-xs" />
+                  </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground">Owner Name</label>
                     <Input placeholder="Enter Owner Name..." value={ownerName}

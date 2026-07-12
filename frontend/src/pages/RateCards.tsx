@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  Plus, Trash2, Save, Loader2, Edit3, X, Smartphone, Upload, ImageIcon
+  Plus, Trash2, Save, Loader2, Edit3, X, Smartphone, Upload, ImageIcon, Search
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -27,14 +27,36 @@ interface RateCard {
 }
 
 const DEVICE_BRANDS: Record<string, string[]> = {
-  'APPLE': ['IPHONE 11', 'IPHONE 12', 'IPHONE 13', 'IPHONE 14', 'IPHONE 15', 'IPHONE 15 PRO', 'IPHONE 15 PRO MAX', 'IPAD AIR', 'IPAD PRO'],
-  'SAMSUNG': ['GALAXY S21', 'GALAXY S22', 'GALAXY S23', 'GALAXY S24', 'GALAXY A54', 'GALAXY M34', 'GALAXY Z FOLD 5', 'GALAXY Z FLIP 5'],
-  'ONEPLUS': ['ONEPLUS 10 PRO', 'ONEPLUS 11', 'ONEPLUS 12', 'ONEPLUS NORD 3', 'ONEPLUS NORD CE 3 LITE'],
-  'GOOGLE': ['PIXEL 6', 'PIXEL 7', 'PIXEL 7A', 'PIXEL 8', 'PIXEL 8 PRO'],
-  'XIAOMI': ['REDMI NOTE 12', 'REDMI NOTE 13', 'XIAOMI 13 PRO', 'POCO F5', 'POCO X6 PRO'],
-  'OPPO': ['RENO 10', 'RENO 11', 'OPPO F23', 'OPPO A78'],
-  'VIVO': ['VIVO V29', 'VIVO V30', 'VIVO T2X', 'VIVO Y200'],
-  'REALME': ['REALME 11 PRO+', 'REALME 12 PRO', 'REALME C53', 'REALME NARZO 60']
+  'APPLE': ['IPHONE 11', 'IPHONE 12', 'IPHONE 13', 'IPHONE 14', 'IPHONE 15', 'IPHONE 15 PRO', 'IPHONE 15 PRO MAX', 'IPHONE 16E', 'IPHONE 17', 'IPHONE 17 PRO', 'IPHONE 17 PRO MAX', 'IPHONE 17 AIR', 'IPHONE SE (4TH GEN)', 'IPAD AIR', 'IPAD PRO'],
+  'SAMSUNG': ['GALAXY S21', 'GALAXY S22', 'GALAXY S23', 'GALAXY S24', 'GALAXY S25', 'GALAXY S25+', 'GALAXY S25 ULTRA', 'GALAXY S25 EDGE', 'GALAXY A16', 'GALAXY A36', 'GALAXY A54', 'GALAXY A56', 'GALAXY M-SERIES', 'GALAXY M34', 'GALAXY Z FOLD 5', 'GALAXY Z FOLD 7', 'GALAXY Z FLIP 5', 'GALAXY Z FLIP 7'],
+  'ONEPLUS': ['ONEPLUS 10 PRO', 'ONEPLUS 11', 'ONEPLUS 12', 'ONEPLUS 13', 'ONEPLUS 13R', 'ONEPLUS 13T', 'ONEPLUS NORD 3', 'ONEPLUS NORD 5', 'ONEPLUS NORD CE 3 LITE', 'ONEPLUS NORD CE5'],
+  'GOOGLE': ['PIXEL 6', 'PIXEL 7', 'PIXEL 7A', 'PIXEL 8', 'PIXEL 8 PRO', 'PIXEL 9A', 'PIXEL 10', 'PIXEL 10 PRO', 'PIXEL 10 PRO XL', 'PIXEL 10 PRO FOLD'],
+  'XIAOMI': ['REDMI NOTE 12', 'REDMI NOTE 13', 'REDMI NOTE 14 SERIES', 'REDMI 14C', 'XIAOMI 13 PRO', 'XIAOMI 15', 'XIAOMI 15 ULTRA', 'XIAOMI 15S PRO', 'POCO F5', 'POCO F7', 'POCO X6 PRO', 'POCO X7 SERIES'],
+  'OPPO': ['RENO 10', 'RENO 11', 'RENO 13 SERIES', 'FIND X9', 'FIND X9 PRO', 'FIND X9 ULTRA', 'OPPO A-SERIES', 'OPPO F23', 'OPPO A78'],
+  'VIVO': ['VIVO V29', 'VIVO V30', 'VIVO V-SERIES', 'VIVO T2X', 'VIVO Y200', 'VIVO Y-SERIES', 'X200', 'X200 PRO', 'X200 PRO+'],
+  'REALME': ['REALME 11 PRO+', 'REALME 12 PRO', 'REALME 14 PRO SERIES', 'REALME C53', 'REALME C-SERIES', 'REALME NARZO 60', 'GT 7 PRO'],
+  'HUAWEI': ['MATE 70', 'MATE 70 PRO', 'MATE X6', 'PURA 80', 'NOVA SERIES'],
+  'HONOR': ['MAGIC 7', 'MAGIC 7 PRO', 'MAGIC V3', 'HONOR 400 SERIES', 'HONOR X-SERIES'],
+  'MOTOROLA': ['EDGE 60 SERIES', 'RAZR 60', 'RAZR 60 ULTRA', 'MOTO G SERIES'],
+  'NOTHING': ['PHONE (3)', 'PHONE (3A)', 'PHONE (3A) PRO', 'CMF PHONE 2 PRO'],
+  'ASUS': ['ROG PHONE 9', 'ROG PHONE 9 PRO', 'ZENFONE 12'],
+  'SONY': ['XPERIA 1 VII', 'XPERIA 10 VII'],
+  'NOKIA (HMD)': ['HMD SKYLINE', 'HMD PULSE SERIES', 'NOKIA 110'],
+  'ZTE': ['NUBIA Z70 ULTRA', 'REDMAGIC 10 PRO', 'ZTE BLADE SERIES'],
+  'MEIZU': ['MEIZU 21 SERIES', 'MEIZU NOTE SERIES'],
+  'INFINIX': ['ZERO 40 SERIES', 'NOTE 50 SERIES', 'HOT 60 SERIES', 'SMART 10 SERIES'],
+  'TECNO': ['CAMON 40 SERIES', 'PHANTOM V FOLD2', 'SPARK 30 SERIES', 'POVA 6 SERIES'],
+  'ITEL': ['S25 SERIES', 'A-SERIES'],
+  'LAVA': ['BLAZE CURVE', 'YUVA SERIES', 'AGNI 3'],
+  'MICROMAX': ['IN NOTE SERIES'],
+  'VERTU': ['AGENT Q', 'METAVERTU 2'],
+  'FAIRPHONE': ['FAIRPHONE 5'],
+  'DOOGEE': ['S-SERIES (RUGGED)', 'V-SERIES (RUGGED)'],
+  'ULEFONE': ['ARMOR SERIES (RUGGED)'],
+  'CAT (BULLITT)': ['CAT S75'],
+  'CUBOT': ['KINGKONG SERIES', 'P-SERIES'],
+  'SHARP': ['AQUOS R9', 'AQUOS SENSE SERIES'],
+  'TCL': ['TCL 60 SERIES', 'TCL 50 SERIES']
 };
 
 const DEFAULT_SERVICES: RateCardService[] = [
@@ -80,11 +102,17 @@ export default function RateCards() {
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editBrand, setEditBrand] = useState('');
   const [editModel, setEditModel] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const { data, isLoading } = useQuery<{ rateCards: RateCard[] }>({
     queryKey: ['rate-cards'],
     queryFn: () => apiClient.get('/ratecards'),
   });
+
+  const filteredRateCards = (data?.rateCards || []).filter(card =>
+    card.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    card.model.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const createMutation = useMutation({
     mutationFn: (formData: FormData) => apiClient.post<{ message: string, rateCard: RateCard }>('/ratecards', formData),
@@ -222,6 +250,17 @@ export default function RateCards() {
           </Button>
         </div>
 
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search brand or model..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-10 bg-card border-border/60 text-sm"
+          />
+        </div>
+
         {/* Create New Card Form */}
         {isCreating && (
           <Card className="border-primary/40 bg-primary/5">
@@ -335,7 +374,10 @@ export default function RateCards() {
           </div>
         ) : (
           <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
-            {(data?.rateCards || []).map((card) => (
+            {filteredRateCards.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">No devices match your search.</p>
+            ) : (
+              filteredRateCards.map((card) => (
               <button
                 key={card.id}
                 onClick={() => handleSelectCard(card)}
@@ -357,7 +399,7 @@ export default function RateCards() {
                   <p className="text-[10px] text-muted-foreground">{card.brand} · {card.services?.length || 0} services</p>
                 </div>
               </button>
-            ))}
+            )))}
           </div>
         )}
       </div>

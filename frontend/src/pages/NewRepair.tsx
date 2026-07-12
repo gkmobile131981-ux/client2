@@ -33,14 +33,36 @@ import SignatureCanvas from 'react-signature-canvas';
 const ReactSignatureCanvas = (SignatureCanvas as any).default || SignatureCanvas;
 
 const DEVICE_BRANDS: Record<string, string[]> = {
-  'APPLE': ['IPHONE 11', 'IPHONE 12', 'IPHONE 13', 'IPHONE 14', 'IPHONE 15', 'IPHONE 15 PRO', 'IPHONE 15 PRO MAX', 'IPAD AIR', 'IPAD PRO'],
-  'SAMSUNG': ['GALAXY S21', 'GALAXY S22', 'GALAXY S23', 'GALAXY S24', 'GALAXY A54', 'GALAXY M34', 'GALAXY Z FOLD 5', 'GALAXY Z FLIP 5'],
-  'ONEPLUS': ['ONEPLUS 10 PRO', 'ONEPLUS 11', 'ONEPLUS 12', 'ONEPLUS NORD 3', 'ONEPLUS NORD CE 3 LITE'],
-  'GOOGLE': ['PIXEL 6', 'PIXEL 7', 'PIXEL 7A', 'PIXEL 8', 'PIXEL 8 PRO'],
-  'XIAOMI': ['REDMI NOTE 12', 'REDMI NOTE 13', 'XIAOMI 13 PRO', 'POCO F5', 'POCO X6 PRO'],
-  'OPPO': ['RENO 10', 'RENO 11', 'OPPO F23', 'OPPO A78'],
-  'VIVO': ['VIVO V29', 'VIVO V30', 'VIVO T2X', 'VIVO Y200'],
-  'REALME': ['REALME 11 PRO+', 'REALME 12 PRO', 'REALME C53', 'REALME NARZO 60']
+  'APPLE': ['IPHONE 11', 'IPHONE 12', 'IPHONE 13', 'IPHONE 14', 'IPHONE 15', 'IPHONE 15 PRO', 'IPHONE 15 PRO MAX', 'IPHONE 16E', 'IPHONE 17', 'IPHONE 17 PRO', 'IPHONE 17 PRO MAX', 'IPHONE 17 AIR', 'IPHONE SE (4TH GEN)', 'IPAD AIR', 'IPAD PRO'],
+  'SAMSUNG': ['GALAXY S21', 'GALAXY S22', 'GALAXY S23', 'GALAXY S24', 'GALAXY S25', 'GALAXY S25+', 'GALAXY S25 ULTRA', 'GALAXY S25 EDGE', 'GALAXY A16', 'GALAXY A36', 'GALAXY A54', 'GALAXY A56', 'GALAXY M-SERIES', 'GALAXY M34', 'GALAXY Z FOLD 5', 'GALAXY Z FOLD 7', 'GALAXY Z FLIP 5', 'GALAXY Z FLIP 7'],
+  'ONEPLUS': ['ONEPLUS 10 PRO', 'ONEPLUS 11', 'ONEPLUS 12', 'ONEPLUS 13', 'ONEPLUS 13R', 'ONEPLUS 13T', 'ONEPLUS NORD 3', 'ONEPLUS NORD 5', 'ONEPLUS NORD CE 3 LITE', 'ONEPLUS NORD CE5'],
+  'GOOGLE': ['PIXEL 6', 'PIXEL 7', 'PIXEL 7A', 'PIXEL 8', 'PIXEL 8 PRO', 'PIXEL 9A', 'PIXEL 10', 'PIXEL 10 PRO', 'PIXEL 10 PRO XL', 'PIXEL 10 PRO FOLD'],
+  'XIAOMI': ['REDMI NOTE 12', 'REDMI NOTE 13', 'REDMI NOTE 14 SERIES', 'REDMI 14C', 'XIAOMI 13 PRO', 'XIAOMI 15', 'XIAOMI 15 ULTRA', 'XIAOMI 15S PRO', 'POCO F5', 'POCO F7', 'POCO X6 PRO', 'POCO X7 SERIES'],
+  'OPPO': ['RENO 10', 'RENO 11', 'RENO 13 SERIES', 'FIND X9', 'FIND X9 PRO', 'FIND X9 ULTRA', 'OPPO A-SERIES', 'OPPO F23', 'OPPO A78'],
+  'VIVO': ['VIVO V29', 'VIVO V30', 'VIVO V-SERIES', 'VIVO T2X', 'VIVO Y200', 'VIVO Y-SERIES', 'X200', 'X200 PRO', 'X200 PRO+'],
+  'REALME': ['REALME 11 PRO+', 'REALME 12 PRO', 'REALME 14 PRO SERIES', 'REALME C53', 'REALME C-SERIES', 'REALME NARZO 60', 'GT 7 PRO'],
+  'HUAWEI': ['MATE 70', 'MATE 70 PRO', 'MATE X6', 'PURA 80', 'NOVA SERIES'],
+  'HONOR': ['MAGIC 7', 'MAGIC 7 PRO', 'MAGIC V3', 'HONOR 400 SERIES', 'HONOR X-SERIES'],
+  'MOTOROLA': ['EDGE 60 SERIES', 'RAZR 60', 'RAZR 60 ULTRA', 'MOTO G SERIES'],
+  'NOTHING': ['PHONE (3)', 'PHONE (3A)', 'PHONE (3A) PRO', 'CMF PHONE 2 PRO'],
+  'ASUS': ['ROG PHONE 9', 'ROG PHONE 9 PRO', 'ZENFONE 12'],
+  'SONY': ['XPERIA 1 VII', 'XPERIA 10 VII'],
+  'NOKIA (HMD)': ['HMD SKYLINE', 'HMD PULSE SERIES', 'NOKIA 110'],
+  'ZTE': ['NUBIA Z70 ULTRA', 'REDMAGIC 10 PRO', 'ZTE BLADE SERIES'],
+  'MEIZU': ['MEIZU 21 SERIES', 'MEIZU NOTE SERIES'],
+  'INFINIX': ['ZERO 40 SERIES', 'NOTE 50 SERIES', 'HOT 60 SERIES', 'SMART 10 SERIES'],
+  'TECNO': ['CAMON 40 SERIES', 'PHANTOM V FOLD2', 'SPARK 30 SERIES', 'POVA 6 SERIES'],
+  'ITEL': ['S25 SERIES', 'A-SERIES'],
+  'LAVA': ['BLAZE CURVE', 'YUVA SERIES', 'AGNI 3'],
+  'MICROMAX': ['IN NOTE SERIES'],
+  'VERTU': ['AGENT Q', 'METAVERTU 2'],
+  'FAIRPHONE': ['FAIRPHONE 5'],
+  'DOOGEE': ['S-SERIES (RUGGED)', 'V-SERIES (RUGGED)'],
+  'ULEFONE': ['ARMOR SERIES (RUGGED)'],
+  'CAT (BULLITT)': ['CAT S75'],
+  'CUBOT': ['KINGKONG SERIES', 'P-SERIES'],
+  'SHARP': ['AQUOS R9', 'AQUOS SENSE SERIES'],
+  'TCL': ['TCL 60 SERIES', 'TCL 50 SERIES']
 };
 
 export interface DeviceOptionEntry {
@@ -702,10 +724,11 @@ export default function NewRepair() {
       {/* Main Form Form */}
       <form onSubmit={handleSubmit(onFormSubmit)} className="p-6 space-y-6">
         
-        {/* ORDER STATUS SECTION */}
-        <div className="space-y-2 border-b border-border/40 pb-4">
-          <label className="text-xs font-bold text-primary uppercase tracking-wider block">Order Status</label>
-          <div className="relative">
+        {/* ROW 1: ORDER STATUS & CUSTOMER DETAILS — SIDE BY SIDE */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-border/40 pb-6">
+          {/* Order Status */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-primary uppercase tracking-wider block">Order Status</label>
             <select
               {...register('status')}
               className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-bold uppercase cursor-pointer"
@@ -717,146 +740,138 @@ export default function NewRepair() {
               <option value="cancelled">❌ CANCELLED</option>
             </select>
           </div>
-        </div>
 
-        {/* CUSTOMER DETAILS & AUTOCOMPLETE SECTION */}
-        <div className="bg-secondary/10 border border-border/60 p-4 rounded-2xl space-y-4">
-          <label className="text-xs font-bold text-primary uppercase tracking-wider block">Customer Details</label>
-          
-          <div className="flex gap-2">
-            <div className="relative flex-1">
+          {/* Customer Details Search */}
+          <div className="space-y-1.5 relative">
+            <label className="text-xs font-bold text-primary uppercase tracking-wider block">Customer Details</label>
+            <div className="relative">
               <Search className="absolute left-3 top-3.5 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search Customer..."
+                placeholder="Searching 🔍"
                 value={phoneSearch}
                 onChange={(e) => {
                   setPhoneSearch(e.target.value);
                   setCustomerSearchOpen(true);
                 }}
-                className="w-full pl-9 pr-3 py-3 bg-secondary/35 border border-border rounded-xl text-sm focus:outline-none focus:border-primary text-white"
+                className="w-full pl-9 pr-3 py-3 bg-secondary/35 border border-border rounded-xl text-sm focus:outline-none focus:border-primary text-foreground font-semibold"
               />
             </div>
-            
-            <Button
-              type="button"
-              onClick={() => {
-                setNewCustomerOpen((open) => !open);
-                setCustomerSearchOpen(false);
-              }}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold uppercase text-xs px-4"
-            >
-              ADD
-            </Button>
+            {/* Dropdown autocomplete results */}
+            {customerSearchOpen && phoneSearch.length >= 2 && (
+              <div className="absolute z-30 left-0 right-0 bg-secondary/95 border border-border rounded-xl divide-y divide-border/60 overflow-hidden shadow-xl max-h-52 overflow-y-auto mt-1">
+                {customersSearchData?.customers && customersSearchData.customers.length > 0 ? (
+                  customersSearchData.customers.map((cust) => (
+                    <button
+                      type="button"
+                      key={cust.id}
+                      onClick={() => {
+                        setSelectedCustomer(cust);
+                        setValue('customerId', cust.id, { shouldValidate: true });
+                        setNewCustName(cust.name);
+                        setNewCustPhone(cust.phone);
+                        setNewCustAddr(cust.address || '');
+                        setPhoneSearch('');
+                        setCustomerSearchOpen(false);
+                      }}
+                      className="w-full p-3 text-left hover:bg-primary/10 cursor-pointer flex justify-between items-center gap-3"
+                    >
+                      <div>
+                        <div className="text-sm font-semibold text-foreground">{cust.name}</div>
+                        <div className="text-xs text-muted-foreground">{cust.phone}</div>
+                      </div>
+                      <span className="text-[10px] uppercase font-bold text-primary whitespace-nowrap">Select</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-3 text-center text-xs text-muted-foreground">
+                    No match — fill in details below to register.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ROW 2: REGISTER NEW CUSTOMER — ALWAYS VISIBLE */}
+        <div className="bg-secondary/10 border border-border/60 p-4 rounded-2xl space-y-4">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-bold text-foreground uppercase tracking-[0.2em] underline decoration-primary decoration-2 underline-offset-4">Register New Customer</span>
+            {selectedCustomer && (
+              <span className="flex items-center gap-1.5 text-[10px] font-black text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-lg">
+                ✓ {selectedCustomer.name}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCustomer(null);
+                    setValue('customerId', '');
+                    setNewCustName('');
+                    setNewCustPhone('');
+                    setNewCustAddr('');
+                  }}
+                  className="ml-0.5 text-red-400 hover:text-red-600"
+                >✕</button>
+              </span>
+            )}
           </div>
 
-          {/* Inline Customer List */}
-          {customerSearchOpen && phoneSearch.length >= 2 && (
-            <div className="bg-secondary/95 border border-border rounded-xl divide-y divide-border/60 overflow-hidden">
-              {customersSearchData?.customers && customersSearchData.customers.length > 0 ? (
-                customersSearchData.customers.map((cust) => (
-                  <button
-                    type="button"
-                    key={cust.id}
-                    onClick={() => {
-                      setSelectedCustomer(cust);
-                      setValue('customerId', cust.id, { shouldValidate: true });
-                      setPhoneSearch('');
-                      setCustomerSearchOpen(false);
-                    }}
-                    className="w-full p-3 text-left hover:bg-primary/10 cursor-pointer flex justify-between items-center gap-3"
-                  >
-                    <div>
-                      <div className="text-sm font-semibold text-foreground">{cust.name}</div>
-                      <div className="text-xs text-muted-foreground">{cust.phone}</div>
-                    </div>
-                    <span className="text-[10px] uppercase font-bold text-primary whitespace-nowrap">Select</span>
-                  </button>
-                ))
-              ) : (
-                <div className="p-3 text-center text-xs text-muted-foreground">
-                  No matching clients. Click ADD to register.
-                </div>
-              )}
-            </div>
-          )}
-
-          {newCustomerOpen && (
-            <div className="bg-secondary/95 border border-border rounded-2xl p-4 space-y-4">
-              <div className="text-sm font-semibold text-foreground uppercase tracking-[0.24em]">Register New Customer</div>
-              <div className="grid gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Customer Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Jane Doe"
-                    value={newCustName}
-                    onChange={(e) => setNewCustName(e.target.value)}
-                    className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Contact Phone</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. +91 99999 88888"
-                    value={newCustPhone}
-                    onChange={(e) => setNewCustPhone(e.target.value)}
-                    className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Address</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. New Delhi, India"
-                    value={newCustAddr}
-                    onChange={(e) => setNewCustAddr(e.target.value)}
-                    className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={registerCustomerInline}
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3 rounded-xl font-bold uppercase tracking-wider text-xs"
-                >
-                  Register & Select
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNewCustomerOpen(false)}
-                  className="w-full bg-secondary/50 hover:bg-secondary/70 text-foreground py-3 rounded-xl font-bold uppercase tracking-wider text-xs"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Selected Customer Card Banner */}
-          {selectedCustomer && (
-            <div className="flex items-center justify-between p-3 rounded-xl bg-primary/15 border border-primary/30">
-              <div>
-                <span className="text-[9px] uppercase tracking-widest text-primary/95 font-bold block">Selected Client</span>
-                <span className="text-sm font-bold text-foreground block">{selectedCustomer.name}</span>
-                <span className="text-xs text-muted-foreground">{selectedCustomer.phone}</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedCustomer(null);
-                  setValue('customerId', '');
+          <div className="grid grid-cols-1 gap-3">
+            {/* Customer Name */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Customer Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Jane Doe"
+                value={newCustName}
+                autoComplete="new-password"
+                onChange={(e) => {
+                  setNewCustName(e.target.value);
+                  if (selectedCustomer) { setSelectedCustomer(null); setValue('customerId', ''); }
                 }}
-                className="p-1 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4.5 w-4.5" />
-              </button>
+                className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary font-semibold"
+              />
             </div>
+            {/* Phone */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Phone</label>
+              <input
+                type="text"
+                placeholder="e.g. +91 99999 88888"
+                value={newCustPhone}
+                autoComplete="off"
+                onChange={(e) => {
+                  setNewCustPhone(e.target.value);
+                  if (selectedCustomer) { setSelectedCustomer(null); setValue('customerId', ''); }
+                }}
+                className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary font-semibold"
+              />
+            </div>
+            {/* Address */}
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Address</label>
+              <input
+                type="text"
+                placeholder="e.g. New Delhi"
+                value={newCustAddr}
+                autoComplete="off"
+                onChange={(e) => setNewCustAddr(e.target.value)}
+                className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary font-semibold"
+              />
+            </div>
+          </div>
+
+          {!selectedCustomer && (
+            <button
+              type="button"
+              onClick={registerCustomerInline}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-2.5 rounded-xl font-bold uppercase tracking-wider text-xs"
+            >
+              Register & Select
+            </button>
           )}
+
           {errors.customerId && (
-            <p className="text-[11px] text-red-500 mt-1 font-semibold">{errors.customerId.message}</p>
+            <p className="text-[11px] text-red-500 font-semibold">{errors.customerId.message}</p>
           )}
 
           {/* Brand & Model Selectors */}
@@ -1443,14 +1458,7 @@ export default function NewRepair() {
           />
         </div>
 
-        {/* EXPENSE FIELD */}
-        <div className="space-y-1">
-          <Input
-            type="number"
-            placeholder="Expense Amount ($)"
-            {...register('expense', { valueAsNumber: true })}
-          />
-        </div>
+
 
         {/* WARRANTY FIELD */}
         <div className="space-y-1">
