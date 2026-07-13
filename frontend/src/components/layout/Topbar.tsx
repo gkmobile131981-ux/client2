@@ -71,12 +71,12 @@ export default function Topbar({
             <span className="text-sm font-semibold text-white leading-none mt-0.5">{shopName}</span>
           </div>
           {liveTime && (
-            <div className="flex flex-col items-center justify-center bg-neutral-950 border border-border/80 px-4 py-1.5 rounded-xl h-11 shadow-[inset_0_1px_3px_rgba(0,0,0,0.6)] min-w-[140px] select-none">
-              <span className="text-[13px] font-black tracking-widest text-white font-mono leading-none">
+            <div className="flex flex-col items-center justify-center bg-neutral-950 border border-border/80 px-4.5 py-2 rounded-xl h-13 shadow-[inset_0_1px_3px_rgba(0,0,0,0.6)] min-w-[155px] select-none">
+              <span className="text-[17px] font-black tracking-widest text-white font-mono leading-none">
                 {liveTime}
               </span>
-              <div className="w-full h-[1px] bg-neutral-800 my-1" />
-              <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-wider leading-none">
+              <div className="w-full h-[1px] bg-neutral-800/90 my-1" />
+              <span className="text-[9px] font-extrabold text-neutral-400 uppercase tracking-widest leading-none">
                 {liveDate}
               </span>
             </div>
@@ -102,8 +102,16 @@ export default function Topbar({
             onClick={() => setProfileModalOpen(true)}
             className="flex items-center gap-3 cursor-pointer group select-none hover:opacity-85"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary/80 text-foreground ring-1 ring-border shadow-inner group-hover:ring-primary/50 transition-all duration-200">
-              <User className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary/80 text-foreground ring-1 ring-border shadow-inner group-hover:ring-primary/50 overflow-hidden transition-all duration-200">
+              {user?.photo_url ? (
+                <img 
+                  src={user.photo_url} 
+                  alt="Profile" 
+                  className="h-full w-full object-cover" 
+                />
+              ) : (
+                <User className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
+              )}
             </div>
 
             <div className="hidden md:flex flex-col">
@@ -148,8 +156,16 @@ export default function Topbar({
             <div className="p-6 space-y-6">
               {/* Profile Avatar Banner */}
               <div className="flex flex-col items-center justify-center text-center space-y-3 pb-2 border-b border-border/20">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 border-2 border-primary text-primary shadow-lg">
-                  <User className="h-10 w-10" />
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 border-2 border-primary text-primary shadow-lg overflow-hidden">
+                  {user?.photo_url ? (
+                    <img 
+                      src={user.photo_url} 
+                      alt="Profile Banner" 
+                      className="h-full w-full object-cover" 
+                    />
+                  ) : (
+                    <User className="h-10 w-10" />
+                  )}
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-white leading-none">{user?.name || userName}</h3>
