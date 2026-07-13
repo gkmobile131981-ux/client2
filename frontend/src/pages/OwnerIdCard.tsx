@@ -35,18 +35,18 @@ const OG = '#F5A623';   // orange
 const BL = '#2E3FA3';   // blue
 
 export default function OwnerIdCard() {
-  const { user, reloadProfile } = useAuth();
+  const { user, reloadProfile, role, shop } = useAuth();
 
-  const [ownerName, setOwnerName] = useState('');
-  const [shopName, setShopName] = useState('');
-  const [emailAddress, setEmailAddress] = useState('');
-  const [homeAddress, setHomeAddress] = useState('');
-  const [bloodGroup, setBloodGroup] = useState('');
-  const [dob, setDob] = useState('');
-  const [personalPhone, setPersonalPhone] = useState('');
-  const [aadharNumber, setAadharNumber] = useState('');
+  const [ownerName, setOwnerName] = useState(user?.name || '');
+  const [shopName, setShopName] = useState(shop?.name || '');
+  const [emailAddress, setEmailAddress] = useState(user?.email || '');
+  const [homeAddress, setHomeAddress] = useState(user?.home_address || '');
+  const [bloodGroup, setBloodGroup] = useState(user?.blood_group || '');
+  const [dob, setDob] = useState(user?.dob || '');
+  const [personalPhone, setPersonalPhone] = useState(user?.personal_phone || '');
+  const [aadharNumber, setAadharNumber] = useState(user?.aadhar_number || '');
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(user?.photo_url || null);
   const [photoScale, setPhotoScale] = useState(1.0);
   const [photoX, setPhotoX] = useState(0);
   const [photoY, setPhotoY] = useState(0);
@@ -55,18 +55,28 @@ export default function OwnerIdCard() {
   const [isDownloading, setIsDownloading] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // Sync state values when user profile / shop changes (async loading)
   useEffect(() => {
-    // Initialize with blank values so admin enters everything manually
-    setOwnerName('');
-    setShopName('');
-    setEmailAddress('');
-    setHomeAddress('');
-    setBloodGroup('');
-    setDob('');
-    setPersonalPhone('');
-    setAadharNumber('');
-    setPhotoPreview(null);
-  }, []);
+    if (user) {
+      setOwnerName(user.name || '');
+      setEmailAddress(user.email || '');
+      setHomeAddress(user.home_address || '');
+      setBloodGroup(user.blood_group || '');
+      setDob(user.dob || '');
+      setPersonalPhone(user.personal_phone || '');
+      setAadharNumber(user.aadhar_number || '');
+      // Only overwrite photoPreview if no new local file has been selected
+      if (!selectedPhoto) {
+        setPhotoPreview(user.photo_url || null);
+      }
+    }
+  }, [user, selectedPhoto]);
+
+  useEffect(() => {
+    if (shop) {
+      setShopName(shop.name || '');
+    }
+  }, [shop]);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -77,9 +87,55 @@ export default function OwnerIdCard() {
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('ID Card preview updated!');
+    if (!ownerName.trim()) {
+      toast.error('Owner name is required.');
+      return;
+    }
+    if (!emailAddress.trim()) {
+      toast.error('Email address is required.');
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      // 1. Update basic profile info (name, email)
+      await apiClient.put('/auth/update-profile', {
+        name: ownerName.trim(),
+        email: emailAddress.trim()
+      });
+
+      // 2. Update shop name if changed (only if user is the owner)
+      if (role === 'owner' && shop && shopName.trim() !== shop.name) {
+        await apiClient.put('/auth/shop', {
+          name: shopName.trim(),
+          address: shop.address || '',
+          phone: shop.phone || ''
+        });
+      }
+
+      // 3. Update owner ID details and photo file
+      const formData = new FormData();
+      formData.append('homeAddress', homeAddress);
+      formData.append('bloodGroup', bloodGroup);
+      formData.append('dob', dob);
+      formData.append('personalPhone', personalPhone);
+      formData.append('aadharNumber', aadharNumber);
+      if (selectedPhoto) {
+        formData.append('photo', selectedPhoto);
+      }
+      
+      await apiClient.put('/auth/profile/id-card', formData);
+      
+      toast.success('Profile and ID Card details updated successfully!');
+      setSelectedPhoto(null);
+      await reloadProfile();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to save changes.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleDownload = async () => {
@@ -482,8 +538,19 @@ export default function OwnerIdCard() {
                     value={homeAddress} onChange={e => setHomeAddress(e.target.value)}
                     className="flex w-full rounded-md border border-border/80 bg-secondary/35 px-3 py-2 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary text-white resize-none" />
                 </div>
-                <Button type="submit" className="w-full text-xs font-bold uppercase tracking-wider mt-2">
-                  Generate Preview
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting} 
+                  className="w-full text-xs font-bold uppercase tracking-wider mt-2 flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saving Changes...
+                    </>
+                  ) : (
+                    'Save Changes & Update Profile'
+                  )}
                 </Button>
               </form>
             </CardContent>
