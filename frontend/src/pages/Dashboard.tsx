@@ -96,24 +96,23 @@ export default function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchingBilling, setSearchingBilling] = useState(false);
-  const [liveDateTime, setLiveDateTime] = useState('');
+  const [liveTimeOnly, setLiveTimeOnly] = useState('');
+  const [liveDateOnly, setLiveDateOnly] = useState('');
 
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      const dateStr = now.toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
       const timeStr = now.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit',
-        hour12: true
+        hour12: false
       });
-      setLiveDateTime(`${dateStr} | ${timeStr}`);
+      const weekdayStr = now.toLocaleDateString('en-US', { weekday: 'short' });
+      const monthStr = now.toLocaleDateString('en-US', { month: 'short' });
+      const dayStr = now.toLocaleDateString('en-US', { day: 'numeric' });
+      
+      setLiveTimeOnly(timeStr);
+      setLiveDateOnly(`${weekdayStr}, ${monthStr} ${dayStr}`.toUpperCase());
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
@@ -347,49 +346,70 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       {/* Welcome & Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="space-y-2">
-          <Button 
-            onClick={() => navigate('/repairs/new')} 
-            className="gap-2 shadow-[0_0_15px_rgba(168,85,247,0.25)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] h-11 px-5 rounded-xl text-sm font-extrabold uppercase bg-primary text-primary-foreground"
-          >
-            <Plus className="h-5 w-5" />
-            <span>New Repair Ticket</span>
-          </Button>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Search Billing Input */}
-          <div className="relative w-48 sm:w-56 md:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search Job ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSearchBilling();
-              }}
-              className="w-full pl-8 pr-3 h-8 bg-secondary/15 border border-border/80 focus:border-primary text-foreground placeholder:text-muted-foreground text-xs font-semibold rounded-lg focus:outline-none text-white animate-none"
-            />
-          </div>
-          <Button 
-            onClick={handleSearchBilling} 
-            disabled={searchingBilling}
-            className="h-8 text-xs font-bold uppercase px-3 shadow-[0_0_15px_rgba(168,85,247,0.15)] bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg"
-          >
-            {searchingBilling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Search'}
-          </Button>
+      {/* Welcome & Toolbar Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 items-stretch">
+        {/* Left Actions Column */}
+        <div className="md:col-span-2 flex flex-col justify-between gap-4 bg-slate-900/35 border border-border/80 p-5 rounded-2xl">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Button 
+              onClick={() => navigate('/repairs/new')} 
+              className="gap-2 shadow-[0_0_15px_rgba(168,85,247,0.25)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] h-11 px-5 rounded-xl text-sm font-extrabold uppercase bg-primary text-primary-foreground"
+            >
+              <Plus className="h-5 w-5" />
+              <span>New Repair Ticket</span>
+            </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="gap-1.5 border-border/80 text-foreground bg-secondary/15 hover:bg-secondary/40 h-8 rounded-lg"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="gap-1.5 border-border/80 text-foreground bg-secondary/15 hover:bg-secondary/40 h-8 rounded-lg"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mt-2">
+            {/* Search Billing Input */}
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search Job ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSearchBilling();
+                }}
+                className="w-full pl-8 pr-3 h-8 bg-secondary/15 border border-border/80 focus:border-primary text-foreground placeholder:text-muted-foreground text-xs font-semibold rounded-lg focus:outline-none text-white animate-none"
+              />
+            </div>
+            <Button 
+              onClick={handleSearchBilling} 
+              disabled={searchingBilling}
+              className="h-8 text-xs font-bold uppercase px-4 shadow-[0_0_15px_rgba(168,85,247,0.15)] bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg shrink-0"
+            >
+              {searchingBilling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Search Ticket'}
+            </Button>
+          </div>
+        </div>
+
+        {/* Right Digital Clock Widget Column */}
+        <div className="bg-neutral-950 border border-border/90 rounded-2xl p-6 flex flex-col items-center justify-center shadow-2xl relative overflow-hidden min-h-[140px]">
+          <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
+          {/* Extremely Large Digital Lockscreen Time */}
+          <span className="text-5xl font-black tracking-widest text-white font-mono drop-shadow-[0_2px_12px_rgba(255,255,255,0.18)] select-none leading-none">
+            {liveTimeOnly}
+          </span>
+          <hr className="w-2/3 border-neutral-800/80 my-3.5" />
+          {/* Digital lockscreen Date */}
+          <span className="text-xs font-extrabold text-neutral-400 uppercase tracking-[0.25em] select-none">
+            {liveDateOnly}
+          </span>
         </div>
       </div>
 
