@@ -17,7 +17,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 const FRONTEND_URL_RAW = process.env.FRONTEND_URL || 'http://localhost:5173';
-const FRONTEND_URLS = FRONTEND_URL_RAW.split(',').map(url => url.trim()).filter(Boolean);
+const FRONTEND_URLS = FRONTEND_URL_RAW.split(',').map(url => url.trim().replace(/\/$/, '')).filter(Boolean);
 
 // Security configuration using Helmet with strict CSP
 app.use(
@@ -47,32 +47,76 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
       'http://127.0.0.1:5180'
     ];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (curl, Postman, mobile apps)
-      if (!origin) return callback(null, true);
-      
-      // In development, allow any localhost/127.0.0.1 origin dynamically
-      if (process.env.NODE_ENV !== 'production') {
-        const isLocalhost = origin.startsWith('http://localhost:') || 
-                            origin.startsWith('http://127.0.0.1:') || 
-                            origin === 'http://localhost' || 
-                            origin === 'http://127.0.0.1';
-        if (isLocalhost) return callback(null, true);
-      }
-      
-      // Allow any Vercel domain dynamically to facilitate easy frontend deployments
+const corsOptionsDelegate = (
+  req: Request,
+  callback: (err: Error | null, options?: cors.CorsOptions) => void
+) => {
+  const origin = req.header('Origin');
+  let isAllowed = false;
+
+  if (!origin) {
+    isAllowed = true;
+  } else {
+    // 1. Check if it's in the allowed origins array
+    if (allowedOrigins.includes(origin)) {
+      isAllowed = true;
+    }
+    // 2. Check if it's a localhost origin in development
+    else if (process.env.NODE_ENV !== 'production') {
+      const isLocalhost = origin.startsWith('http://localhost:') || 
+                          origin.startsWith('http://127.0.0.1:') || 
+                          origin === 'http://localhost' || 
+                          origin === 'http://127.0.0.1';
+      if (isLocalhost) isAllowed = true;
+    }
+    
+    // 3. Check if it's a Vercel deployment domain
+    if (!isAllowed) {
       const isVercelOrigin = origin.endsWith('.vercel.app') || origin.includes('vercel.app');
-      
-      if (allowedOrigins.includes(origin) || isVercelOrigin) return callback(null, true);
-      callback(new Error(`CORS: origin ${origin} not allowed`));
-    },
+      if (isVercelOrigin) isAllowed = true;
+    }
+
+    // 4. Dynamic Apex Domain Matching (Self-Healing CORS)
+    if (!isAllowed) {
+      try {
+        const host = req.header('host'); // e.g. api.panruticellphoneservice.org
+        if (host) {
+          const getApexDomain = (hostname: string): string => {
+            const cleanHost = hostname.split(':')[0];
+            const parts = cleanHost.split('.');
+            if (parts.length <= 2) return cleanHost;
+            const last = parts[parts.length - 1];
+            const secondLast = parts[parts.length - 2];
+            const doubleTlds = ['com', 'co', 'org', 'net', 'gov', 'edu', 'mil', 'ac'];
+            if (parts.length > 2 && doubleTlds.includes(secondLast) && last.length === 2) {
+              return parts.slice(-3).join('.');
+            }
+            return parts.slice(-2).join('.');
+          };
+
+          const originHostname = new URL(origin).hostname;
+          const hostApex = getApexDomain(host);
+          const originApex = getApexDomain(originHostname);
+
+          if (hostApex && originApex && hostApex === originApex) {
+            isAllowed = true;
+          }
+        }
+      } catch (e) {
+        // Ignore URL parsing errors for invalid origins
+      }
+    }
+  }
+
+  callback(null, {
+    origin: isAllowed,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
-  })
-);
+  });
+};
+
+app.use(cors(corsOptionsDelegate));
 
 // Body parser with 50MB limit
 app.use(express.json({ limit: '50mb' }));
