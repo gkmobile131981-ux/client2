@@ -127,24 +127,14 @@ app.use(sanitizeMiddleware);
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 1000 : 10000, // Much higher limits to avoid throttling
+  max: 100000, // Raised limit to prevent lockouts during active usage
   skip: (req) => req.method === 'OPTIONS', // Skip preflight options requests
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later.' }
 });
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 10 : 1000,
-  skip: (req) => req.method === 'OPTIONS', // Skip preflight options requests
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: 'Too many login or registration attempts. Please try again after 15 minutes.' }
-});
-
 app.use('/api', limiter);
-app.use('/api/auth', authLimiter);
 
 // Health Check Route
 app.get(['/health', '/api/health'], (_req: Request, res: Response) => {
