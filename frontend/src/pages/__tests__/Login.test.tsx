@@ -51,7 +51,7 @@ describe('Login Page Component Tests', () => {
   it('should render the login form elements correctly', () => {
     renderComponent();
     
-    expect(screen.getByText('GK Repair System')).toBeInTheDocument();
+    expect(screen.getByText('Association Repair System')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('you@gkrepair.com')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('••••••••')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Log In/i })).toBeInTheDocument();
