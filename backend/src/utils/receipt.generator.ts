@@ -121,7 +121,7 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
   if (shop.logo_url) {
     try {
       const response = await fetch(shop.logo_url);
-      if (response.ok) {
+      if (response && response.ok) {
         const logoBuffer = await response.arrayBuffer();
         const contentType = response.headers.get('content-type') || '';
         if (contentType.includes('image/png')) {
@@ -548,7 +548,7 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
   if (repair.signature_url) {
     try {
       const response = await fetch(repair.signature_url);
-      if (response.ok) {
+      if (response && response.ok) {
         const sigBuffer = await response.arrayBuffer();
         signatureImage = await pdfDoc.embedPng(sigBuffer);
       }

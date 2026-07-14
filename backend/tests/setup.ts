@@ -2,6 +2,32 @@ import dotenv from 'dotenv';
 import { v4 as uuidv4 } from 'uuid';
 dotenv.config();
 
+// Intercept fetch calls to stub.supabase.co to prevent test hangs/timeouts
+const originalFetch = global.fetch;
+global.fetch = jest.fn().mockImplementation((url: any, init?: any) => {
+  const urlStr = typeof url === 'string' ? url : (url && typeof url === 'object' && 'url' in url ? (url as any).url : String(url));
+  if (urlStr && urlStr.includes('stub.supabase.co')) {
+    const base64Png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkQP8DAAIBAQEP+7oAAAAASUVORK5CYII=';
+    const buffer = Buffer.from(base64Png, 'base64');
+    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+    return Promise.resolve({
+      ok: true,
+      headers: {
+        get: (name: string) => name.toLowerCase() === 'content-type' ? 'image/png' : null
+      },
+      arrayBuffer: () => Promise.resolve(arrayBuffer)
+    } as any);
+  }
+  if (originalFetch) {
+    return originalFetch(url, init);
+  }
+  return Promise.resolve({
+    ok: false,
+    status: 404,
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0))
+  });
+}) as any;
+
 // Shared test data structure
 export const testData = {
   ownerToken: '',

@@ -557,6 +557,11 @@ export async function updateRepair(req: Request, res: Response): Promise<void> {
     return;
   }
 
+  if (user.role === 'staff' && (req.body.estimate !== undefined || req.body.advance !== undefined || req.body.expense !== undefined)) {
+    res.status(403).json({ error: 'Forbidden: Staff members are not permitted to modify financial details' });
+    return;
+  }
+
   try {
     const rawBody = {
       brand: req.body.brand,
