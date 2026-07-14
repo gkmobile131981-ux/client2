@@ -156,34 +156,38 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
+const runStartupSync = async () => {
+  try {
+    const { data: repairs, error } = await supabaseAdmin
+      .from('repairs')
+      .select('id, estimate')
+      .eq('status', 'delivered');
+
+    if (!error && repairs && repairs.length > 0) {
+      let count = 0;
+      for (const r of repairs) {
+        const { error: updateErr } = await supabaseAdmin
+          .from('repairs')
+          .update({ advance: r.estimate })
+          .eq('id', r.id);
+        if (!updateErr) count++;
+      }
+      if (count > 0) {
+        console.log(`[Startup Database Sync] Synced ${count} historical delivered orders to balance ₹0.00.`);
+      }
+    }
+  } catch (err) {
+    console.error('[Startup Database Sync] Sync failed:', err);
+  }
+};
+
+// Run database sync immediately on module initialization (runs on server spin-up / Vercel serverless cold-start)
+runStartupSync();
+
 if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
-  app.listen(PORT, async () => {
+  app.listen(PORT, () => {
     console.log(`GK Repair System backend running on port ${PORT}`);
     console.log(`Allowed origins: ${FRONTEND_URLS.join(', ')}`);
-
-    // Startup Database Sync: Auto-sync delivered repairs to zero out balances
-    try {
-      const { data: repairs, error } = await supabaseAdmin
-        .from('repairs')
-        .select('id, estimate')
-        .eq('status', 'delivered');
-
-      if (!error && repairs && repairs.length > 0) {
-        let count = 0;
-        for (const r of repairs) {
-          const { error: updateErr } = await supabaseAdmin
-            .from('repairs')
-            .update({ advance: r.estimate })
-            .eq('id', r.id);
-          if (!updateErr) count++;
-        }
-        if (count > 0) {
-          console.log(`[Startup Database Sync] Synced ${count} historical delivered orders to balance ₹0.00.`);
-        }
-      }
-    } catch (err) {
-      console.error('[Startup Database Sync] Sync failed:', err);
-    }
   });
 }
 
