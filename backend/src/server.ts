@@ -11,6 +11,7 @@ import rateCardsRoutes from './routes/ratecards.routes';
 import superadminRoutes from './routes/superadmin.routes';
 import carouselRoutes from './routes/carousel.routes';
 import { sanitizeMiddleware } from './middleware/sanitize';
+import { supabaseAdmin } from './utils/supabase';
 
 dotenv.config();
 
@@ -166,9 +167,33 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`GK Repair System backend running on port ${PORT}`);
     console.log(`Allowed origins: ${FRONTEND_URLS.join(', ')}`);
+
+    // Startup Database Sync: Auto-sync delivered repairs to zero out balances
+    try {
+      const { data: repairs, error } = await supabaseAdmin
+        .from('repairs')
+        .select('id, estimate')
+        .eq('status', 'delivered');
+
+      if (!error && repairs && repairs.length > 0) {
+        let count = 0;
+        for (const r of repairs) {
+          const { error: updateErr } = await supabaseAdmin
+            .from('repairs')
+            .update({ advance: r.estimate })
+            .eq('id', r.id);
+          if (!updateErr) count++;
+        }
+        if (count > 0) {
+          console.log(`[Startup Database Sync] Synced ${count} historical delivered orders to balance ₹0.00.`);
+        }
+      }
+    } catch (err) {
+      console.error('[Startup Database Sync] Sync failed:', err);
+    }
   });
 }
 
