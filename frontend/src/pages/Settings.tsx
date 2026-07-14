@@ -820,35 +820,35 @@ export default function SettingsPage({ defaultTab }: SettingsPageProps = {}) {
               <p className="text-xs text-muted-foreground font-semibold">No active staff assistants registered.</p>
             </div>
           )}
-
-          {/* Recruit Inline Dialog Overlay */}
-          <Dialog
-            isOpen={recruitOpen}
-            onClose={() => setRecruitOpen(false)}
-            title="Recruit Staff Member"
-            description="Add a new terminal assistant by entering their full name."
-          >
-            <form onSubmit={handleSubmitStaff(onRecruitStaff)} className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground block">Full Name</label>
-                <Input placeholder="Employee Name" {...registerStaff('name')} />
-                {staffErrors.name && (
-                  <p className="text-[11px] font-medium text-destructive">{staffErrors.name.message}</p>
-                )}
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-border/40">
-                <Button type="button" variant="outline" onClick={() => setRecruitOpen(false)} disabled={recruiting}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={recruiting}>
-                  {recruiting ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
-                  Recruit Member
-                </Button>
-              </div>
-            </form>
-          </Dialog>
         </div>
+      </Dialog>
+
+      {/* Recruit Inline Dialog Overlay */}
+      <Dialog
+        isOpen={recruitOpen}
+        onClose={() => setRecruitOpen(false)}
+        title="Recruit Staff Member"
+        description="Add a new terminal assistant by entering their full name."
+      >
+        <form onSubmit={handleSubmitStaff(onRecruitStaff)} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-muted-foreground block">Full Name</label>
+            <Input placeholder="Employee Name" {...registerStaff('name')} />
+            {staffErrors.name && (
+              <p className="text-[11px] font-medium text-destructive">{staffErrors.name.message}</p>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-border/40">
+            <Button type="button" variant="outline" onClick={() => setRecruitOpen(false)} disabled={recruiting}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={recruiting}>
+              {recruiting ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+              Recruit Member
+            </Button>
+          </div>
+        </form>
       </Dialog>
 
       {/* Modal 5: Service Rate Cards & Terms */}

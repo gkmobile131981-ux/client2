@@ -500,14 +500,20 @@ export async function updateRepairStatus(req: Request, res: Response): Promise<v
     }
 
     // Update the repair status & notes
+    const updatePayload: any = {
+      status,
+      notes: notes || existing.notes,
+      updated_by: user.id,
+      updated_at: new Date().toISOString()
+    };
+
+    if (status === 'delivered') {
+      updatePayload.advance = existing.estimate;
+    }
+
     const { data: repair, error: updateError } = await supabaseAdmin
       .from('repairs')
-      .update({
-        status,
-        notes: notes || existing.notes,
-        updated_by: user.id,
-        updated_at: new Date().toISOString()
-      })
+      .update(updatePayload)
       .eq('id', id)
       .select()
       .single();
@@ -861,7 +867,8 @@ export async function deliverRepair(req: Request, res: Response): Promise<void> 
         delivered_at: deliveredAt,
         notes: validated.notes || existing.notes,
         updated_by: user.id,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        advance: existing.estimate
       })
       .eq('id', id)
       .select(`

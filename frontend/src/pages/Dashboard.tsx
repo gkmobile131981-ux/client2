@@ -222,11 +222,11 @@ export default function Dashboard() {
     }
   }, [activeSlides.length, currentSlide]);
 
-  // 1. Fetch dashboard stats with 5 min staleTime
+  // 1. Fetch dashboard stats
   const { data, isLoading, refetch } = useQuery<DashboardData>({
     queryKey: ['dashboard-data'],
     queryFn: () => apiClient.get('/dashboard'),
-    staleTime: 5 * 60 * 1000 // 5 minutes
+    refetchOnWindowFocus: true
   });
 
   // Real-time Dashboard subscriptions
