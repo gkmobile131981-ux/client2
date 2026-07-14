@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Trash2, Save, Loader2, Edit3, X, Smartphone, Upload, ImageIcon, Search
@@ -252,7 +252,37 @@ export default function RateCards() {
     queryFn: () => apiClient.get('/ratecards'),
   });
 
-  const filteredRateCards = (data?.rateCards || []).filter(card =>
+  // Merged rate cards list (DB entries + Virtual options from static catalog)
+  const allRateCards = useMemo(() => {
+    const dbCards = data?.rateCards || [];
+    const cardsMap = new Map<string, RateCard>();
+    
+    // 1. Add all DB rate cards first
+    dbCards.forEach((rc) => {
+      const key = `${rc.brand.toUpperCase()}:${rc.model.toUpperCase()}`;
+      cardsMap.set(key, rc);
+    });
+    
+    // 2. Add all static catalog models as virtual rate cards (if not already in DB)
+    Object.entries(DEVICE_BRANDS).forEach(([brand, models]) => {
+      models.forEach((model) => {
+        const key = `${brand.toUpperCase()}:${model.toUpperCase()}`;
+        if (!cardsMap.has(key)) {
+          cardsMap.set(key, {
+            id: `virtual-${brand}-${model}`,
+            brand: brand,
+            model: model,
+            model_image_url: null,
+            services: []
+          });
+        }
+      });
+    });
+    
+    return Array.from(cardsMap.values());
+  }, [data?.rateCards]);
+
+  const filteredRateCards = allRateCards.filter((card: RateCard) =>
     card.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
     card.model.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -392,14 +422,30 @@ export default function RateCards() {
   const handleSaveServices = () => {
     if (!selectedCard) return;
     const validServices = editServices.filter((s) => s.service_name.trim());
-    saveServicesMutation.mutate({ id: selectedCard.id, services: validServices });
 
-    if (editImageFile || editBrand !== selectedCard.brand || editModel !== selectedCard.model) {
+    if (selectedCard.id.startsWith('virtual-')) {
       const fd = new FormData();
+      fd.append('brand', selectedCard.brand);
+      fd.append('model', selectedCard.model);
       if (editImageFile) fd.append('modelImage', editImageFile);
-      fd.append('brand', editBrand);
-      fd.append('model', editModel);
-      updateImageMutation.mutate({ id: selectedCard.id, formData: fd });
+
+      createMutation.mutate(fd, {
+        onSuccess: (resData) => {
+          if (resData?.rateCard) {
+            saveServicesMutation.mutate({ id: resData.rateCard.id, services: validServices });
+          }
+        }
+      });
+    } else {
+      saveServicesMutation.mutate({ id: selectedCard.id, services: validServices });
+
+      if (editImageFile || editBrand !== selectedCard.brand || editModel !== selectedCard.model) {
+        const fd = new FormData();
+        if (editImageFile) fd.append('modelImage', editImageFile);
+        fd.append('brand', editBrand);
+        fd.append('model', editModel);
+        updateImageMutation.mutate({ id: selectedCard.id, formData: fd });
+      }
     }
   };
 
@@ -678,7 +724,7 @@ export default function RateCards() {
             {filteredRateCards.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-4">No devices match your search.</p>
             ) : (
-              filteredRateCards.map((card) => (
+              filteredRateCards.map((card: RateCard) => (
               <button
                 key={card.id}
                 onClick={() => handleSelectCard(card)}
@@ -775,8 +821,13 @@ export default function RateCards() {
                     size="sm"
                     className="text-red-400 border-red-500/30 hover:bg-red-500/10 h-8"
                     onClick={() => {
-                      if (confirm(`Delete rate card for ${selectedCard.brand} ${selectedCard.model}?`)) {
-                        deleteMutation.mutate(selectedCard.id);
+                      if (selectedCard.id.startsWith('virtual-')) {
+                        setSelectedCard(null);
+                        toast.success('Deselected virtual model.');
+                      } else {
+                        if (confirm(`Delete rate card for ${selectedCard.brand} ${selectedCard.model}?`)) {
+                          deleteMutation.mutate(selectedCard.id);
+                        }
                       }
                     }}
                     disabled={deleteMutation.isPending}
