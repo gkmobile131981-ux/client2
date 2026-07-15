@@ -108,6 +108,15 @@ jest.mock('../src/utils/supabase', () => {
       return this;
     }
 
+    not(column: string, operator: string, value: any) {
+      if (operator === 'is' && value === null) {
+        this.filters.push(item => item[column] !== null && item[column] !== undefined);
+      } else {
+        this.filters.push(item => item[column] !== value);
+      }
+      return this;
+    }
+
     gte(column: string, value: any) {
       this.filters.push(item => item[column] >= value);
       return this;

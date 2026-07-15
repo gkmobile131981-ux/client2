@@ -82,7 +82,7 @@ async function run() {
         });
         const body = await res.json();
         if (res.status !== 200) throw new Error(`Status ${res.status}: ${JSON.stringify(body)}`);
-        if (body.user.role !== 'owner') throw new Error(`Expected role owner, got ${body.user.role}`);
+        if (body.profile.role !== 'owner') throw new Error(`Expected role owner, got ${body.profile.role}`);
         return 'Successfully authenticated owner token';
       }
     },
@@ -104,10 +104,10 @@ async function run() {
         
         const body = await res.json();
         if (res.status !== 201) throw new Error(`Status ${res.status}: ${JSON.stringify(body)}`);
-        if (!body.user.id || !body.user.staff_id) throw new Error('Staff creation missing ID or staff_id');
+        if (!body.staff.id || !body.staff.staff_id) throw new Error('Staff creation missing ID or staff_id');
         
-        staffUserId = body.user.id;
-        return `Staff created successfully: ${body.user.name} (${body.user.staff_id})`;
+        staffUserId = body.staff.id;
+        return `Staff created successfully: ${body.staff.name} (${body.staff.staff_id})`;
       }
     },
     {

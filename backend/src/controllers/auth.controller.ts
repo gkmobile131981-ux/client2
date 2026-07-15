@@ -248,20 +248,31 @@ export async function createStaff(req: Request, res: Response): Promise<void> {
   try {
     const data = createStaffSchema.parse(req.body);
 
-    // 1. Query staff count for this shop to generate sequential GKxxx ID
-    const { count, error: countError } = await supabaseAdmin
+    // 1. Query all existing staff_ids in the system to ensure global uniqueness and satisfy the table-wide UNIQUE constraint
+    const { data: existingUsers, error: usersError } = await supabaseAdmin
       .from('users')
-      .select('*', { count: 'exact', head: true })
-      .eq('shop_id', owner.shop_id)
-      .eq('role', 'staff');
+      .select('staff_id')
+      .not('staff_id', 'is', null);
 
-    if (countError) {
+    if (usersError || !existingUsers) {
       res.status(500).json({ error: 'Failed to compute staff serial index' });
       return;
     }
 
-    const nextIndex = (count || 0) + 1;
-    const staff_id = `GK${String(nextIndex).padStart(3, '0')}`; // GK001, GK002...
+    const takenIds = new Set(existingUsers.map(u => u.staff_id));
+    let staff_id = '';
+    for (let i = 1; i <= 999; i++) {
+      const candidate = `GK${String(i).padStart(3, '0')}`;
+      if (!takenIds.has(candidate)) {
+        staff_id = candidate;
+        break;
+      }
+    }
+
+    if (!staff_id) {
+      res.status(400).json({ error: 'Maximum staff limit reached in the system' });
+      return;
+    }
 
     // 2. Create the user in auth.users
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
