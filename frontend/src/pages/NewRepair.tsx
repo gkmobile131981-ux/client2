@@ -214,12 +214,12 @@ export function buildDeviceOptions(rateCards: DeviceOptionEntry[]) {
   const mergedBrands: Record<string, Set<string>> = {};
 
   Object.entries(DEVICE_BRANDS).forEach(([brand, models]) => {
-    mergedBrands[brand] = new Set(models);
+    mergedBrands[brand.trim().toUpperCase()] = new Set(models.map(m => m.trim().toUpperCase()));
   });
 
   rateCards.forEach(({ brand, model }) => {
-    const normalizedBrand = brand.trim();
-    const normalizedModel = model.trim();
+    const normalizedBrand = brand.trim().toUpperCase();
+    const normalizedModel = model.trim().toUpperCase();
     if (!normalizedBrand || !normalizedModel) return;
 
     if (!mergedBrands[normalizedBrand]) {
@@ -520,10 +520,10 @@ export default function NewRepair() {
       setValue('serialNumber', r.device?.serial_number || r.serial_number || '');
       setValue('imei', r.device?.imei || '');
       setValue('warranty', r.device?.warranty || r.warranty || '');
-      setValue('estimate', r.estimate || 0, { shouldValidate: true });
-      setValue('advance', r.advance || 0, { shouldValidate: true });
+      setValue('estimate', Number(r.estimate) || 0, { shouldValidate: true });
+      setValue('advance', Number(r.advance) || 0, { shouldValidate: true });
       setValue('allowCashback', r.allow_cashback || false);
-      setValue('expense', r.expense || 0);
+      setValue('expense', Number(r.expense) || 0);
       setValue('deliveryDate', r.delivery_date || '');
       setValue('staffId', r.staff_id || '');
       setValue('notes', r.notes || '');
@@ -562,7 +562,7 @@ export default function NewRepair() {
   // Dynamic balance calculations
   const watchEstimate = watch('estimate');
   const watchAdvance = watch('advance');
-  const outstandingBalance = Math.max(0, (watchEstimate || 0) - (watchAdvance || 0));
+  const outstandingBalance = Math.max(0, (Number(watchEstimate) || 0) - (Number(watchAdvance) || 0));
 
   // Toggle selected rate card services and update estimate price sum
   const toggleService = (svc: { service_name: string; labor_cost: number }) => {
@@ -1033,7 +1033,7 @@ export default function NewRepair() {
               <option value="pending">😊 PENDING</option>
               <option value="repairing">🔧 REPAIRING</option>
               <option value="ready">✅ READY</option>
-              <option value="delivered">📦 DELIVERED</option>
+              {watch('status') === 'delivered' && <option value="delivered">📦 DELIVERED</option>}
               <option value="cancelled">❌ CANCELLED</option>
             </select>
           </div>
@@ -1186,7 +1186,7 @@ export default function NewRepair() {
             );
 
             const availableModels = selectedBrand && selectedBrand !== 'Other' 
-              ? (modelsByBrand[selectedBrand] || []) 
+              ? (modelsByBrand[selectedBrand.toUpperCase()] || []) 
               : [];
 
             const filteredModels = availableModels.filter(m => 

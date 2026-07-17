@@ -8,9 +8,9 @@ describe('buildDeviceOptions', () => {
       { brand: 'Apple', model: 'iPhone 16' }
     ]);
 
-    expect(brandOptions).toContain('Motorola');
-    expect(brandOptions).toContain('Apple');
-    expect(modelsByBrand.Motorola).toContain('G54');
-    expect(modelsByBrand.Apple).toContain('iPhone 16');
+    expect(brandOptions).toContain('MOTOROLA');
+    expect(brandOptions).toContain('APPLE');
+    expect(modelsByBrand.MOTOROLA).toContain('G54');
+    expect(modelsByBrand.APPLE).toContain('IPHONE 16');
   });
 });

@@ -51,39 +51,63 @@ export async function getCustomers(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Load repair metrics (total repairs & last repair date) for each customer
-    const customersWithStats = await Promise.all(
-      (customers || []).map(async (cust) => {
-        // Fetch all device IDs belonging to this customer
-        const { data: devices } = await supabaseAdmin
-          .from('devices')
-          .select('id')
-          .eq('customer_id', cust.id);
-        
-        const deviceIds = (devices || []).map(d => d.id);
-        let repairCount = 0;
-        let lastRepairDate: string | null = null;
+    // Load repair metrics (total repairs & last repair date) in bulk to avoid N+1 queries
+    const customerIds = (customers || []).map(c => c.id);
+    const deviceMap: Record<string, string[]> = {};
+    const allDeviceIds: string[] = [];
 
-        if (deviceIds.length > 0) {
-          const { data: repairsData } = await supabaseAdmin
-            .from('repairs')
-            .select('created_at')
-            .eq('shop_id', user.shop_id)
-            .in('device_id', deviceIds);
-
-          repairCount = repairsData?.length || 0;
-          lastRepairDate = repairsData && repairsData.length > 0
-            ? repairsData.reduce((latest, r) => (r.created_at > latest ? r.created_at : latest), repairsData[0].created_at)
-            : null;
+    if (customerIds.length > 0) {
+      const { data: devices } = await supabaseAdmin
+        .from('devices')
+        .select('id, customer_id')
+        .in('customer_id', customerIds);
+      
+      (devices || []).forEach(d => {
+        if (!deviceMap[d.customer_id]) {
+          deviceMap[d.customer_id] = [];
         }
+        deviceMap[d.customer_id].push(d.id);
+        allDeviceIds.push(d.id);
+      });
+    }
 
-        return {
-          ...cust,
-          repairsCount: repairCount,
-          lastRepairDate
-        };
-      })
-    );
+    const repairsMap: Record<string, string[]> = {};
+    if (allDeviceIds.length > 0) {
+      const { data: repairsData } = await supabaseAdmin
+        .from('repairs')
+        .select('created_at, device_id')
+        .eq('shop_id', user.shop_id)
+        .in('device_id', allDeviceIds);
+      
+      (repairsData || []).forEach(r => {
+        if (!repairsMap[r.device_id]) {
+          repairsMap[r.device_id] = [];
+        }
+        repairsMap[r.device_id].push(r.created_at);
+      });
+    }
+
+    const customersWithStats = (customers || []).map((cust) => {
+      const deviceIds = deviceMap[cust.id] || [];
+      let repairCount = 0;
+      let lastRepairDate: string | null = null;
+
+      deviceIds.forEach(devId => {
+        const dates = repairsMap[devId] || [];
+        repairCount += dates.length;
+        dates.forEach(d => {
+          if (!lastRepairDate || d > lastRepairDate) {
+            lastRepairDate = d;
+          }
+        });
+      });
+
+      return {
+        ...cust,
+        repairsCount: repairCount,
+        lastRepairDate
+      };
+    });
 
     res.json({
       customers: customersWithStats,

@@ -100,7 +100,12 @@ export default function DeliverRepair() {
       queryClient.invalidateQueries({ queryKey: ['repair-detail', id] });
     },
     onError: (err: any) => {
-      toast.error(err.message || 'Failed to complete delivery');
+      let msg = err.message || 'Failed to complete delivery';
+      if (err.details && Array.isArray(err.details)) {
+        const detailMsgs = err.details.map((d: any) => `${d.path.join('.')}: ${d.message}`).join(', ');
+        msg = `Validation failed: ${detailMsgs}`;
+      }
+      toast.error(msg);
     }
   });
 
