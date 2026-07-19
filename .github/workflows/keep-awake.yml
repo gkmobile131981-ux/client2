@@ -1,0 +1,17 @@
+name: Keep Backend Awake
+
+on:
+  schedule:
+    # Run every 10 minutes (Render/Vercel free tier keep-alive)
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual run
+
+jobs:
+  ping:
+    name: Ping Health Endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API Health Check
+        run: |
+          echo "Pinging backend server to keep it active..."
+          curl -f -X GET "https://backend-flax-one.vercel.app/api/health" || echo "Ping failed, but request was sent."
