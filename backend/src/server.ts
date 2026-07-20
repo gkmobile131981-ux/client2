@@ -153,8 +153,9 @@ const runStartupSync = async () => {
 runStartupSync();
 
 if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`GK Repair System backend running on port ${PORT}`);
+  const portNum = Number(process.env.PORT) || 5000;
+  app.listen(portNum, '0.0.0.0', () => {
+    console.log(`GK Repair System backend running on port ${portNum} (0.0.0.0)`);
     console.log(`Allowed origins: ${FRONTEND_URLS.join(', ')}`);
   });
 }
