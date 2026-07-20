@@ -47,76 +47,44 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
       'http://127.0.0.1:5180'
     ];
 
-const corsOptionsDelegate = (
-  req: Request,
-  callback: (err: Error | null, options?: cors.CorsOptions) => void
-) => {
-  const origin = req.header('Origin');
-  let isAllowed = false;
-
-  if (!origin) {
-    isAllowed = true;
-  } else {
-    // 1. Check if it's in the allowed origins array
-    if (allowedOrigins.includes(origin)) {
-      isAllowed = true;
-    }
-    // 2. Check if it's a localhost origin in development
-    else if (process.env.NODE_ENV !== 'production') {
-      const isLocalhost = origin.startsWith('http://localhost:') || 
-                          origin.startsWith('http://127.0.0.1:') || 
-                          origin === 'http://localhost' || 
-                          origin === 'http://127.0.0.1';
-      if (isLocalhost) isAllowed = true;
-    }
-    
-    // 3. Check if it's a Vercel or Railway deployment domain
-    if (!isAllowed) {
-      const isDeploymentOrigin = origin.endsWith('.vercel.app') || origin.includes('vercel.app') || origin.endsWith('.up.railway.app') || origin.includes('railway.app');
-      if (isDeploymentOrigin) isAllowed = true;
-    }
-
-    // 4. Dynamic Apex Domain Matching (Self-Healing CORS)
-    if (!isAllowed) {
-      try {
-        const host = req.header('host'); // e.g. api.panruticellphoneservice.org
-        if (host) {
-          const getApexDomain = (hostname: string): string => {
-            const cleanHost = hostname.split(':')[0];
-            const parts = cleanHost.split('.');
-            if (parts.length <= 2) return cleanHost;
-            const last = parts[parts.length - 1];
-            const secondLast = parts[parts.length - 2];
-            const doubleTlds = ['com', 'co', 'org', 'net', 'gov', 'edu', 'mil', 'ac'];
-            if (parts.length > 2 && doubleTlds.includes(secondLast) && last.length === 2) {
-              return parts.slice(-3).join('.');
-            }
-            return parts.slice(-2).join('.');
-          };
-
-          const originHostname = new URL(origin).hostname;
-          const hostApex = getApexDomain(host);
-          const originApex = getApexDomain(originHostname);
-
-          if (hostApex && originApex && hostApex === originApex) {
-            isAllowed = true;
-          }
-        }
-      } catch (e) {
-        // Ignore URL parsing errors for invalid origins
-      }
-    }
+const isDomainAllowed = (origin: string | undefined): boolean => {
+  if (!origin) return true;
+  
+  // Always allow localhost
+  if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+    return true;
   }
 
-  callback(null, {
-    origin: isAllowed,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-  });
+  // Always allow panruticellphoneservice.org subdomains & apex
+  if (origin.includes('panruticellphoneservice.org')) {
+    return true;
+  }
+
+  // Allow railway and vercel deployment domains
+  if (origin.includes('railway.app') || origin.includes('vercel.app')) {
+    return true;
+  }
+
+  // Check FRONTEND_URLS
+  if (FRONTEND_URLS.some(url => url && origin.startsWith(url))) {
+    return true;
+  }
+
+  return false;
 };
 
-app.use(cors(corsOptionsDelegate));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (isDomainAllowed(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, false);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+}));
 
 // Body parser with 50MB limit
 app.use(express.json({ limit: '50mb' }));
