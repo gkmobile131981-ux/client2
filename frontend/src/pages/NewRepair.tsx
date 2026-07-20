@@ -237,14 +237,28 @@ export function buildDeviceOptions(rateCards: DeviceOptionEntry[]) {
 }
 
 // ----------------------------------------------------
-// Zod Schema for the complete Unified Form
-// ----------------------------------------------------
+const COMMON_PROBLEMS = [
+  'DISPLAY CHANGE',
+  'BATTERY REPLACEMENT',
+  'TOUCH GLASS REPAIR',
+  'MIC REPAIR',
+  'SPEAKER / RINGER ISSUE',
+  'CHARGING PORT REPLACEMENT',
+  'NETWORK / SIM SLOT ISSUE',
+  'CAMERA REPAIR',
+  'SOFTWARE FLASHING / UNLOCK',
+  'WATER DAMAGE DIAGNOSTICS',
+  'DEAD MOTHERBOARD REPAIR',
+  'VOLUME / POWER BUTTON',
+  'BACK GLASS REPLACEMENT'
+];
+
 const repairOrderSchema = z.object({
   status: z.enum(['pending', 'repairing', 'ready', 'delivered', 'cancelled']).default('pending'),
   customerId: z.string().optional().nullable(),
   brand: z.string().min(1, 'Brand is required'),
   model: z.string().min(1, 'Model is required'),
-  problem: z.string().min(5, 'Problem description must be at least 5 characters'),
+  problem: z.string().min(1, 'Problem description is required'),
   quality: z.enum(['good', 'fair', 'poor', 'damaged']).default('good'),
   physicalDamage: z.string().optional().nullable(),
   lockCode: z.string().optional().nullable(),
@@ -308,6 +322,12 @@ export default function NewRepair() {
 
   // Core Data States
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
+  const [newCustAddr, setNewCustAddr] = useState('');
+  const [nameSearchOpen, setNameSearchOpen] = useState(false);
+  const [phoneInputSearchOpen, setPhoneInputSearchOpen] = useState(false);
+  const [problemSearchOpen, setProblemSearchOpen] = useState(false);
   const [phoneSearch, setPhoneSearch] = useState('');
   const [debouncedPhoneSearch, setDebouncedPhoneSearch] = useState('');
 
@@ -527,6 +547,80 @@ export default function NewRepair() {
       return aName.localeCompare(bName);
     });
   }, [phoneSearch, allCustomersData, customersSearchData]);
+
+  // Instant 0ms Filtered Customers by Customer Name input
+  const filteredCustomersByName = React.useMemo(() => {
+    const q = newCustName.trim().toLowerCase();
+    if (!q) return [];
+
+    const rawList = [...(allCustomersData?.customers || []), ...(customersSearchData?.customers || [])];
+    const uniqueMap = new Map<string, Customer>();
+    rawList.forEach(c => uniqueMap.set(c.id, c));
+    const list = Array.from(uniqueMap.values());
+
+    const matches = list.filter(c => 
+      c.name.toLowerCase().includes(q) || 
+      c.phone.toLowerCase().includes(q)
+    );
+
+    return matches.sort((a, b) => {
+      const aStartsWith = a.name.toLowerCase().startsWith(q);
+      const bStartsWith = b.name.toLowerCase().startsWith(q);
+      if (aStartsWith && !bStartsWith) return -1;
+      if (!aStartsWith && bStartsWith) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [newCustName, allCustomersData, customersSearchData]);
+
+  // Instant 0ms Filtered Customers by Customer Phone input
+  const filteredCustomersByPhone = React.useMemo(() => {
+    const q = newCustPhone.trim().toLowerCase();
+    if (!q) return [];
+
+    const rawList = [...(allCustomersData?.customers || []), ...(customersSearchData?.customers || [])];
+    const uniqueMap = new Map<string, Customer>();
+    rawList.forEach(c => uniqueMap.set(c.id, c));
+    const list = Array.from(uniqueMap.values());
+
+    const matches = list.filter(c => 
+      c.phone.toLowerCase().includes(q) || 
+      c.name.toLowerCase().includes(q)
+    );
+
+    return matches.sort((a, b) => {
+      const aStartsWith = a.phone.toLowerCase().startsWith(q);
+      const bStartsWith = b.phone.toLowerCase().startsWith(q);
+      if (aStartsWith && !bStartsWith) return -1;
+      if (!aStartsWith && bStartsWith) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [newCustPhone, allCustomersData, customersSearchData]);
+
+  // Instant 1-letter Problem Description Autocomplete Filter
+  const filteredProblems = React.useMemo(() => {
+    const q = customProblem.trim().toLowerCase();
+    if (!q) return COMMON_PROBLEMS;
+
+    const rateCardSvcs = (rateCardOptionsData?.rateCards || []).map(r => r.model).filter(Boolean);
+    const combined = Array.from(new Set([...COMMON_PROBLEMS, ...rateCardSvcs]));
+
+    return combined.filter(p => p.toLowerCase().includes(q)).sort((a, b) => {
+      const aStarts = a.toLowerCase().startsWith(q);
+      const bStarts = b.toLowerCase().startsWith(q);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return a.localeCompare(b);
+    });
+  }, [customProblem, rateCardOptionsData]);
+
+  // Ensure Customer Name, Phone, Address ALWAYS start EMPTY for new bookings
+  useEffect(() => {
+    if (!isEditMode) {
+      setNewCustName('');
+      setNewCustPhone('');
+      setNewCustAddr('');
+    }
+  }, [isEditMode]);
 
   // Pre-load customer if ID is in URL parameters
   useEffect(() => {
@@ -809,10 +903,6 @@ export default function NewRepair() {
   };
 
   // Create Inline Customer Submission
-  const [newCustName, setNewCustName] = useState('');
-  const [newCustPhone, setNewCustPhone] = useState('');
-  const [newCustAddr, setNewCustAddr] = useState('');
-
   const registerCustomerInline = async () => {
     if (!newCustName || !newCustPhone) {
       toast.error('Please fill in Name and Phone number');
@@ -1175,34 +1265,107 @@ export default function NewRepair() {
 
           <div className="grid grid-cols-1 gap-3">
             {/* Customer Name */}
-            <div className="space-y-1">
+            <div className="space-y-1 relative">
               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Customer Name</label>
               <input
                 type="text"
+                id="customer_full_name_no_autofill"
+                name="customer_full_name_no_autofill"
                 placeholder="e.g. Jane Doe"
                 value={newCustName}
-                autoComplete="new-password"
+                autoComplete="off"
                 onChange={(e) => {
                   setNewCustName(e.target.value);
+                  setNameSearchOpen(true);
                   if (selectedCustomer) { setSelectedCustomer(null); setValue('customerId', ''); }
                 }}
+                onFocus={() => setNameSearchOpen(true)}
                 className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary font-semibold"
               />
+              {/* Instant 1-letter Customer Name Autocomplete */}
+              {nameSearchOpen && newCustName.trim().length >= 1 && (
+                <div className="absolute z-30 left-0 right-0 bg-secondary/95 border border-border rounded-xl divide-y divide-border/60 overflow-hidden shadow-xl max-h-48 overflow-y-auto mt-1">
+                  {filteredCustomersByName.length > 0 ? (
+                    filteredCustomersByName.map((cust) => (
+                      <button
+                        type="button"
+                        key={cust.id}
+                        onClick={() => {
+                          setSelectedCustomer(cust);
+                          setValue('customerId', cust.id, { shouldValidate: true });
+                          setNewCustName(cust.name);
+                          setNewCustPhone(cust.phone);
+                          setNewCustAddr(cust.address || '');
+                          setNameSearchOpen(false);
+                        }}
+                        className="w-full p-2.5 text-left hover:bg-primary/10 cursor-pointer flex justify-between items-center gap-2"
+                      >
+                        <div>
+                          <div className="text-xs font-bold text-foreground">{cust.name}</div>
+                          <div className="text-[10px] text-muted-foreground">{cust.phone}</div>
+                        </div>
+                        <span className="text-[9px] uppercase font-black text-primary">SELECT</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="p-2 text-center text-[10px] text-muted-foreground">
+                      New Customer: "{newCustName}"
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
             {/* Phone */}
-            <div className="space-y-1">
+            <div className="space-y-1 relative">
               <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Phone</label>
               <input
                 type="text"
+                id="customer_phone_no_autofill"
+                name="customer_phone_no_autofill"
                 placeholder="e.g. +91 99999 88888"
                 value={newCustPhone}
                 autoComplete="off"
                 onChange={(e) => {
                   setNewCustPhone(e.target.value);
+                  setPhoneInputSearchOpen(true);
                   if (selectedCustomer) { setSelectedCustomer(null); setValue('customerId', ''); }
                 }}
+                onFocus={() => setPhoneInputSearchOpen(true)}
                 className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary font-semibold"
               />
+              {/* Instant 1-letter Phone Autocomplete */}
+              {phoneInputSearchOpen && newCustPhone.trim().length >= 1 && (
+                <div className="absolute z-30 left-0 right-0 bg-secondary/95 border border-border rounded-xl divide-y divide-border/60 overflow-hidden shadow-xl max-h-48 overflow-y-auto mt-1">
+                  {filteredCustomersByPhone.length > 0 ? (
+                    filteredCustomersByPhone.map((cust) => (
+                      <button
+                        type="button"
+                        key={cust.id}
+                        onClick={() => {
+                          setSelectedCustomer(cust);
+                          setValue('customerId', cust.id, { shouldValidate: true });
+                          setNewCustName(cust.name);
+                          setNewCustPhone(cust.phone);
+                          setNewCustAddr(cust.address || '');
+                          setPhoneInputSearchOpen(false);
+                        }}
+                        className="w-full p-2.5 text-left hover:bg-primary/10 cursor-pointer flex justify-between items-center gap-2"
+                      >
+                        <div>
+                          <div className="text-xs font-bold text-foreground">{cust.phone}</div>
+                          <div className="text-[10px] text-muted-foreground">{cust.name}</div>
+                        </div>
+                        <span className="text-[9px] uppercase font-black text-primary">SELECT</span>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="p-2 text-center text-[10px] text-muted-foreground">
+                      New Phone: "{newCustPhone}"
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             {/* Address */}
             <div className="space-y-1">
@@ -1436,22 +1599,63 @@ export default function NewRepair() {
             );
           })()}
 
-          {/* Problem description with Add Button */}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Write Problem Description..."
-              value={customProblem}
-              onChange={(e) => setCustomProblem(e.target.value)}
-              className="flex-1 bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold"
-            />
-            <Button
-              type="button"
-              onClick={handleAddCustomProblem}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold uppercase text-xs px-4"
-            >
-              ADD
-            </Button>
+          {/* Problem description with 1-letter Autocomplete & Add Button */}
+          <div className="relative space-y-1">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Write Problem Description... (Type 1 letter for suggestions)"
+                value={customProblem}
+                onChange={(e) => {
+                  setCustomProblem(e.target.value);
+                  setProblemSearchOpen(true);
+                  // Update form problem value as user types
+                  setValue('problem', e.target.value, { shouldValidate: true });
+                }}
+                onFocus={() => setProblemSearchOpen(true)}
+                className="flex-1 bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold"
+              />
+              <Button
+                type="button"
+                onClick={() => {
+                  handleAddCustomProblem();
+                  setProblemSearchOpen(false);
+                }}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold uppercase text-xs px-4 shrink-0"
+              >
+                ADD
+              </Button>
+            </div>
+
+            {/* Instant 1-Letter Problem Description Autocomplete Dropdown */}
+            {problemSearchOpen && customProblem.trim().length >= 1 && (
+              <div className="absolute z-40 left-0 right-16 bg-neutral-900 border border-primary/40 rounded-xl divide-y divide-border/40 overflow-hidden shadow-2xl max-h-52 overflow-y-auto mt-1">
+                {filteredProblems.length > 0 ? (
+                  filteredProblems.map((item) => (
+                    <button
+                      type="button"
+                      key={item}
+                      onClick={() => {
+                        const current = watch('problem');
+                        const updated = current ? `${current}, ${item}` : item;
+                        setValue('problem', updated, { shouldValidate: true });
+                        setCustomProblem('');
+                        setProblemSearchOpen(false);
+                        toast.success(`Added "${item}" to problem description`);
+                      }}
+                      className="w-full p-2.5 text-left hover:bg-primary/25 hover:text-white cursor-pointer flex justify-between items-center text-xs font-semibold text-white/90"
+                    >
+                      <span>🔧 {item}</span>
+                      <span className="text-[10px] text-primary uppercase font-bold">ADD +</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="p-2.5 text-center text-xs text-muted-foreground">
+                    Press ADD to use custom problem: "{customProblem}"
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           <input type="hidden" {...register('problem')} />
