@@ -314,7 +314,7 @@ export default function NewRepair() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedPhoneSearch(phoneSearch);
-    }, 300);
+    }, 50);
     return () => clearTimeout(timer);
   }, [phoneSearch]);
   const [selectedServices, setSelectedServices] = useState<Array<{ service_name: string; labor_cost: number }>>([]);
@@ -472,7 +472,8 @@ export default function NewRepair() {
   const { data: customersSearchData } = useQuery<{ customers: Customer[] }>({
     queryKey: ['customers-search', debouncedPhoneSearch],
     queryFn: () => apiClient.get(`/customers?search=${debouncedPhoneSearch}`),
-    enabled: debouncedPhoneSearch.length >= 2
+    enabled: debouncedPhoneSearch.trim().length >= 1,
+    staleTime: 60 * 1000
   });
 
   // Pre-load customer if ID is in URL parameters
