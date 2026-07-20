@@ -10,6 +10,8 @@ import {
   Plus,
   X,
   Camera,
+  Upload,
+  Image as ImageIcon,
   Video,
   Clipboard,
   Smile,
@@ -324,6 +326,52 @@ export default function NewRepair() {
   }, [phoneSearch]);
   const [selectedServices, setSelectedServices] = useState<Array<{ service_name: string; labor_cost: number }>>([]);
   const [customProblem, setCustomProblem] = useState('');
+  const [deviceImages, setDeviceImages] = useState<string[]>([]);
+
+  // Handle selecting multiple images from Gallery
+  const handleMultipleDeviceImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    files.forEach(file => {
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`File ${file.name} exceeds 10MB limit`);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (reader.result) {
+          setDeviceImages(prev => [...prev, reader.result as string]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  // Handle capturing photo from Camera
+  const handleCameraDeviceImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(`Photo exceeds 10MB limit`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      if (reader.result) {
+        setDeviceImages(prev => [...prev, reader.result as string]);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  // Remove image by index
+  const removeDeviceImage = (indexToRemove: number) => {
+    setDeviceImages(prev => prev.filter((_, i) => i !== indexToRemove));
+  };
   // Split brand and model states
   const [selectedBrand, setSelectedBrand] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
@@ -690,10 +738,14 @@ export default function NewRepair() {
       if (r.services) {
         setSelectedServices(r.services);
       }
-      if (r.kyc_details) {
+      if (r.kyc_details || r.kycDetails) {
         try {
-          const parsed = typeof r.kyc_details === 'string' ? JSON.parse(r.kyc_details) : r.kyc_details;
+          const raw = r.kyc_details || r.kycDetails;
+          const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
           setKycData(parsed);
+          if (parsed?.deviceImages && Array.isArray(parsed.deviceImages)) {
+            setDeviceImages(parsed.deviceImages);
+          }
         } catch (e) {
           console.error('Error parsing kyc_details:', e);
         }
@@ -1024,9 +1076,10 @@ export default function NewRepair() {
       formData.append('jobNumber', nextJobNumber);
     }
     
-    // Store KYC JSON
+    // Store KYC JSON with Device Images
     const finalKyc = {
       ...kycData,
+      deviceImages,
       documentNumber: kycData.documentNumber
     };
     formData.append('kycDetails', JSON.stringify(finalKyc));
@@ -1401,6 +1454,66 @@ export default function NewRepair() {
                 onChange={(e) => setNewCustAddr(e.target.value)}
                 className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none focus:border-primary font-semibold"
               />
+            </div>
+
+            {/* Inline Device Images (Optional) Upload Section */}
+            <div className="space-y-2 pt-2 border-t border-border/40">
+              <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider block">
+                Device Images (Optional)
+              </label>
+              <div className="border border-border/80 rounded-2xl p-4 bg-secondary/15 space-y-3 shadow-sm">
+                <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                  <Upload className="h-4 w-4 text-primary" />
+                  <span>Upload device images</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Gallery Button */}
+                  <label className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-secondary/60 cursor-pointer font-extrabold text-xs text-foreground transition-all shadow-sm active:scale-95">
+                    <ImageIcon className="h-4 w-4 text-primary" />
+                    <span>Gallery</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleMultipleDeviceImagesUpload}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* Camera Button */}
+                  <label className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-border bg-card hover:bg-secondary/60 cursor-pointer font-extrabold text-xs text-foreground transition-all shadow-sm active:scale-95">
+                    <Camera className="h-4 w-4 text-primary" />
+                    <span>Camera</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleCameraDeviceImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {/* Horizontal Scrollable/Grid Thumbnails preview with Red ✕ Delete Badge */}
+                {deviceImages.length > 0 && (
+                  <div className="flex items-center gap-3 overflow-x-auto pt-2 pb-1 pr-2">
+                    {deviceImages.map((imgUrl, idx) => (
+                      <div key={idx} className="relative group shrink-0 h-20 w-20 rounded-xl overflow-hidden border border-border shadow-md bg-black/20">
+                        <img src={imgUrl} alt={`Device photo ${idx + 1}`} className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeDeviceImage(idx)}
+                          className="absolute top-1 right-1 h-5 w-5 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center text-[10px] font-black shadow-lg transition-transform active:scale-90"
+                          title="Remove image"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
