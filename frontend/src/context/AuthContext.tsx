@@ -47,10 +47,27 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [role, setRole] = useState<'owner' | 'staff' | null>(null);
-  const [shop, setShop] = useState<ShopProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Synchronous initialization from localStorage for instant persistent login across reloads
+  const [user, setUser] = useState<UserProfile | null>(() => {
+    const cached = localStorage.getItem('gk_cached_user');
+    if (!cached) return null;
+    try { return JSON.parse(cached); } catch { return null; }
+  });
+
+  const [role, setRole] = useState<'owner' | 'staff' | null>(() => {
+    return (localStorage.getItem('gk_cached_role') as any) || null;
+  });
+
+  const [shop, setShop] = useState<ShopProfile | null>(() => {
+    const cached = localStorage.getItem('gk_cached_shop');
+    if (!cached) return null;
+    try { return JSON.parse(cached); } catch { return null; }
+  });
+
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    // If cached user exists, don't block render with loading spinner
+    return !localStorage.getItem('gk_cached_user') && !localStorage.getItem('gk_access_token');
+  });
 
   // Initialize and load user profile if tokens exist
   const loadProfile = async (token: string) => {
@@ -79,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setRole(profile.role);
       setShop(profile.shop);
 
-      // Save to cache for offline/transient error fallback
+      // Save to cache for offline/reload persistence
       localStorage.setItem('gk_cached_user', JSON.stringify(loadedUser));
       localStorage.setItem('gk_cached_shop', JSON.stringify(profile.shop));
       localStorage.setItem('gk_cached_role', profile.role);
@@ -89,23 +106,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Clear auth ONLY on genuine 401/403 credentials errors
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
         clearAuth();
-      } else {
-        // Retrieve cached user session if available to prevent kicking out to login screen
-        const cachedUser = localStorage.getItem('gk_cached_user');
-        const cachedShop = localStorage.getItem('gk_cached_shop');
-        const cachedRole = localStorage.getItem('gk_cached_role');
-        
-        if (cachedUser && cachedShop && cachedRole) {
-          try {
-            setUser(JSON.parse(cachedUser));
-            setShop(JSON.parse(cachedShop));
-            setRole(cachedRole as any);
-          } catch {
-            clearAuth();
-          }
-        } else {
-          clearAuth();
-        }
       }
     }
   };
@@ -128,24 +128,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('gk_cached_role');
   };
 
-  // Sync Supabase Client State with Local Storage and vice versa
+  // Sync Supabase Client State with Local Storage
   useEffect(() => {
-    // 1. Initial check of session
     const checkInitialSession = async () => {
-      setIsLoading(true);
       const storedAccessToken = localStorage.getItem('gk_access_token');
       const storedRefreshToken = localStorage.getItem('gk_refresh_token');
-      const { data: { session } } = await supabase.auth.getSession();
 
-      if (session) {
-        localStorage.setItem('gk_refresh_token', session.refresh_token);
-        await loadProfile(session.access_token);
-      } else if (storedAccessToken) {
+      if (storedAccessToken) {
         try {
           await loadProfile(storedAccessToken);
         } catch (error) {
-          console.warn('Stored access token did not restore the session:', error);
-          clearAuth();
+          console.warn('Silent profile refresh fallback:', error);
         }
       } else if (storedRefreshToken) {
         try {
@@ -157,28 +150,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             localStorage.setItem('gk_refresh_token', newSession.refresh_token);
             localStorage.setItem('gk_access_token', newSession.access_token);
             await loadProfile(newSession.access_token);
-          } else {
-            clearAuth();
           }
         } catch (error) {
           console.warn('Failed to restore session using stored refresh token:', error);
-          clearAuth();
         }
-      } else {
-        clearAuth();
       }
       setIsLoading(false);
     };
 
     checkInitialSession();
 
-    // 2. Set listener on Auth changes
+    // Set listener on Auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
         localStorage.setItem('gk_refresh_token', session.refresh_token);
         await loadProfile(session.access_token);
-      } else if (event === 'SIGNED_OUT') {
-        clearAuth();
       } else if (event === 'TOKEN_REFRESHED' && session) {
         localStorage.setItem('gk_refresh_token', session.refresh_token);
         localStorage.setItem('gk_access_token', session.access_token);
