@@ -992,7 +992,7 @@ export default function NewRepair() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto pb-16 bg-background rounded-3xl overflow-hidden shadow-2xl border border-border/85 light text-foreground">
+    <div className="space-y-6 w-full pb-16 bg-background rounded-3xl overflow-hidden shadow-2xl border border-border/85 light text-foreground">
       {/* Theme Matched Purple/Indigo Top Header */}
       <div className="bg-gradient-to-r from-primary to-primary/80 p-6 relative">
         <div className="flex items-center gap-3">
@@ -1005,7 +1005,7 @@ export default function NewRepair() {
           </button>
           <div className="flex-1">
             <h1 className="text-xl font-black tracking-tight text-white uppercase">
-              {isEditMode ? 'Modify Repair Ticket Details' : 'Add New Customer Details'}
+              {isEditMode ? 'Modify Booking Details' : 'Create New Booking'}
             </h1>
             <p className="text-white/80 text-xs mt-0.5">
               {isEditMode ? 'Update diagnostics and repair items' : 'Structured repair order logging terminal'}
@@ -1064,7 +1064,7 @@ export default function NewRepair() {
               />
             </div>
             {/* Dropdown autocomplete results */}
-            {customerSearchOpen && phoneSearch.length >= 2 && (
+            {customerSearchOpen && phoneSearch.trim().length >= 1 && (
               <div className="absolute z-30 left-0 right-0 bg-secondary/95 border border-border rounded-xl divide-y divide-border/60 overflow-hidden shadow-xl max-h-52 overflow-y-auto mt-1">
                 {customersSearchData?.customers && customersSearchData.customers.length > 0 ? (
                   customersSearchData.customers.map((cust) => (

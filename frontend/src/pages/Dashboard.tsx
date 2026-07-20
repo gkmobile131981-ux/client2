@@ -363,7 +363,7 @@ export default function Dashboard() {
             className="gap-2 shadow-[0_0_15px_rgba(168,85,247,0.25)] hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] h-11 px-5 rounded-xl text-sm font-extrabold uppercase bg-primary text-primary-foreground"
           >
             <Plus className="h-5 w-5" />
-            <span>New Repair Ticket</span>
+            <span>Create New Booking</span>
           </Button>
         </div>
         <div className="flex flex-wrap items-center gap-2">
