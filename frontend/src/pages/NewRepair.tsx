@@ -301,7 +301,6 @@ export default function NewRepair() {
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const [patternLockOpen, setPatternLockOpen] = useState(false);
-  const [kycModalOpen, setKycModalOpen] = useState(false);
   const [signatureOpen, setSignatureOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [showLockCode, setShowLockCode] = useState(false);
@@ -909,12 +908,7 @@ export default function NewRepair() {
     setValue('model', val, { shouldValidate: true });
   };
 
-  // Save KYC Data as a JSON string to form values
-  const handleSaveKyc = () => {
-    setValue('kycDetails', JSON.stringify(kycData));
-    setKycModalOpen(false);
-    toast.success('Customer KYC Details captured!');
-  };
+
 
   // Pattern Lock Grid dragging handlers
   const handlePointerDownPattern = (node: number) => {
@@ -1868,28 +1862,7 @@ export default function NewRepair() {
           )}
         </div>
 
-        {/* CUSTOMER KYC MAIN ACCORDION BUTTON */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setKycModalOpen(true)}
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground py-3.5 px-4 rounded-xl font-bold uppercase tracking-wider text-sm flex items-center justify-between shadow-lg"
-          >
-            <span>CUSTOMER KYC</span>
-            <span>{kycData.idCardFront || kycData.signature ? '✓ EDIT DETAILS' : '▾ OPEN PANEL'}</span>
-          </button>
-          
-          {/* KYC Summary Indicators */}
-          {(kycData.idCardFront || kycData.signature) && (
-            <div className="mt-2 p-3 bg-emerald-500/10 border border-emerald-500/25 rounded-xl flex flex-wrap gap-4 text-xs font-bold text-emerald-400">
-              {kycData.idCardFront && <span>ID Front ✓</span>}
-              {kycData.idCardBack && <span>ID Back ✓</span>}
-              {kycData.mobileFront && <span>Mobile Front ✓</span>}
-              {kycData.mobileBack && <span>Mobile Back ✓</span>}
-              {kycData.signature && <span>Signature Saved ✓</span>}
-            </div>
-          )}
-        </div>
+
 
         {/* ESTIMATED PRICE & PAID SIDE BY SIDE */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2313,73 +2286,7 @@ export default function NewRepair() {
 
       </form>
 
-      {kycModalOpen && (
-        <div className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-3 light text-foreground overflow-y-auto light text-foreground">
-          <div className="bg-card border border-border w-[92%] sm:w-full max-w-lg rounded-2xl overflow-hidden shadow-2xl relative max-h-[85vh] flex flex-col">
-            {/* Sticky Header */}
-            <div className="bg-secondary/10 border-b border-border/60 p-4 flex items-center justify-between shrink-0">
-              <button
-                type="button"
-                onClick={() => setKycModalOpen(false)}
-                className="p-2 rounded-full bg-secondary/35 hover:bg-secondary/50 transition-colors text-foreground"
-                title="Back"
-              >
-                <ArrowLeft className="h-4.5 w-4.5" />
-              </button>
-              <h2 className="text-sm font-extrabold text-primary tracking-tight uppercase">
-                Customer KYC Terminal
-              </h2>
-              <div className="w-8" />
-            </div>
 
-            {/* Scrollable Content Body */}
-            <div className="flex-1 p-5 sm:p-6 space-y-6 overflow-y-auto scrollbar-thin">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {renderUploadCard('ID Card Front', 'idCardFront', <Camera className="h-6 w-6 text-primary" />, { accept: 'image/*', capture: 'environment' })}
-                {renderUploadCard('ID Card Back', 'idCardBack', <Camera className="h-6 w-6 text-primary" />, { accept: 'image/*', capture: 'environment' })}
-                {renderUploadCard('Mobile Device Front', 'mobileFront', <Smartphone className="h-6 w-6 text-primary" />, { accept: 'image/*', capture: 'environment' })}
-                {renderUploadCard('Mobile Device Back', 'mobileBack', <Smartphone className="h-6 w-6 text-primary" />, { accept: 'image/*', capture: 'environment' })}
-                {renderUploadCard('Customer Face Photo', 'customerPhoto', <Camera className="h-6 w-6 text-primary" />, { accept: 'image/*', capture: 'user' })}
-                {renderUploadCard('Client Signature', 'signature', <Clipboard className="h-6 w-6 text-primary" />, { accept: '' })}
-              </div>
-
-              {/* Document Number */}
-              <div className="space-y-1.5 max-w-md border-t border-border/40 pt-4">
-                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Document ID / Card Number</label>
-                <input
-                  type="text"
-                  placeholder="Enter Passport / National ID card Number"
-                  value={kycData.documentNumber}
-                  onChange={(e) => setKycData(prev => ({ ...prev, documentNumber: e.target.value }))}
-                  className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold uppercase"
-                />
-              </div>
-            </div>
-
-            {/* Sticky Footer */}
-            <div className="bg-secondary/10 border-t border-border/60 p-4 flex gap-3 items-center justify-end shrink-0">
-              <Button
-                type="button"
-                onClick={() => {
-                  setValue('kycDetails', JSON.stringify(kycData));
-                  toast.success('KYC details saved as draft!');
-                }}
-                variant="outline"
-                className="px-5 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground h-10 border-border/80 bg-secondary/15 hover:bg-secondary/40"
-              >
-                Save Draft
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSaveKyc}
-                className="px-5 py-2 text-xs font-bold uppercase tracking-wider bg-primary text-primary-foreground hover:bg-primary/90 h-10"
-              >
-                Submit KYC
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {signatureOpen && (
         <div className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-3 light text-foreground">
