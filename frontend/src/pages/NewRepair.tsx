@@ -1145,6 +1145,9 @@ export default function NewRepair() {
     }
 
     const formData = new FormData();
+    if (finalCustomerId) {
+      formData.append('customerId', finalCustomerId);
+    }
     const finalBrand = values.brand || brandSearchQuery.trim();
     const finalModel = values.model || modelSearchQuery.trim();
     formData.append('brand', finalBrand);
