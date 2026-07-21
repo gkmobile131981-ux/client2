@@ -79,6 +79,8 @@ export default function DeliverRepair() {
   
   // Success states
   const [isSuccess, setIsSuccess] = useState(false);
+  const [amountPaidNow, setAmountPaidNow] = useState<string>('');
+  const [paymentDueDate, setPaymentDueDate] = useState<string>('');
 
   // References for camera capture
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -90,6 +92,22 @@ export default function DeliverRepair() {
     queryFn: () => apiClient.get(`/repairs/${id}`),
     enabled: !!id
   });
+
+  const repair = data?.repair;
+
+  // Set default amount paid now once repair data loads
+  useEffect(() => {
+    if (repair) {
+      const remainingBal = Math.max(0, Number(repair.estimate) - Number(repair.advance));
+      setAmountPaidNow(remainingBal.toString());
+
+      // Default payment due date to 7 days from now
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      const defaultDue = d.toISOString().split('T')[0];
+      setPaymentDueDate(defaultDue);
+    }
+  }, [repair]);
 
   // Complete Delivery Mutation
   const deliverMutation = useMutation({
@@ -119,8 +137,6 @@ export default function DeliverRepair() {
       </div>
     );
   }
-
-  const repair = data?.repair;
 
   if (!repair) {
     return (
@@ -211,23 +227,6 @@ export default function DeliverRepair() {
   const clearSignature = () => {
     sigPadRef.current?.clear();
   };
-
-  const [amountPaidNow, setAmountPaidNow] = useState<string>('');
-  const [paymentDueDate, setPaymentDueDate] = useState<string>('');
-
-  // Set default amount paid now once repair data loads
-  useEffect(() => {
-    if (repair) {
-      const remainingBal = Math.max(0, Number(repair.estimate) - Number(repair.advance));
-      setAmountPaidNow(remainingBal.toString());
-
-      // Default payment due date to 7 days from now
-      const d = new Date();
-      d.setDate(d.getDate() + 7);
-      const defaultDue = d.toISOString().split('T')[0];
-      setPaymentDueDate(defaultDue);
-    }
-  }, [repair]);
 
   // Submit delivery closure
   const handleSubmit = (e: React.FormEvent) => {
@@ -392,7 +391,7 @@ export default function DeliverRepair() {
   }
 
   // Warning if status is not ready
-  if (repair.status !== 'ready') {
+  if (repair.status !== 'ready' && !isSuccess) {
     return (
       <div className="max-w-xl mx-auto py-12">
         <Card className="border-red-500/20 bg-slate-900/40">
