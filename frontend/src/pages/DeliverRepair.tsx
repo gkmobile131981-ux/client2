@@ -109,6 +109,14 @@ export default function DeliverRepair() {
     }
   }, [repair]);
 
+  // Pre-fill receiver details on selection change or when repair loads
+  useEffect(() => {
+    if (repair?.customer && receivedBy === 'customer') {
+      setReceiverName(repair.customer.name);
+      setReceiverPhone(repair.customer.phone);
+    }
+  }, [repair, receivedBy]);
+
   // Complete Delivery Mutation
   const deliverMutation = useMutation({
     mutationFn: (payload: any) => apiClient.post(`/repairs/${id}/deliver`, payload),
@@ -162,13 +170,6 @@ export default function DeliverRepair() {
     }
   };
 
-  // Pre-fill receiver details on selection change or when repair loads
-  useEffect(() => {
-    if (repair?.customer && receivedBy === 'customer') {
-      setReceiverName(repair.customer.name);
-      setReceiverPhone(repair.customer.phone);
-    }
-  }, [repair, receivedBy]);
   const startCamera = async () => {
     setCapturedPhoto(null);
     try {
