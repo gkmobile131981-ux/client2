@@ -1381,7 +1381,8 @@ export default function NewRepair() {
                 <option value="pending" className="bg-card text-foreground font-bold py-2">😊 PENDING</option>
                 <option value="repairing" className="bg-card text-foreground font-bold py-2">🔧 REPAIRING</option>
                 <option value="ready" className="bg-card text-foreground font-bold py-2">✅ READY</option>
-                {watch('status') === 'delivered' && <option value="delivered" className="bg-card text-foreground font-bold py-2">📦 DELIVERED</option>}
+                <option value="delivered" className="bg-card text-foreground font-bold py-2">📦 DELIVERED (FULLY PAID)</option>
+                <option value="delivered_pending_balance" className="bg-card text-foreground font-bold py-2">⚠️ DELIVERED (PENDING BALANCE)</option>
                 <option value="cancelled" className="bg-card text-foreground font-bold py-2">❌ CANCELLED</option>
               </select>
             </div>

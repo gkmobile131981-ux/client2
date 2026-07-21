@@ -113,7 +113,11 @@ export async function getAllRepairs(req: Request, res: Response): Promise<void> 
 
     // 3. Apply filters
     if (status && status !== 'all') {
-      query = query.eq('status', status);
+      if (status === 'balance_due' || status === 'delivered_pending_balance' || status === 'unpaid') {
+        query = query.or('status.eq.delivered_pending_balance,and(status.eq.delivered,advance.lt.estimate)');
+      } else {
+        query = query.eq('status', status);
+      }
     }
 
     if (dateStart) {
@@ -499,7 +503,7 @@ export async function updateRepairStatus(req: Request, res: Response): Promise<v
   const { id } = req.params;
 
   const statusSchema = z.object({
-    status: z.enum(['pending', 'repairing', 'ready', 'delivered', 'cancelled']),
+    status: z.enum(['pending', 'repairing', 'ready', 'delivered', 'delivered_pending_balance', 'cancelled']),
     notes: z.string().optional().nullable()
   });
 
@@ -572,9 +576,6 @@ export async function updateRepairStatus(req: Request, res: Response): Promise<v
       })();
     }
 
-    // History is auto logged by db trigger `tr_log_repair_status_change`
-    // However, if we want to log the specific notes parameter supplied by status change, 
-    // the trigger captures the NEW.notes field automatically! So we are good.
     res.json({ message: 'Repair status updated successfully', repair });
   } catch (err) {
     if (err instanceof z.ZodError) {
@@ -754,20 +755,19 @@ export async function deleteRepair(req: Request, res: Response): Promise<void> {
   }
 
   if (user.role !== 'owner') {
-    res.status(403).json({ error: 'Forbidden: Only owners are permitted to cancel tickets' });
+    res.status(403).json({ error: 'Forbidden: Only owners are permitted to delete tickets' });
     return;
   }
 
   try {
-    // Soft cancel: sets status = 'cancelled'
+    // Delete linked child records first so max(job_number) correctly recalculates to the last token number
+    await supabaseAdmin.from('repair_services').delete().eq('repair_id', id);
+    await supabaseAdmin.from('repair_history').delete().eq('repair_id', id);
+
+    // Hard delete repair row
     const { data: repair, error } = await supabaseAdmin
       .from('repairs')
-      .update({
-        status: 'cancelled',
-        notes: 'Ticket cancelled by shop owner',
-        updated_by: user.id,
-        updated_at: new Date().toISOString()
-      })
+      .delete()
       .eq('id', id)
       .eq('shop_id', user.shop_id)
       .select()
@@ -778,9 +778,9 @@ export async function deleteRepair(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    res.json({ message: 'Repair order cancelled successfully', repair });
+    res.json({ message: 'Repair order deleted permanently', repair });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to cancel repair order' });
+    res.status(500).json({ error: 'Failed to delete repair order' });
   }
 }
 

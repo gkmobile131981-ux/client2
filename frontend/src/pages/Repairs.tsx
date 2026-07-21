@@ -29,7 +29,7 @@ interface RepairListItem {
   estimate: number;
   advance: number;
   balance: number;
-  status: 'pending' | 'repairing' | 'ready' | 'delivered' | 'cancelled';
+  status: 'pending' | 'repairing' | 'ready' | 'delivered' | 'delivered_pending_balance' | 'cancelled';
   delivery_date: string | null;
   created_at: string;
   device?: {
@@ -82,17 +82,17 @@ export default function Repairs() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiClient.delete(`/repairs/${id}`),
     onSuccess: () => {
-      toast.success('Repair order cancelled successfully');
+      toast.success('Repair order permanently deleted. Next booking token sequence updated.');
       queryClient.invalidateQueries({ queryKey: ['repairs-list'] });
     },
     onError: (err: any) => {
-      toast.error(err.message || 'Failed to cancel repair order');
+      toast.error(err.message || 'Failed to delete repair order');
     }
   });
 
   const handleDelete = (e: React.MouseEvent, id: string, jobNumber: string) => {
     e.stopPropagation();
-    if (window.confirm(`Are you sure you want to cancel repair order ${jobNumber}?`)) {
+    if (window.confirm(`Are you sure you want to permanently delete repair order ${jobNumber}? This will remove the record and reuse token sequence for future creations.`)) {
       deleteMutation.mutate(id);
     }
   };
@@ -162,15 +162,17 @@ export default function Repairs() {
     repairing: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
     ready: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
     delivered: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+    delivered_pending_balance: 'bg-orange-500/20 text-orange-400 border-orange-500/40 font-bold',
     cancelled: 'bg-red-500/10 text-red-500 border-red-500/20'
   };
 
-  const statusDotColors: Record<string, string> = {
-    pending: 'bg-amber-500',
-    repairing: 'bg-blue-500',
-    ready: 'bg-emerald-500',
-    delivered: 'bg-slate-400',
-    cancelled: 'bg-red-500'
+  const statusLabels: Record<string, string> = {
+    pending: 'ORDERED',
+    repairing: 'REPAIRING',
+    ready: 'REPAIRED',
+    delivered: 'DELIVERED',
+    delivered_pending_balance: 'DELIVERED (UNPAID)',
+    cancelled: 'CANCELLED'
   };
 
   return (
@@ -245,6 +247,7 @@ export default function Repairs() {
           { key: 'repairing', label: 'Repairing' },
           { key: 'ready', label: 'Repaired' },
           { key: 'delivered', label: 'Delivered' },
+          { key: 'balance_due', label: 'Balance Due ⚠️' },
           { key: 'cancelled', label: 'Cancelled' }
         ].map((tab) => {
           const isActive = status === tab.key;
@@ -279,62 +282,113 @@ export default function Repairs() {
         </div>
       ) : data?.repairs && data.repairs.length > 0 ? (
         <div className="space-y-3">
-          {data.repairs.map((r) => (
-            <Card
-              key={r.id}
-              onClick={() => navigate(`/repairs/${r.id}`)}
-              className="relative bg-card/90 border border-border/70 rounded-xl hover:border-primary/45 transition-colors cursor-pointer"
-            >
-              <div className="flex items-center justify-between gap-3 p-3 sm:p-4">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-12 h-12 rounded-lg border border-border/60 bg-secondary/35 flex-shrink-0 overflow-hidden flex items-center justify-center">
-                    {r.device?.front_photo_url ? (
-                      <img src={r.device.front_photo_url} alt="device front" className="w-full h-full object-cover" />
-                    ) : r.device?.back_photo_url ? (
-                      <img src={r.device.back_photo_url} alt="device back" className="w-full h-full object-cover" />
-                    ) : (
-                      <Wrench className="h-5 w-5 text-muted-foreground/60" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-sm text-foreground truncate">{r.device?.customer?.name || 'Walk-In'}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${statusColors[r.status] || 'bg-secondary/20 text-muted-foreground border-border'}`}>
-                        {r.status}
-                      </span>
+          {data.repairs.map((r) => {
+            const hasPendingBalance = Number(r.balance ?? 0) > 0;
+            return (
+              <Card
+                key={r.id}
+                onClick={() => navigate(`/repairs/${r.id}`)}
+                className={`relative bg-card/90 border rounded-xl hover:border-primary/45 transition-all cursor-pointer ${
+                  hasPendingBalance ? 'border-orange-500/40 bg-orange-950/10' : 'border-border/70'
+                }`}
+              >
+                <div className="flex flex-col gap-2 p-3 sm:p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-12 h-12 rounded-lg border border-border/60 bg-secondary/35 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                        {r.device?.front_photo_url ? (
+                          <img src={r.device.front_photo_url} alt="device front" className="w-full h-full object-cover" />
+                        ) : r.device?.back_photo_url ? (
+                          <img src={r.device.back_photo_url} alt="device back" className="w-full h-full object-cover" />
+                        ) : (
+                          <Wrench className="h-5 w-5 text-muted-foreground/60" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm text-foreground truncate">{r.device?.customer?.name || 'Walk-In'}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${statusColors[r.status] || 'bg-secondary/20 text-muted-foreground border-border'}`}>
+                            {statusLabels[r.status] || r.status}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-primary font-bold">{r.job_number}</span>
+                          <span>•</span>
+                          <span>{r.device ? `${r.device.brand} ${r.device.model}` : 'Unknown Device'}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate mt-0.5">
+                          {r.device?.problem || 'No problem description'}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-semibold text-white">
+                          <span className="rounded-full bg-slate-800/70 px-2 py-1">Advance ₹{Number(r.advance ?? 0).toFixed(2)}</span>
+                          <span className={`rounded-full px-2 py-1 ${hasPendingBalance ? 'bg-orange-500/20 text-orange-400 font-bold border border-orange-500/40' : 'bg-slate-800/70'}`}>
+                            Balance ₹{Number(r.balance ?? 0).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-primary">{r.job_number}</span>
-                      <span>•</span>
-                      <span>{r.device ? `${r.device.brand} ${r.device.model}` : 'Unknown Device'}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground truncate mt-0.5">
-                      {r.device?.problem || 'No problem description'}
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-semibold text-white">
-                      <span className="rounded-full bg-slate-800/70 px-2 py-1">Advance ₹{Number(r.advance ?? 0).toFixed(2)}</span>
-                      <span className="rounded-full bg-slate-800/70 px-2 py-1">Balance ₹{Number(r.balance ?? 0).toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <div className="text-right">
-                    <div className="text-xs font-semibold text-foreground">₹{Number(r.estimate).toFixed(2)}</div>
-                    <div className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-right">
+                        <div className="text-xs font-semibold text-foreground">₹{Number(r.estimate).toFixed(2)}</div>
+                        <div className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDelete(e, r.id, r.job_number)}
+                        className="p-2 rounded-lg text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                        aria-label={`Delete ${r.job_number}`}
+                        title="Delete repair order"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => handleDelete(e, r.id, r.job_number)}
-                    className="p-2 rounded-lg text-red-400 hover:bg-red-500/10"
-                    aria-label={`Delete ${r.job_number}`}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+
+                  {/* Pending Balance Contact Follow-Up Bar */}
+                  {hasPendingBalance && (
+                    <div className="mt-1 pt-2 border-t border-border/40 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-[11px] font-extrabold text-orange-400">
+                        <span>⚠️ Outstanding Balance:</span>
+                        <span className="font-mono text-white">₹{Number(r.balance).toFixed(2)}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {r.device?.customer?.phone && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const cleanPhone = (r.device?.customer?.phone || '').replace(/\D/g, '');
+                              const text = encodeURIComponent(
+                                `Hello ${r.device?.customer?.name || 'Customer'}, your repair order ${r.job_number} for ${r.device?.brand || ''} ${r.device?.model || ''} has an unpaid balance of ₹${Number(r.balance).toFixed(2)}. Please remit the payment at your earliest convenience. Thank you, GK Mobile Service.`
+                              );
+                              window.open(`https://wa.me/91${cleanPhone}?text=${text}`, '_blank');
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600/25 hover:bg-emerald-600/40 text-emerald-300 border border-emerald-500/40 text-[10px] font-extrabold uppercase flex items-center gap-1 transition-all shadow-sm"
+                            title="Send WhatsApp Payment Reminder"
+                          >
+                            <span>💬 WhatsApp Reminder</span>
+                          </button>
+                        )}
+                        {r.device?.customer?.phone && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleCall(e, r.device?.customer?.phone || '')}
+                            className="px-2 py-1 rounded-lg bg-blue-600/25 hover:bg-blue-600/40 text-blue-300 border border-blue-500/40 text-[10px] font-extrabold uppercase flex items-center gap-1 transition-all shadow-sm"
+                            title="Call Customer"
+                          >
+                            <Phone className="h-3 w-3" />
+                            <span>Call</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
 
           {/* Pagination */}
           {data.pagination.pages > 1 && (
