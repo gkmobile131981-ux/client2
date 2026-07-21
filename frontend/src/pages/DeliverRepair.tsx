@@ -233,7 +233,7 @@ export default function DeliverRepair() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (repair.status !== 'ready' && repair.status !== 'delivered_pending_balance') {
+    if (repair.status !== 'ready') {
       toast.error('Only repairs marked as "Ready" can be delivered.');
       return;
     }

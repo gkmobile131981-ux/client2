@@ -877,7 +877,7 @@ export async function deliverRepair(req: Request, res: Response): Promise<void> 
       return;
     }
 
-    if (existing.status !== 'ready' && existing.status !== 'delivered_pending_balance') {
+    if (existing.status !== 'ready') {
       res.status(400).json({ error: 'Repair must be in "ready" state before delivery' });
       return;
     }
@@ -936,7 +936,6 @@ export async function deliverRepair(req: Request, res: Response): Promise<void> 
 
     const newTotalPaid = Math.min(estimate, existingAdvance + Math.max(0, paidToday));
     const isFullyPaid = newTotalPaid >= estimate;
-    const finalStatus = isFullyPaid ? 'delivered' : 'delivered_pending_balance';
 
     let mergedNotes = validated.notes || existing.notes || '';
     if (!isFullyPaid && validated.paymentDueDate) {
@@ -948,7 +947,7 @@ export async function deliverRepair(req: Request, res: Response): Promise<void> 
     const { data: dbRepair, error: updateError } = await supabaseAdmin
       .from('repairs')
       .update({
-        status: finalStatus,
+        status: 'delivered',
         advance: newTotalPaid,
         receiver_name: validated.receiverName,
         receiver_phone: validated.receiverPhone,
