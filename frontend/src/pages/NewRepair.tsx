@@ -24,7 +24,8 @@ import {
   Smartphone,
   MessageSquare,
   Eye,
-  EyeOff
+  EyeOff,
+  Package
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -430,6 +431,36 @@ export default function NewRepair() {
   const [repairDateDisplay, setRepairDateDisplay] = useState('');
   const [repairTimeDisplay, setRepairTimeDisplay] = useState('');
 
+  // Quick Accessories Received State
+  const QUICK_ACCESSORIES = [
+    'SIM card',
+    'Memory card',
+    'Charger',
+    'Cover',
+    'Battery',
+    'Earphones',
+    'Data cable',
+    'Adapter',
+    'Box',
+    'Other'
+  ];
+  const [selectedAccessories, setSelectedAccessories] = useState<string[]>([]);
+  const [accessoryDetails, setAccessoryDetails] = useState<string>('');
+
+  const toggleAccessoryChip = (item: string) => {
+    setSelectedAccessories(prev => {
+      const exists = prev.includes(item);
+      const next = exists ? prev.filter(i => i !== item) : [...prev, item];
+
+      // Sync legacy boolean fields
+      setValue('accessoryAdapter', next.includes('Adapter') || next.includes('Charger'));
+      setValue('accessoryKeyboardMouse', next.includes('SIM card') || next.includes('Memory card'));
+      setValue('accessoryOther', next.length > 0 || accessoryDetails.trim().length > 0);
+
+      return next;
+    });
+  };
+
   // Pattern Lock State
   const [patternNodes, setPatternNodes] = useState<number[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -801,6 +832,17 @@ export default function NewRepair() {
       setValue('staffId', r.staff_id || '');
       setValue('notes', r.notes || '');
 
+      if (r.notes && r.notes.includes('[Accessories Received:')) {
+        const match = r.notes.match(/\[Accessories Received:\s*(.*?)\]/);
+        if (match && match[1]) {
+          const items = match[1].split(',').map((s: string) => s.trim());
+          const knownChips = items.filter((i: string) => QUICK_ACCESSORIES.includes(i));
+          const customText = items.filter((i: string) => !QUICK_ACCESSORIES.includes(i)).join(', ');
+          setSelectedAccessories(knownChips);
+          setAccessoryDetails(customText);
+        }
+      }
+
       if (r.services) {
         setSelectedServices(r.services);
       }
@@ -1095,9 +1137,21 @@ export default function NewRepair() {
     if (values.lockCode) formData.append('lockCode', values.lockCode);
     if (values.patternLock) formData.append('patternLock', values.patternLock);
     
-    formData.append('accessoryAdapter', String(values.accessoryAdapter));
-    formData.append('accessoryKeyboardMouse', String(values.accessoryKeyboardMouse));
-    formData.append('accessoryOther', String(values.accessoryOther));
+    // Combine accessory chips + custom description
+    const accParts = [...selectedAccessories];
+    if (accessoryDetails.trim() && !accParts.includes(accessoryDetails.trim())) {
+      accParts.push(accessoryDetails.trim());
+    }
+    const accSummary = accParts.join(', ');
+
+    const hasAdapter = selectedAccessories.includes('Adapter') || selectedAccessories.includes('Charger');
+    const hasKeyboardSim = selectedAccessories.includes('SIM card') || selectedAccessories.includes('Memory card');
+    const hasOther = accParts.length > 0;
+
+    formData.append('accessoryAdapter', String(hasAdapter));
+    formData.append('accessoryKeyboardMouse', String(hasKeyboardSim));
+    formData.append('accessoryOther', String(hasOther));
+
     if (values.serialNumber) formData.append('serialNumber', values.serialNumber);
     if (values.imei) formData.append('imei', values.imei);
     if (values.warranty) formData.append('warranty', values.warranty);
@@ -1112,7 +1166,17 @@ export default function NewRepair() {
     const finalStaffId = authRole === 'owner' ? values.staffId : authUser?.id;
     if (finalStaffId) formData.append('staffId', finalStaffId);
 
-    if (values.notes) formData.append('notes', values.notes);
+    // Combine accessory summary into notes
+    let userNotes = values.notes || '';
+    if (accSummary) {
+      userNotes = userNotes.replace(/\[Accessories Received:.*?\]/g, '').trim();
+      const finalNotes = userNotes 
+        ? `${userNotes} | [Accessories Received: ${accSummary}]`
+        : `[Accessories Received: ${accSummary}]`;
+      formData.append('notes', finalNotes);
+    } else if (userNotes) {
+      formData.append('notes', userNotes);
+    }
     formData.append('sendWhatsapp', String(values.sendWhatsapp));
     formData.append('sendEmail', String(values.sendEmail));
     if (nextJobNumber) {
@@ -2041,95 +2105,47 @@ export default function NewRepair() {
           </div>
         </div>
 
-        {/* ACCESSORIES YES / NO RADIOS */}
-        <div className="p-4 bg-secondary/15 rounded-2xl border border-border/60 space-y-4">
-          <label className="text-xs font-bold text-primary uppercase tracking-wider block">Accessories</label>
-          
-          {/* Power Adapter */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-foreground/95 font-bold">Power Adapter</span>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-1.5 cursor-pointer text-xs text-foreground font-bold">
-                <input
-                  type="radio"
-                  name="accessoryAdapter"
-                  value="true"
-                  checked={watch('accessoryAdapter') === true}
-                  onChange={() => setValue('accessoryAdapter', true)}
-                  className="text-primary focus:ring-primary bg-secondary h-4 w-4"
-                />
-                <span>Yes</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer text-xs text-foreground font-bold">
-                <input
-                  type="radio"
-                  name="accessoryAdapter"
-                  value="false"
-                  checked={watch('accessoryAdapter') === false}
-                  onChange={() => setValue('accessoryAdapter', false)}
-                  className="text-primary focus:ring-primary bg-secondary h-4 w-4"
-                />
-                <span>No</span>
-              </label>
+        {/* ACCESSORY RECEIVED */}
+        <div className="p-4 sm:p-5 bg-secondary/15 rounded-2xl border border-border/60 space-y-4">
+          <div className="flex items-center gap-2">
+            <Package className="h-5 w-5 text-primary" />
+            <h3 className="text-xs sm:text-sm font-extrabold text-foreground uppercase tracking-wider">ACCESSORY RECEIVED</h3>
+          </div>
+
+          {/* Quick Select Chips */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold text-muted-foreground block">Quick select</label>
+            <div className="flex flex-wrap gap-2">
+              {QUICK_ACCESSORIES.map((item) => {
+                const isSelected = selectedAccessories.includes(item);
+                return (
+                  <button
+                    type="button"
+                    key={item}
+                    onClick={() => toggleAccessoryChip(item)}
+                    className={`px-4 py-2 text-xs font-bold rounded-full transition-all duration-150 cursor-pointer flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-primary text-primary-foreground border border-primary shadow-md scale-105 font-extrabold'
+                        : 'bg-secondary/40 border border-border text-foreground/80 hover:bg-secondary/70 hover:text-foreground'
+                    }`}
+                  >
+                    {isSelected ? '✓ ' : ''}{item}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Keyboard / Mouse */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-foreground/95 font-bold">KeyBoard / Mouse</span>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-1.5 cursor-pointer text-xs text-foreground font-bold">
-                <input
-                  type="radio"
-                  name="accessoryKeyboardMouse"
-                  value="true"
-                  checked={watch('accessoryKeyboardMouse') === true}
-                  onChange={() => setValue('accessoryKeyboardMouse', true)}
-                  className="text-primary focus:ring-primary bg-secondary h-4 w-4"
-                />
-                <span>Yes</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer text-xs text-foreground font-bold">
-                <input
-                  type="radio"
-                  name="accessoryKeyboardMouse"
-                  value="false"
-                  checked={watch('accessoryKeyboardMouse') === false}
-                  onChange={() => setValue('accessoryKeyboardMouse', false)}
-                  className="text-primary focus:ring-primary bg-secondary h-4 w-4"
-                />
-                <span>No</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Other Device */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-foreground/95 font-bold">Other Device</span>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-1.5 cursor-pointer text-xs text-foreground font-bold">
-                <input
-                  type="radio"
-                  name="accessoryOther"
-                  value="true"
-                  checked={watch('accessoryOther') === true}
-                  onChange={() => setValue('accessoryOther', true)}
-                  className="text-primary focus:ring-primary bg-secondary h-4 w-4"
-                />
-                <span>Yes</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer text-xs text-foreground font-bold">
-                <input
-                  type="radio"
-                  name="accessoryOther"
-                  value="false"
-                  checked={watch('accessoryOther') === false}
-                  onChange={() => setValue('accessoryOther', false)}
-                  className="text-primary focus:ring-primary bg-secondary h-4 w-4"
-                />
-                <span>No</span>
-              </label>
-            </div>
+          {/* Description Textarea */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-muted-foreground block">Description</label>
+            <textarea
+              rows={2}
+              placeholder="Add details about received accessories..."
+              value={accessoryDetails}
+              onChange={(e) => setAccessoryDetails(e.target.value)}
+              className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold placeholder:text-muted-foreground/60 resize-none"
+            />
           </div>
         </div>
 
