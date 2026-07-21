@@ -9,6 +9,7 @@ import reportsRoutes from './routes/reports.routes';
 import rateCardsRoutes from './routes/ratecards.routes';
 import superadminRoutes from './routes/superadmin.routes';
 import carouselRoutes from './routes/carousel.routes';
+import subscriptionRoutes from './routes/subscriptions.routes';
 import { sanitizeMiddleware } from './middleware/sanitize';
 import { supabaseAdmin } from './utils/supabase';
 
@@ -80,6 +81,7 @@ app.use('/api', reportsRoutes);
 app.use('/api/ratecards', rateCardsRoutes);
 app.use('/api/superadmin', superadminRoutes);
 app.use('/api/carousel', carouselRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 // 404 Route handler
 app.use((_req: Request, res: Response) => {

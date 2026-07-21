@@ -22,6 +22,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import OwnerIdCard from './pages/OwnerIdCard';
+import MonthlySubscriptions from './pages/MonthlySubscriptions';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,6 +53,7 @@ export default function App() {
                 {/* Customer Routes */}
                 <Route path="/customers" element={<CustomerList />} />
                 <Route path="/customers/:id" element={<CustomerProfile />} />
+                <Route path="/subscriptions" element={<MonthlySubscriptions />} />
                 
                 {/* Repair Routes */}
                 <Route path="/repairs" element={<Repairs />} />

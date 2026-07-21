@@ -13,7 +13,8 @@ import {
   TrendingUp,
   ClipboardList,
   Contact,
-  BookOpen
+  BookOpen,
+  CalendarCheck
 } from 'lucide-react';
  
 interface SidebarProps {
@@ -34,6 +35,7 @@ const navigation: NavItem[] = [
   { name: 'Dashboard', to: '/', icon: LayoutDashboard, end: true },
   { name: 'Repair Jobs', to: '/repairs', icon: Wrench },
   { name: 'Customers', to: '/customers', icon: Users },
+  { name: 'Monthly Subscriptions', to: '/subscriptions', icon: CalendarCheck },
   { name: 'Reports', to: '/reports', icon: TrendingUp, ownerOnly: true },
   { name: 'Repair Price List', to: '/price-list', icon: BookOpen },
   { name: 'Create Repair Price', to: '/settings/create-price', icon: ClipboardList, ownerOnly: true },
