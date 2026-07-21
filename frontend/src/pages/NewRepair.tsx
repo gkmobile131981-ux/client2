@@ -714,7 +714,9 @@ export default function NewRepair() {
       setNewCustAddr(r.customer?.address || '');
 
       setSelectedBrand(r.device?.brand || '');
+      setBrandSearchQuery(r.device?.brand || '');
       setSelectedModel(r.device?.model || '');
+      setModelSearchQuery(r.device?.model || '');
       setValue('brand', r.device?.brand || '', { shouldValidate: true });
       setValue('model', r.device?.model || '', { shouldValidate: true });
       setValue('problem', r.device?.problem || '', { shouldValidate: true });
@@ -874,38 +876,18 @@ export default function NewRepair() {
   };
 
   // Brand & Model Selection Handlers
-  const handleBrandChange = (brand: string) => {
-    setSelectedBrand(brand);
-    setSelectedModel('');
-    setCustomBrand('');
-    setCustomModel('');
-    
-    if (brand === 'Other') {
-      setValue('brand', '', { shouldValidate: true });
-      setValue('model', '', { shouldValidate: true });
-    } else {
-      setValue('brand', brand, { shouldValidate: true });
-      setValue('model', '', { shouldValidate: true });
-    }
+  const handleSelectBrand = (brandName: string) => {
+    setSelectedBrand(brandName);
+    setBrandSearchQuery(brandName);
+    setValue('brand', brandName, { shouldValidate: true });
+    setBrandDropdownOpen(false);
   };
 
-  const handleModelChange = (model: string) => {
-    setSelectedModel(model);
-    if (model === 'Other') {
-      setValue('model', '', { shouldValidate: true });
-    } else {
-      setValue('model', model, { shouldValidate: true });
-    }
-  };
-
-  const handleCustomBrandChange = (val: string) => {
-    setCustomBrand(val);
-    setValue('brand', val, { shouldValidate: true });
-  };
-
-  const handleCustomModelChange = (val: string) => {
-    setCustomModel(val);
-    setValue('model', val, { shouldValidate: true });
+  const handleSelectModel = (modelName: string) => {
+    setSelectedModel(modelName);
+    setModelSearchQuery(modelName);
+    setValue('model', modelName, { shouldValidate: true });
+    setModelDropdownOpen(false);
   };
 
 
@@ -1036,9 +1018,10 @@ export default function NewRepair() {
     }
 
     const formData = new FormData();
-    formData.append('customerId', finalCustomerId || '');
-    formData.append('brand', values.brand);
-    formData.append('model', values.model);
+    const finalBrand = values.brand || brandSearchQuery.trim();
+    const finalModel = values.model || modelSearchQuery.trim();
+    formData.append('brand', finalBrand);
+    formData.append('model', finalModel);
     formData.append('problem', values.problem);
     formData.append('quality', values.quality);
     if (values.status) formData.append('status', values.status);
@@ -1556,19 +1539,14 @@ export default function NewRepair() {
                     <div className="relative">
                       <input
                         type="text"
-                        placeholder="Search or Select Brand..."
+                        placeholder="Search or Type Brand..."
                         value={brandSearchQuery}
                         onChange={(e) => {
-                          setBrandSearchQuery(e.target.value);
+                          const val = e.target.value;
+                          setBrandSearchQuery(val);
+                          setValue('brand', val, { shouldValidate: true });
+                          setSelectedBrand(val);
                           setBrandDropdownOpen(true);
-                          const typed = e.target.value;
-                          const exactMatch = brandOptions.find(b => b.toLowerCase() === typed.toLowerCase());
-                          if (exactMatch) {
-                            handleBrandChange(exactMatch);
-                          } else {
-                            handleBrandChange('Other');
-                            handleCustomBrandChange(typed);
-                          }
                         }}
                         onFocus={() => {
                           setBrandDropdownOpen(true);
@@ -1580,35 +1558,28 @@ export default function NewRepair() {
                         <Search className="h-4 w-4" />
                       </div>
                     </div>
-                    {brandDropdownOpen && (
-                      <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-neutral-900 border border-border rounded-xl shadow-lg scrollbar-thin">
-                        <div 
-                          onClick={() => {
-                            handleBrandChange('Other');
-                            setBrandSearchQuery('Other');
-                            setBrandDropdownOpen(false);
-                          }}
-                          className="px-4 py-2 hover:bg-primary/25 hover:text-white cursor-pointer text-sm font-semibold text-white/90 border-b border-border/20"
-                        >
-                          Other (Custom Brand)
-                        </div>
-                        {filteredBrands.length > 0 ? (
+                    {brandDropdownOpen && (brandSearchQuery.trim().length >= 1 || brandOptions.length > 0) && (
+                      <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-neutral-900 border border-border rounded-xl shadow-2xl divide-y divide-border/20 scrollbar-thin">
+                        {filteredBrands.length > 0 && (
                           filteredBrands.map((b) => (
                             <div
                               key={b}
-                              onClick={() => {
-                                handleBrandChange(b);
-                                setBrandSearchQuery(b);
-                                setBrandDropdownOpen(false);
-                              }}
-                              className="px-4 py-2 hover:bg-primary/25 hover:text-white cursor-pointer text-sm font-semibold text-white/90"
+                              onClick={() => handleSelectBrand(b)}
+                              className="px-4 py-2.5 hover:bg-primary/25 hover:text-white cursor-pointer text-xs font-semibold text-white/90 flex items-center justify-between"
                             >
-                              {b}
+                              <span>📱 {b}</span>
+                              <span className="text-[10px] text-primary uppercase font-bold">SELECT</span>
                             </div>
                           ))
-                        ) : (
-                          <div className="px-4 py-2 text-xs text-muted-foreground">
-                            No matching brand. Type to specify custom brand.
+                        )}
+                        {/* Inline Create New Brand Option if not matching existing brand */}
+                        {brandSearchQuery.trim() && !brandOptions.some(b => b.toLowerCase() === brandSearchQuery.trim().toLowerCase()) && (
+                          <div
+                            onClick={() => handleSelectBrand(brandSearchQuery.trim())}
+                            className="px-4 py-2.5 bg-primary/10 hover:bg-primary/25 cursor-pointer text-xs font-extrabold text-primary flex items-center justify-between border-t border-primary/30"
+                          >
+                            <span>➕ Use brand: "{brandSearchQuery.trim()}"</span>
+                            <span className="text-[10px] uppercase tracking-wider font-black">ADD</span>
                           </div>
                         )}
                       </div>
@@ -1618,110 +1589,62 @@ export default function NewRepair() {
                     )}
                   </div>
 
-                  {/* Model Select (only if pre-defined brand is selected) */}
-                  {selectedBrand && selectedBrand !== 'Other' && (
-                    <div className="space-y-1 relative" id="model-select-container">
-                      <label className="text-xs font-semibold text-muted-foreground">Device Model</label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="Search or Select Model..."
-                          value={modelSearchQuery}
-                          onChange={(e) => {
-                            setModelSearchQuery(e.target.value);
-                            setModelDropdownOpen(true);
-                            const typed = e.target.value;
-                            const exactMatch = availableModels.find(m => m.toLowerCase() === typed.toLowerCase());
-                            if (exactMatch) {
-                              handleModelChange(exactMatch);
-                            } else {
-                              handleModelChange('Other');
-                              handleCustomModelChange(typed);
-                            }
-                          }}
-                          onFocus={() => {
-                            setModelDropdownOpen(true);
-                            setBrandDropdownOpen(false);
-                          }}
-                          className="w-full bg-secondary/35 border border-border rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-primary font-semibold text-foreground"
-                        />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
-                          <Search className="h-4 w-4" />
-                        </div>
+                  {/* Model Select */}
+                  <div className="space-y-1 relative" id="model-select-container">
+                    <label className="text-xs font-semibold text-muted-foreground">Device Model</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search or Type Model..."
+                        value={modelSearchQuery}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setModelSearchQuery(val);
+                          setValue('model', val, { shouldValidate: true });
+                          setSelectedModel(val);
+                          setModelDropdownOpen(true);
+                        }}
+                        onFocus={() => {
+                          setModelDropdownOpen(true);
+                          setBrandDropdownOpen(false);
+                        }}
+                        className="w-full bg-secondary/35 border border-border rounded-xl pl-4 pr-10 py-3 text-sm focus:outline-none focus:border-primary font-semibold text-foreground"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+                        <Search className="h-4 w-4" />
                       </div>
-                      {modelDropdownOpen && (
-                        <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-neutral-900 border border-border rounded-xl shadow-lg scrollbar-thin">
-                          <div 
-                            onClick={() => {
-                              handleModelChange('Other');
-                              setModelSearchQuery('Other');
-                              setModelDropdownOpen(false);
-                            }}
-                            className="px-4 py-2 hover:bg-primary/25 hover:text-white cursor-pointer text-sm font-semibold text-white/90 border-b border-border/20"
-                          >
-                            Other (Custom Model)
-                          </div>
-                          {filteredModels.length > 0 ? (
-                            filteredModels.map((m) => (
-                              <div
-                                key={m}
-                                onClick={() => {
-                                  handleModelChange(m);
-                                  setModelSearchQuery(m);
-                                  setModelDropdownOpen(false);
-                                }}
-                                className="px-4 py-2 hover:bg-primary/25 hover:text-white cursor-pointer text-sm font-semibold text-white/90"
-                              >
-                                {m}
-                              </div>
-                            ))
-                          ) : (
-                            <div className="px-4 py-2 text-xs text-muted-foreground">
-                              No matching model. Type to specify custom model.
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {errors.model && (
-                        <p className="text-[11px] text-red-500 mt-1 font-semibold">{errors.model.message}</p>
-                      )}
                     </div>
-                  )}
-                </div>
-
-                {/* Custom Brand Input (if Brand is "Other") */}
-                {selectedBrand === 'Other' && (
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">Enter Custom Brand</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. MOTOROLA"
-                      value={customBrand}
-                      onChange={(e) => handleCustomBrandChange(e.target.value)}
-                      className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold uppercase"
-                    />
-                    {errors.brand && (
-                      <p className="text-[11px] text-red-500 mt-1 font-semibold">{errors.brand.message}</p>
+                    {modelDropdownOpen && (modelSearchQuery.trim().length >= 1 || availableModels.length > 0) && (
+                      <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-neutral-900 border border-border rounded-xl shadow-2xl divide-y divide-border/20 scrollbar-thin">
+                        {filteredModels.length > 0 && (
+                          filteredModels.map((m) => (
+                            <div
+                              key={m}
+                              onClick={() => handleSelectModel(m)}
+                              className="px-4 py-2.5 hover:bg-primary/25 hover:text-white cursor-pointer text-xs font-semibold text-white/90 flex items-center justify-between"
+                            >
+                              <span>🔧 {m}</span>
+                              <span className="text-[10px] text-primary uppercase font-bold">SELECT</span>
+                            </div>
+                          ))
+                        )}
+                        {/* Inline Create New Model Option if not matching existing model */}
+                        {modelSearchQuery.trim() && !availableModels.some(m => m.toLowerCase() === modelSearchQuery.trim().toLowerCase()) && (
+                          <div
+                            onClick={() => handleSelectModel(modelSearchQuery.trim())}
+                            className="px-4 py-2.5 bg-primary/10 hover:bg-primary/25 cursor-pointer text-xs font-extrabold text-primary flex items-center justify-between border-t border-primary/30"
+                          >
+                            <span>➕ Use model: "{modelSearchQuery.trim()}"</span>
+                            <span className="text-[10px] uppercase tracking-wider font-black">ADD</span>
+                          </div>
+                        )}
+                      </div>
                     )}
-                  </div>
-                )}
-
-                {/* Custom Model Input (if Brand is "Other" or Model is "Other") */}
-                {(selectedBrand === 'Other' || selectedModel === 'Other') && (
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">Enter Custom Model</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. MOTO G54"
-                      value={customModel}
-                      onChange={(e) => handleCustomModelChange(e.target.value)}
-                      className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold uppercase"
-                    />
                     {errors.model && (
                       <p className="text-[11px] text-red-500 mt-1 font-semibold">{errors.model.message}</p>
                     )}
                   </div>
-                )}
+                </div>
 
                 <input type="hidden" {...register('brand')} />
                 <input type="hidden" {...register('model')} />
