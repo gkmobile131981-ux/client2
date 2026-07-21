@@ -14,11 +14,11 @@ const createRepairSchema = z.object({
   brand: z.string().min(1, 'Brand is required'),
   model: z.string().min(1, 'Model is required'),
   imei: z.string().optional().nullable(),
-  problem: z.string().min(5, 'Problem description must be at least 5 characters'),
-  quality: z.enum(['good', 'fair', 'poor', 'damaged']),
+  problem: z.string().min(1, 'Problem description is required'),
+  quality: z.enum(['good', 'fair', 'poor', 'damaged']).optional().default('good'),
   physicalDamage: z.string().optional().nullable(),
-  estimate: z.number().nonnegative('Estimate must be positive'),
-  advance: z.number().nonnegative('Advance must be positive'),
+  estimate: z.number().nonnegative('Estimate must be positive').optional().default(0),
+  advance: z.number().nonnegative('Advance must be positive').optional().default(0),
   deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Delivery date must be YYYY-MM-DD').optional().nullable(),
   staffId: z.string().uuid('Invalid Staff ID').optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -39,9 +39,6 @@ const createRepairSchema = z.object({
   expense: z.number().optional().default(0),
   kycDetails: z.string().optional().nullable(),
   jobNumber: z.string().optional().nullable()
-}).refine((data) => data.advance <= data.estimate, {
-  message: 'Advance cannot exceed estimate amount',
-  path: ['advance']
 });
 
 const updateRepairSchema = z.object({
@@ -288,16 +285,20 @@ export async function createRepair(req: Request, res: Response): Promise<void> {
 
   try {
     // 1. Parse manual fields because they are sent via multipart/form-data as strings
+    const rawEstimate = parseFloat(req.body.estimate || '0');
+    const rawAdvance = parseFloat(req.body.advance || '0');
+    const finalEstimate = Math.max(rawEstimate, rawAdvance);
+
     const rawBody = {
       customerId: req.body.customerId,
-      brand: req.body.brand,
-      model: req.body.model,
-      imei: req.body.imei,
-      problem: req.body.problem,
-      quality: req.body.quality,
-      physicalDamage: req.body.physicalDamage,
-      estimate: parseFloat(req.body.estimate || '0'),
-      advance: parseFloat(req.body.advance || '0'),
+      brand: req.body.brand || '',
+      model: req.body.model || '',
+      imei: req.body.imei || null,
+      problem: (req.body.problem && req.body.problem.trim()) ? req.body.problem.trim() : 'REPAIR DIAGNOSTICS',
+      quality: req.body.quality || 'good',
+      physicalDamage: req.body.physicalDamage || null,
+      estimate: finalEstimate,
+      advance: rawAdvance,
       deliveryDate: req.body.deliveryDate || null,
       staffId: req.body.staffId || null,
       notes: req.body.notes || null,

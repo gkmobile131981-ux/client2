@@ -1092,7 +1092,12 @@ export default function NewRepair() {
       navigate(`/repairs/${data.repair.id}`);
     },
     onError: (err: any) => {
-      toast.error(err.message || 'Failed to submit repair order ticket.');
+      let msg = err.message || 'Failed to submit repair order ticket.';
+      if (err.details && Array.isArray(err.details)) {
+        const detailMsgs = err.details.map((d: any) => `${d.path.join('.')}: ${d.message}`).join(', ');
+        msg = `Validation failed: ${detailMsgs}`;
+      }
+      toast.error(msg);
     }
   });
 
@@ -1105,7 +1110,12 @@ export default function NewRepair() {
       navigate(`/repairs/${data.repair.id}`);
     },
     onError: (err: any) => {
-      toast.error(err.message || 'Failed to update repair order ticket.');
+      let msg = err.message || 'Failed to update repair order ticket.';
+      if (err.details && Array.isArray(err.details)) {
+        const detailMsgs = err.details.map((d: any) => `${d.path.join('.')}: ${d.message}`).join(', ');
+        msg = `Validation failed: ${detailMsgs}`;
+      }
+      toast.error(msg);
     }
   });
 
