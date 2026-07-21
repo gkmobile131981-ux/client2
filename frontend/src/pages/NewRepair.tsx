@@ -239,6 +239,51 @@ export function buildDeviceOptions(rateCards: DeviceOptionEntry[]) {
 }
 
 // ----------------------------------------------------
+// Spell check and auto-correction dictionary for common mobile repair terms
+const SPELL_CORRECT_MAP: Record<string, string> = {
+  'SPEEKAR': 'SPEAKER',
+  'SPEEKER': 'SPEAKER',
+  'SPEKAR': 'SPEAKER',
+  'SPKR': 'SPEAKER',
+  'REPAIED': 'REPAIRED',
+  'REPARIED': 'REPAIRED',
+  'REPAIRD': 'REPAIRED',
+  'REPAIRING': 'REPAIRED',
+  'BATTRY': 'BATTERY',
+  'BATTRYE': 'BATTERY',
+  'BATERY': 'BATTERY',
+  'CHARGNG': 'CHARGING',
+  'CHARGIN': 'CHARGING',
+  'CHARGINGE': 'CHARGING',
+  'DISPLY': 'DISPLAY',
+  'DISPALY': 'DISPLAY',
+  'DESPLAY': 'DISPLAY',
+  'DISP': 'DISPLAY',
+  'NETWK': 'NETWORK',
+  'NETWRK': 'NETWORK',
+  'SOFTWAR': 'SOFTWARE',
+  'SOFTWRE': 'SOFTWARE',
+  'CAMRA': 'CAMERA',
+  'CAMREA': 'CAMERA',
+  'RECIVER': 'RECEIVER',
+  'RECOVER': 'RECEIVER',
+  'TOCH': 'TOUCH',
+  'MOTHERBORD': 'MOTHERBOARD',
+  'MOBERBOARD': 'MOTHERBOARD',
+  'WATERDAMGE': 'WATER DAMAGE'
+};
+
+export function fixProblemSpelling(text: string): string {
+  if (!text) return '';
+  let upper = text.toUpperCase().trim();
+  
+  Object.entries(SPELL_CORRECT_MAP).forEach(([wrong, right]) => {
+    const regex = new RegExp(`\\b${wrong}\\b`, 'gi');
+    upper = upper.replace(regex, right);
+  });
+
+  return upper;
+}
 
 const repairOrderSchema = z.object({
   status: z.enum(['pending', 'repairing', 'ready', 'delivered', 'cancelled']).default('pending'),
@@ -655,14 +700,14 @@ export default function NewRepair() {
 
 
 
-  // Extract unique past problem descriptions created in the shop DB
+  // Extract unique past problem descriptions created in the shop DB with automatic spell correction
   const existingShopProblems = React.useMemo(() => {
     const problemsSet = new Set<string>();
     (pastRepairsData?.repairs || []).forEach(r => {
       const p = r.problem || r.device?.problem;
       if (p && p.trim()) {
         p.split(',').forEach(subP => {
-          const cleaned = subP.trim();
+          const cleaned = fixProblemSpelling(subP);
           if (cleaned) problemsSet.add(cleaned);
         });
       }
@@ -817,13 +862,14 @@ export default function NewRepair() {
     });
   };
 
-  // Add custom problem description text to form state with deduplication
+  // Add custom problem description text to form state with deduplication & spell correction
   const handleAddCustomProblem = (textToAdd?: string) => {
-    const target = (textToAdd || customProblem).trim();
-    if (!target) return;
+    const raw = (textToAdd || customProblem).trim();
+    if (!raw) return;
 
+    const target = fixProblemSpelling(raw);
     const current = watch('problem') || '';
-    const existingItems = current.split(',').map(s => s.trim()).filter(Boolean);
+    const existingItems = current.split(',').map(s => fixProblemSpelling(s)).filter(Boolean);
 
     // Prevent duplicate entries
     if (!existingItems.some(item => item.toLowerCase() === target.toLowerCase())) {
