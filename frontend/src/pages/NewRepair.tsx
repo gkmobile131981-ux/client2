@@ -916,11 +916,20 @@ export default function NewRepair() {
     // Prevent duplicate entries
     if (!existingItems.some(item => item.toLowerCase() === target.toLowerCase())) {
       existingItems.push(target);
+      toast.success(`Added problem: "${target}"`);
     }
 
     const newDesc = existingItems.join(', ');
     setValue('problem', newDesc, { shouldValidate: true });
     setCustomProblem('');
+  };
+
+  const handleRemoveProblemTag = (probToRemove: string) => {
+    const current = watch('problem') || '';
+    const items = current.split(',').map(s => s.trim()).filter(Boolean);
+    const updated = items.filter(item => item.toLowerCase() !== probToRemove.toLowerCase());
+    setValue('problem', updated.join(', '), { shouldValidate: true });
+    toast.success(`Removed problem: "${probToRemove}"`);
   };
 
   // File Upload Helper to convert files into Base64 strings
@@ -1130,7 +1139,16 @@ export default function NewRepair() {
     const finalModel = values.model || modelSearchQuery.trim();
     formData.append('brand', finalBrand);
     formData.append('model', finalModel);
-    formData.append('problem', values.problem);
+    let finalProblem = values.problem || '';
+    if (customProblem.trim()) {
+      const target = fixProblemSpelling(customProblem.trim());
+      const existingItems = finalProblem.split(',').map(s => fixProblemSpelling(s)).filter(Boolean);
+      if (!existingItems.some(item => item.toLowerCase() === target.toLowerCase())) {
+        existingItems.push(target);
+      }
+      finalProblem = existingItems.join(', ');
+    }
+    formData.append('problem', finalProblem);
     formData.append('quality', values.quality);
     if (values.status) formData.append('status', values.status);
     if (values.physicalDamage) formData.append('physicalDamage', values.physicalDamage);
@@ -1806,7 +1824,7 @@ export default function NewRepair() {
           })()}
 
           {/* Problem description with 1-letter Autocomplete & Add Button */}
-          <div className="relative space-y-1">
+          <div className="relative space-y-2">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -1815,6 +1833,13 @@ export default function NewRepair() {
                 onChange={(e) => {
                   setCustomProblem(e.target.value.toUpperCase());
                   setProblemSearchOpen(true);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddCustomProblem();
+                    setProblemSearchOpen(false);
+                  }
                 }}
                 onFocus={() => setProblemSearchOpen(true)}
                 className="flex-1 bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 font-bold uppercase transition-all shadow-sm min-h-[44px]"
@@ -1862,6 +1887,29 @@ export default function NewRepair() {
                   <span>➕ Create new problem: "{customProblem}"</span>
                   <span className="text-[10px] uppercase tracking-wider font-black">ADD</span>
                 </button>
+              </div>
+            )}
+
+            {/* Visual Selected Problems List Chips */}
+            {watch('problem') && watch('problem').trim().length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-border/40">
+                <span className="text-[10px] font-black text-primary uppercase tracking-widest block w-full">Selected Problems List:</span>
+                {watch('problem').split(',').map(s => s.trim()).filter(Boolean).map((prob, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-primary/15 text-primary border border-primary/35 shadow-sm"
+                  >
+                    <span>🔧 {prob}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveProblemTag(prob)}
+                      className="text-red-400 hover:text-red-500 font-black ml-1 text-xs cursor-pointer p-0.5 rounded hover:bg-red-500/20"
+                      title="Remove problem"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                ))}
               </div>
             )}
           </div>
