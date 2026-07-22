@@ -569,20 +569,44 @@ export default function NewRepair() {
     }
   }, [selectedModel, customModel]);
 
-  // Close brand/model dropdown lists when clicking outside of them
+  // Close all dropdown lists when clicking/tapping outside of them
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      
       const brandContainer = document.getElementById('brand-select-container');
       const modelContainer = document.getElementById('model-select-container');
-      if (brandContainer && !brandContainer.contains(event.target as Node)) {
+      const nameContainer = document.getElementById('customer-name-container');
+      const phoneContainer = document.getElementById('customer-phone-container');
+      const problemContainer = document.getElementById('problem-select-container');
+      const searchContainer = document.getElementById('customer-search-container');
+
+      if (brandContainer && !brandContainer.contains(target)) {
         setBrandDropdownOpen(false);
       }
-      if (modelContainer && !modelContainer.contains(event.target as Node)) {
+      if (modelContainer && !modelContainer.contains(target)) {
         setModelDropdownOpen(false);
       }
+      if (nameContainer && !nameContainer.contains(target)) {
+        setNameSearchOpen(false);
+      }
+      if (phoneContainer && !phoneContainer.contains(target)) {
+        setPhoneInputSearchOpen(false);
+      }
+      if (problemContainer && !problemContainer.contains(target)) {
+        setProblemSearchOpen(false);
+      }
+      if (searchContainer && !searchContainer.contains(target)) {
+        setCustomerSearchOpen(false);
+      }
     };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
   }, []);
 
   // Fetch tech staff
@@ -734,9 +758,29 @@ export default function NewRepair() {
 
 
 
-  // Extract unique past problem descriptions created in the shop DB with automatic spell correction
+  // Default common mobile repair problems list
+  const DEFAULT_COMMON_PROBLEMS = React.useMemo(() => [
+    'DISPLAY REPLACEMENT',
+    'BATTERY REPLACEMENT',
+    'CHARGING PORT REPAIR',
+    'SPEAKER PROBLEM',
+    'MIC PROBLEM',
+    'WATER DAMAGE / DEOXIDATION',
+    'TOUCH SCREEN REPLACEMENT',
+    'SOFTWARE REFLASH / UNLOCK',
+    'DEAD / NO POWER',
+    'NETWORK / SIM NOT WORKING',
+    'CAMERA REPLACEMENT',
+    'BACK GLASS REPLACEMENT',
+    'EARPIECE / RECEIVER REPAIR',
+    'VOLUME / POWER BUTTON REPAIR',
+    'MOTHERBOARD REPAIR',
+    'FINGERPRINT / FACE ID REPAIR'
+  ], []);
+
+  // Extract unique past problem descriptions created in the shop DB + default common problems
   const existingShopProblems = React.useMemo(() => {
-    const problemsSet = new Set<string>();
+    const problemsSet = new Set<string>(DEFAULT_COMMON_PROBLEMS);
     (pastRepairsData?.repairs || []).forEach(r => {
       const p = r.problem || r.device?.problem;
       if (p && p.trim()) {
@@ -747,7 +791,7 @@ export default function NewRepair() {
       }
     });
     return Array.from(problemsSet);
-  }, [pastRepairsData]);
+  }, [pastRepairsData, DEFAULT_COMMON_PROBLEMS]);
 
   // Instant 1-letter Filter from real database problem entries only
   const filteredProblems = React.useMemo(() => {
@@ -1426,7 +1470,7 @@ export default function NewRepair() {
             </div>
 
             {/* Customer Details Search */}
-            <div className="space-y-1.5 relative">
+            <div className="space-y-1.5 relative" id="customer-search-container">
               <label className="text-xs font-extrabold text-primary uppercase tracking-wider flex items-center gap-1.5">
                 <span>🔍</span>
                 <span>Quick Customer Search</span>
@@ -1446,7 +1490,7 @@ export default function NewRepair() {
               </div>
               {/* Dropdown autocomplete results */}
               {customerSearchOpen && phoneSearch.trim().length >= 1 && (
-                <div className="absolute z-30 left-0 right-0 bg-neutral-900 border border-primary/40 rounded-xl divide-y divide-border/40 overflow-hidden shadow-2xl max-h-52 overflow-y-auto mt-1">
+                <div className="absolute z-30 left-0 right-0 bg-card border border-border rounded-xl divide-y divide-border/40 overflow-hidden shadow-2xl max-h-52 overflow-y-auto mt-1">
                   {filteredCustomers.length > 0 ? (
                     filteredCustomers.map((cust) => (
                       <button
@@ -1461,11 +1505,11 @@ export default function NewRepair() {
                           setPhoneSearch('');
                           setCustomerSearchOpen(false);
                         }}
-                        className="w-full p-3 text-left hover:bg-primary/25 hover:text-white cursor-pointer flex justify-between items-center gap-3 transition-colors"
+                        className="w-full p-3 text-left hover:bg-primary/25 hover:text-foreground cursor-pointer flex justify-between items-center gap-3 transition-colors"
                       >
                         <div>
-                          <div className="text-sm font-bold text-white">{cust.name}</div>
-                          <div className="text-xs text-white/70 font-mono">{cust.phone}</div>
+                          <div className="text-sm font-bold text-foreground">{cust.name}</div>
+                          <div className="text-xs text-muted-foreground font-mono">{cust.phone}</div>
                         </div>
                         <span className="text-[10px] uppercase font-black text-primary bg-primary/20 px-2 py-1 rounded-md">Select</span>
                       </button>
@@ -1508,7 +1552,7 @@ export default function NewRepair() {
 
           <div className="grid grid-cols-1 gap-4">
             {/* Customer Name */}
-            <div className="space-y-1 relative">
+            <div className="space-y-1 relative" id="customer-name-container">
               <label className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block">Customer Name</label>
               <input
                 type="text"
@@ -1534,42 +1578,36 @@ export default function NewRepair() {
                 }}
                 className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 font-semibold transition-all shadow-sm min-h-[44px]"
               />
-              {/* Instant 1-letter Customer Name Autocomplete */}
-              {nameSearchOpen && newCustName.trim().length >= 1 && (
-                <div className="absolute z-30 left-0 right-0 bg-neutral-900 border border-primary/40 rounded-xl divide-y divide-border/40 overflow-hidden shadow-2xl max-h-48 overflow-y-auto mt-1">
-                  {filteredCustomersByName.length > 0 ? (
-                    filteredCustomersByName.map((cust) => (
-                      <button
-                        type="button"
-                        key={cust.id}
-                        onClick={() => {
-                          setSelectedCustomer(cust);
-                          setValue('customerId', cust.id, { shouldValidate: true });
-                          setNewCustName(cust.name);
-                          setNewCustPhone(cust.phone);
-                          setNewCustAddr(cust.address || '');
-                          setNameSearchOpen(false);
-                        }}
-                        className="w-full p-3 text-left hover:bg-primary/25 hover:text-white cursor-pointer flex justify-between items-center gap-2 transition-colors"
-                      >
-                        <div>
-                          <div className="text-xs font-bold text-white">{cust.name}</div>
-                          <div className="text-[10px] text-white/70 font-mono">{cust.phone}</div>
-                        </div>
-                        <span className="text-[9px] uppercase font-black text-primary bg-primary/20 px-2 py-1 rounded-md">SELECT</span>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="p-2 text-center text-[10px] text-muted-foreground">
-                      New Customer: "{newCustName}"
-                    </div>
-                  )}
+              {/* Instant 1-letter Customer Name Autocomplete - Only show if matching existing customers */}
+              {nameSearchOpen && newCustName.trim().length >= 1 && filteredCustomersByName.length > 0 && (
+                <div className="absolute z-30 left-0 right-0 bg-card border border-border rounded-xl divide-y divide-border/40 overflow-hidden shadow-2xl max-h-48 overflow-y-auto mt-1">
+                  {filteredCustomersByName.map((cust) => (
+                    <button
+                      type="button"
+                      key={cust.id}
+                      onClick={() => {
+                        setSelectedCustomer(cust);
+                        setValue('customerId', cust.id, { shouldValidate: true });
+                        setNewCustName(cust.name);
+                        setNewCustPhone(cust.phone);
+                        setNewCustAddr(cust.address || '');
+                        setNameSearchOpen(false);
+                      }}
+                      className="w-full p-3 text-left hover:bg-primary/25 hover:text-foreground cursor-pointer flex justify-between items-center gap-2 transition-colors"
+                    >
+                      <div>
+                        <div className="text-xs font-bold text-foreground">{cust.name}</div>
+                        <div className="text-[10px] text-muted-foreground font-mono">{cust.phone}</div>
+                      </div>
+                      <span className="text-[9px] uppercase font-black text-primary bg-primary/20 px-2 py-1 rounded-md">SELECT</span>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
 
             {/* Phone */}
-            <div className="space-y-1 relative">
+            <div className="space-y-1 relative" id="customer-phone-container">
               <label className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider block">Phone Number</label>
               <input
                 type="text"
@@ -1586,36 +1624,30 @@ export default function NewRepair() {
                 onFocus={() => setPhoneInputSearchOpen(true)}
                 className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 font-semibold transition-all shadow-sm min-h-[44px]"
               />
-              {/* Instant 1-letter Phone Autocomplete */}
-              {phoneInputSearchOpen && newCustPhone.trim().length >= 1 && (
-                <div className="absolute z-30 left-0 right-0 bg-neutral-900 border border-primary/40 rounded-xl divide-y divide-border/40 overflow-hidden shadow-2xl max-h-48 overflow-y-auto mt-1">
-                  {filteredCustomersByPhone.length > 0 ? (
-                    filteredCustomersByPhone.map((cust) => (
-                      <button
-                        type="button"
-                        key={cust.id}
-                        onClick={() => {
-                          setSelectedCustomer(cust);
-                          setValue('customerId', cust.id, { shouldValidate: true });
-                          setNewCustName(cust.name);
-                          setNewCustPhone(cust.phone);
-                          setNewCustAddr(cust.address || '');
-                          setPhoneInputSearchOpen(false);
-                        }}
-                        className="w-full p-3 text-left hover:bg-primary/25 hover:text-white cursor-pointer flex justify-between items-center gap-2 transition-colors"
-                      >
-                        <div>
-                          <div className="text-xs font-bold text-white">{cust.phone}</div>
-                          <div className="text-[10px] text-white/70">{cust.name}</div>
-                        </div>
-                        <span className="text-[9px] uppercase font-black text-primary bg-primary/20 px-2 py-1 rounded-md">SELECT</span>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="p-2 text-center text-[10px] text-muted-foreground">
-                      New Phone: "{newCustPhone}"
-                    </div>
-                  )}
+              {/* Instant 1-letter Phone Autocomplete - Only show if matching existing customers */}
+              {phoneInputSearchOpen && newCustPhone.trim().length >= 1 && filteredCustomersByPhone.length > 0 && (
+                <div className="absolute z-30 left-0 right-0 bg-card border border-border rounded-xl divide-y divide-border/40 overflow-hidden shadow-2xl max-h-48 overflow-y-auto mt-1">
+                  {filteredCustomersByPhone.map((cust) => (
+                    <button
+                      type="button"
+                      key={cust.id}
+                      onClick={() => {
+                        setSelectedCustomer(cust);
+                        setValue('customerId', cust.id, { shouldValidate: true });
+                        setNewCustName(cust.name);
+                        setNewCustPhone(cust.phone);
+                        setNewCustAddr(cust.address || '');
+                        setPhoneInputSearchOpen(false);
+                      }}
+                      className="w-full p-3 text-left hover:bg-primary/25 hover:text-foreground cursor-pointer flex justify-between items-center gap-2 transition-colors"
+                    >
+                      <div>
+                        <div className="text-xs font-bold text-foreground">{cust.phone}</div>
+                        <div className="text-[10px] text-muted-foreground">{cust.name}</div>
+                      </div>
+                      <span className="text-[9px] uppercase font-black text-primary bg-primary/20 px-2 py-1 rounded-md">SELECT</span>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
@@ -1750,13 +1782,13 @@ export default function NewRepair() {
                       </div>
                     </div>
                     {brandDropdownOpen && (brandSearchQuery.trim().length >= 1 || brandOptions.length > 0) && (
-                      <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-neutral-900 border border-border rounded-xl shadow-2xl divide-y divide-border/20 scrollbar-thin">
+                      <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-card border border-border rounded-xl shadow-2xl divide-y divide-border/20 scrollbar-thin">
                         {filteredBrands.length > 0 && (
                           filteredBrands.map((b) => (
                             <div
                               key={b}
                               onClick={() => handleSelectBrand(b)}
-                              className="px-4 py-2.5 hover:bg-primary/25 hover:text-white cursor-pointer text-xs font-bold uppercase text-white/90 flex items-center justify-between"
+                              className="px-4 py-2.5 hover:bg-primary/25 hover:text-foreground cursor-pointer text-xs font-bold uppercase text-foreground/90 flex items-center justify-between"
                             >
                               <span>📱 {b}</span>
                               <span className="text-[10px] text-primary uppercase font-bold">SELECT</span>
@@ -1806,13 +1838,13 @@ export default function NewRepair() {
                       </div>
                     </div>
                     {modelDropdownOpen && (modelSearchQuery.trim().length >= 1 || availableModels.length > 0) && (
-                      <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-neutral-900 border border-border rounded-xl shadow-2xl divide-y divide-border/20 scrollbar-thin">
+                      <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-card border border-border rounded-xl shadow-2xl divide-y divide-border/20 scrollbar-thin">
                         {filteredModels.length > 0 && (
                           filteredModels.map((m) => (
                             <div
                               key={m}
                               onClick={() => handleSelectModel(m)}
-                              className="px-4 py-2.5 hover:bg-primary/25 hover:text-white cursor-pointer text-xs font-bold uppercase text-white/90 flex items-center justify-between"
+                              className="px-4 py-2.5 hover:bg-primary/25 hover:text-foreground cursor-pointer text-xs font-bold uppercase text-foreground/90 flex items-center justify-between"
                             >
                               <span>🔧 {m}</span>
                               <span className="text-[10px] text-primary uppercase font-bold">SELECT</span>
@@ -1844,7 +1876,7 @@ export default function NewRepair() {
           })()}
 
           {/* Problem description with 1-letter Autocomplete & Add Button */}
-          <div className="relative space-y-2">
+          <div className="relative space-y-2" id="problem-select-container">
             <div className="flex gap-2">
               <input
                 type="text"
@@ -1877,8 +1909,8 @@ export default function NewRepair() {
             </div>
 
             {/* Instant 1-Letter Problem Description Autocomplete Dropdown */}
-            {problemSearchOpen && customProblem.trim().length >= 1 && (
-              <div className="absolute z-40 left-0 right-16 bg-neutral-900 border border-primary/40 rounded-xl divide-y divide-border/40 overflow-hidden shadow-2xl max-h-56 overflow-y-auto mt-1">
+            {problemSearchOpen && (customProblem.trim().length >= 1 || filteredProblems.length > 0) && (
+              <div className="absolute z-40 left-0 right-16 bg-card border border-border rounded-xl divide-y divide-border/40 overflow-hidden shadow-2xl max-h-56 overflow-y-auto mt-1">
                 {filteredProblems.length > 0 && (
                   filteredProblems.map((item) => (
                     <button
@@ -1888,7 +1920,7 @@ export default function NewRepair() {
                         handleAddCustomProblem(item);
                         setProblemSearchOpen(false);
                       }}
-                      className="w-full p-2.5 text-left hover:bg-primary/25 hover:text-white cursor-pointer flex justify-between items-center text-xs font-semibold text-white/90 transition-colors"
+                      className="w-full p-2.5 text-left hover:bg-primary/25 hover:text-foreground cursor-pointer flex justify-between items-center text-xs font-semibold text-foreground/90 transition-colors"
                     >
                       <span>🔧 {item}</span>
                       <span className="text-[10px] text-primary uppercase font-bold bg-primary/20 px-2 py-0.5 rounded-md">SELECT +</span>
@@ -1896,17 +1928,19 @@ export default function NewRepair() {
                   ))
                 )}
                 {/* Create New Problem Option */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleAddCustomProblem();
-                    setProblemSearchOpen(false);
-                  }}
-                  className="w-full p-2.5 text-left bg-primary/10 hover:bg-primary/25 cursor-pointer flex justify-between items-center text-xs font-extrabold text-primary border-t border-primary/30"
-                >
-                  <span>➕ Create new problem: "{customProblem}"</span>
-                  <span className="text-[10px] uppercase tracking-wider font-black">ADD</span>
-                </button>
+                {customProblem.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleAddCustomProblem();
+                      setProblemSearchOpen(false);
+                    }}
+                    className="w-full p-2.5 text-left bg-primary/10 hover:bg-primary/25 cursor-pointer flex justify-between items-center text-xs font-extrabold text-primary border-t border-primary/30"
+                  >
+                    <span>➕ Create new problem: "{customProblem}"</span>
+                    <span className="text-[10px] uppercase tracking-wider font-black">ADD</span>
+                  </button>
+                )}
               </div>
             )}
 
@@ -2146,99 +2180,7 @@ export default function NewRepair() {
           )}
         </div>
 
-        {/* SECTION 6: FINANCIALS & REPAIR ESTIMATE */}
-        <div className="space-y-4 pt-6">
-          <div className="flex items-center gap-2 border-b border-border/40 pb-2">
-            <span className="text-base">💳</span>
-            <span className="text-sm font-extrabold text-foreground uppercase tracking-wider">Financials & Repair Estimate</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-primary uppercase tracking-wider block">Estimated Price (₹)</label>
-              <Input
-                type="number"
-                placeholder="0.00"
-                {...register('estimate', { valueAsNumber: true })}
-                className={`bg-secondary/35 border-border rounded-xl px-4 py-3 text-sm font-bold text-foreground focus:ring-2 focus:ring-primary/30 transition-all min-h-[44px] ${errors.estimate ? 'border-red-500' : ''}`}
-              />
-              {errors.estimate && (
-                <p className="text-[11px] text-red-500 font-semibold">{errors.estimate.message}</p>
-              )}
-            </div>
-            
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-emerald-500 uppercase tracking-wider block">Paid (Advance ₹)</label>
-              <Input
-                type="number"
-                placeholder="0.00"
-                {...register('advance', { valueAsNumber: true })}
-                className={`bg-secondary/35 border-border rounded-xl px-4 py-3 text-sm font-bold text-foreground focus:ring-2 focus:ring-emerald-500/30 transition-all min-h-[44px] ${errors.advance ? 'border-red-500' : ''}`}
-              />
-              {errors.advance && (
-                <p className="text-[11px] text-red-500 font-semibold">{errors.advance.message}</p>
-              )}
-            </div>
-          </div>
-
-          {/* Balances Display Banner */}
-          <div className="p-4 bg-secondary/30 border border-border/80 rounded-2xl flex items-center justify-between shadow-inner">
-            <div>
-              <span className="text-[10px] uppercase font-extrabold text-muted-foreground tracking-wider block">Remaining Balance</span>
-              <div className="text-2xl sm:text-3xl font-black text-primary mt-0.5">₹{outstandingBalance.toFixed(2)}</div>
-            </div>
-            <span className="text-xs text-muted-foreground font-medium italic">Balance = Estimate - Paid</span>
-          </div>
-        </div>
-
-        {/* SECTION 7: REPAIR DATE, TIME & REMINDER */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-6">
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Current repair date</span>
-            <div className="text-sm font-bold text-foreground">{repairDateDisplay || 'Loading...'}</div>
-            <Button
-              type="button"
-              onClick={() => {
-                const today = new Date();
-                setRepairDateDisplay(`${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`);
-                toast.success('Repair date initialized');
-              }}
-              className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-[10px] font-bold uppercase py-1 px-3 h-7 mt-1.5 cursor-pointer"
-            >
-              REPAIR DATE
-            </Button>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Current repair time</span>
-            <div className="text-sm font-bold text-foreground">{repairTimeDisplay || 'Loading...'}</div>
-            <Button
-              type="button"
-              onClick={() => {
-                const today = new Date();
-                setRepairTimeDisplay(`${String(today.getHours()).padStart(2, '0')}H:${String(today.getMinutes()).padStart(2, '0')}M:${String(today.getSeconds()).padStart(2, '0')}S`);
-                toast.success('Repair time timestamped');
-              }}
-              className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-[10px] font-bold uppercase py-1 px-3 h-7 mt-1.5 cursor-pointer"
-            >
-              REPAIR TIME
-            </Button>
-          </div>
-
-          <div className="col-span-1 sm:col-span-2 pt-3 border-t border-border/40 flex items-center justify-between">
-            <span className="text-xs text-foreground font-semibold">Reminder Enable?</span>
-            <label className="relative inline-flex items-center cursor-pointer select-none">
-              <input
-                type="checkbox"
-                {...register('reminderEnable')}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-secondary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-            </label>
-          </div>
-        </div>
-
-        {/* SECTION 8: SERIAL NUMBER, IMEI & TECHNICIAN */}
+        {/* SECTION 6: SERIAL NUMBER, IMEI & TECHNICIAN */}
         <div className="space-y-4 pt-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex gap-2">
@@ -2284,6 +2226,98 @@ export default function NewRepair() {
               <span className="text-xs font-semibold text-foreground">{authUser?.name} (You)</span>
             </div>
           )}
+        </div>
+
+        {/* SECTION 7: FINANCIALS & REPAIR ESTIMATE */}
+        <div className="space-y-4 pt-6">
+          <div className="flex items-center gap-2 border-b border-border/40 pb-2">
+            <span className="text-base">💳</span>
+            <span className="text-sm font-extrabold text-foreground uppercase tracking-wider">Financials & Repair Estimate</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-primary uppercase tracking-wider block">Estimated Price (₹)</label>
+              <Input
+                type="number"
+                placeholder="0.00"
+                {...register('estimate', { valueAsNumber: true })}
+                className={`bg-secondary/35 border-border rounded-xl px-4 py-3 text-sm font-bold text-foreground focus:ring-2 focus:ring-primary/30 transition-all min-h-[44px] ${errors.estimate ? 'border-red-500' : ''}`}
+              />
+              {errors.estimate && (
+                <p className="text-[11px] text-red-500 font-semibold">{errors.estimate.message}</p>
+              )}
+            </div>
+            
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-emerald-500 uppercase tracking-wider block">Paid (Advance ₹)</label>
+              <Input
+                type="number"
+                placeholder="0.00"
+                {...register('advance', { valueAsNumber: true })}
+                className={`bg-secondary/35 border-border rounded-xl px-4 py-3 text-sm font-bold text-foreground focus:ring-2 focus:ring-emerald-500/30 transition-all min-h-[44px] ${errors.advance ? 'border-red-500' : ''}`}
+              />
+              {errors.advance && (
+                <p className="text-[11px] text-red-500 font-semibold">{errors.advance.message}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Balances Display Banner */}
+          <div className="p-4 bg-secondary/30 border border-border/80 rounded-2xl flex items-center justify-between shadow-inner">
+            <div>
+              <span className="text-[10px] uppercase font-extrabold text-muted-foreground tracking-wider block">Remaining Balance</span>
+              <div className="text-2xl sm:text-3xl font-black text-primary mt-0.5">₹{outstandingBalance.toFixed(2)}</div>
+            </div>
+            <span className="text-xs text-muted-foreground font-medium italic">Balance = Estimate - Paid</span>
+          </div>
+        </div>
+
+        {/* SECTION 8: REPAIR DATE, TIME & REMINDER */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-6">
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Current repair date</span>
+            <div className="text-sm font-bold text-foreground">{repairDateDisplay || 'Loading...'}</div>
+            <Button
+              type="button"
+              onClick={() => {
+                const today = new Date();
+                setRepairDateDisplay(`${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`);
+                toast.success('Repair date initialized');
+              }}
+              className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-[10px] font-bold uppercase py-1 px-3 h-7 mt-1.5 cursor-pointer"
+            >
+              REPAIR DATE
+            </Button>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Current repair time</span>
+            <div className="text-sm font-bold text-foreground">{repairTimeDisplay || 'Loading...'}</div>
+            <Button
+              type="button"
+              onClick={() => {
+                const today = new Date();
+                setRepairTimeDisplay(`${String(today.getHours()).padStart(2, '0')}H:${String(today.getMinutes()).padStart(2, '0')}M:${String(today.getSeconds()).padStart(2, '0')}S`);
+                toast.success('Repair time timestamped');
+              }}
+              className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-[10px] font-bold uppercase py-1 px-3 h-7 mt-1.5 cursor-pointer"
+            >
+              REPAIR TIME
+            </Button>
+          </div>
+
+          <div className="col-span-1 sm:col-span-2 pt-3 border-t border-border/40 flex items-center justify-between">
+            <span className="text-xs text-foreground font-semibold">Reminder Enable?</span>
+            <label className="relative inline-flex items-center cursor-pointer select-none">
+              <input
+                type="checkbox"
+                {...register('reminderEnable')}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-secondary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+            </label>
+          </div>
         </div>
 
         {/* SECTION 9: MESSAGING & CASHBACK SWITCHES */}
