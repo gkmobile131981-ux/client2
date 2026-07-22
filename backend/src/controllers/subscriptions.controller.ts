@@ -374,3 +374,329 @@ export async function sendSubscriptionBill(req: Request, res: Response): Promise
     res.status(500).json({ error: 'Internal Server Error', message: err.message });
   }
 }
+
+const createMemberSchema = z.object({
+  member_name: z.string().min(1, 'Member name is required'),
+  phone_number: z.string().min(3, 'Phone number is required'),
+  shop_name: z.string().min(1, 'Shop name is required'),
+  address: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  subscription_start_date: z.string().optional().nullable()
+});
+
+/**
+ * List all registered subscription members & shops
+ */
+export async function listSubscriptionMembers(req: Request, res: Response): Promise<void> {
+  const user = (req as any).user;
+  if (!user || !user.shop_id) {
+    res.status(400).json({ error: 'User must be associated with a shop' });
+    return;
+  }
+
+  const search = (req.query.search as string || '').trim();
+  const year = parseInt(req.query.year as string) || new Date().getFullYear();
+
+  try {
+    let query = supabaseAdmin
+      .from('subscription_members')
+      .select('*')
+      .eq('shop_id', user.shop_id)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    if (search) {
+      query = query.or(`member_name.ilike.%${search}%,phone_number.ilike.%${search}%,shop_name.ilike.%${search}%`);
+    }
+
+    const { data: members, error } = await query;
+    
+    // Fetch subscription totals for the selected year for each member
+    const { data: subRecords } = await supabaseAdmin
+      .from('monthly_subscriptions')
+      .select('phone_number, shop_name, total_received')
+      .eq('shop_id', user.shop_id)
+      .eq('year', year);
+
+    const totalsMap: Record<string, number> = {};
+    if (subRecords) {
+      subRecords.forEach(r => {
+        if (r.phone_number) {
+          totalsMap[r.phone_number] = (totalsMap[r.phone_number] || 0) + Number(r.total_received || 0);
+        }
+      });
+    }
+
+    if (error || !members) {
+      // Fallback to customers table if subscription_members table isn't populated yet
+      let customerQuery = supabaseAdmin
+        .from('customers')
+        .select('id, name, phone, address, created_at')
+        .eq('shop_id', user.shop_id)
+        .eq('is_active', true);
+
+      if (search) {
+        customerQuery = customerQuery.or(`name.ilike.%${search}%,phone.ilike.%${search}%`);
+      }
+
+      const { data: custs } = await customerQuery.limit(50);
+      const fallback = (custs || []).map(c => ({
+        id: c.id,
+        member_name: c.name,
+        phone_number: c.phone,
+        shop_name: c.address || 'Member Shop',
+        address: c.address || '',
+        subscription_start_date: c.created_at ? c.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        is_active: true,
+        year_total_received: totalsMap[c.phone] || 0
+      }));
+
+      res.status(200).json({ data: fallback });
+      return;
+    }
+
+    const enrichedMembers = (members || []).map(m => ({
+      ...m,
+      year_total_received: totalsMap[m.phone_number] || 0
+    }));
+
+    res.status(200).json({ data: enrichedMembers });
+  } catch (err: any) {
+    console.error('Error listing subscription members:', err);
+    res.status(500).json({ error: 'Internal Server Error', message: err.message });
+  }
+}
+
+/**
+ * Register a new member & shop (Admin Only)
+ */
+export async function createSubscriptionMember(req: Request, res: Response): Promise<void> {
+  const user = (req as any).user;
+  if (!user || !user.shop_id) {
+    res.status(400).json({ error: 'User must be associated with a shop' });
+    return;
+  }
+
+  // Admin / Owner Role Check
+  if (user.role !== 'owner') {
+    res.status(403).json({ error: 'Access Denied: Only shop admins/owners can register new subscription members.' });
+    return;
+  }
+
+  const val = createMemberSchema.safeParse(req.body);
+  if (!val.success) {
+    res.status(400).json({ error: val.error.errors[0].message });
+    return;
+  }
+
+  const { member_name, phone_number, shop_name, address, notes, subscription_start_date } = val.data;
+
+  try {
+    const payload = {
+      shop_id: user.shop_id,
+      member_name,
+      phone_number,
+      shop_name,
+      address: address || '',
+      notes: notes || '',
+      subscription_start_date: subscription_start_date || new Date().toISOString().slice(0, 10),
+      is_active: true
+    };
+
+    const { data: member, error } = await supabaseAdmin
+      .from('subscription_members')
+      .insert([payload])
+      .select('*')
+      .single();
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    // Also sync to customers table so member is globally searchable
+    try {
+      const { data: existingCust } = await supabaseAdmin
+        .from('customers')
+        .select('id')
+        .eq('shop_id', user.shop_id)
+        .eq('phone', phone_number)
+        .limit(1);
+
+      if (!existingCust || existingCust.length === 0) {
+        await supabaseAdmin.from('customers').insert([{
+          shop_id: user.shop_id,
+          name: member_name,
+          phone: phone_number,
+          address: shop_name,
+          is_active: true
+        }]);
+      }
+    } catch {
+      // Non-critical background sync catch
+    }
+
+    res.status(201).json({ message: 'Member & Shop registered successfully', data: member });
+  } catch (err: any) {
+    console.error('Error creating subscription member:', err);
+    res.status(500).json({ error: 'Internal Server Error', message: err.message });
+  }
+}
+
+/**
+ * Update member & shop details (Admin Only)
+ */
+export async function updateSubscriptionMember(req: Request, res: Response): Promise<void> {
+  const user = (req as any).user;
+  if (!user || !user.shop_id) {
+    res.status(400).json({ error: 'User must be associated with a shop' });
+    return;
+  }
+
+  if (user.role !== 'owner') {
+    res.status(403).json({ error: 'Access Denied: Only shop admins/owners can update member details.' });
+    return;
+  }
+
+  const { id } = req.params;
+  const { member_name, phone_number, shop_name, address, notes, subscription_start_date, is_active } = req.body;
+
+  try {
+    const updatePayload: any = { updated_at: new Date().toISOString() };
+    if (member_name !== undefined) updatePayload.member_name = member_name;
+    if (phone_number !== undefined) updatePayload.phone_number = phone_number;
+    if (shop_name !== undefined) updatePayload.shop_name = shop_name;
+    if (address !== undefined) updatePayload.address = address;
+    if (notes !== undefined) updatePayload.notes = notes;
+    if (subscription_start_date !== undefined) updatePayload.subscription_start_date = subscription_start_date;
+    if (is_active !== undefined) updatePayload.is_active = is_active;
+
+    const { data: updated, error } = await supabaseAdmin
+      .from('subscription_members')
+      .update(updatePayload)
+      .eq('id', id)
+      .eq('shop_id', user.shop_id)
+      .select('*')
+      .single();
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({ message: 'Member updated successfully', data: updated });
+  } catch (err: any) {
+    console.error('Error updating subscription member:', err);
+    res.status(500).json({ error: 'Internal Server Error', message: err.message });
+  }
+}
+
+/**
+ * Delete member & shop record (Admin Only)
+ */
+export async function deleteSubscriptionMember(req: Request, res: Response): Promise<void> {
+  const user = (req as any).user;
+  if (!user || !user.shop_id) {
+    res.status(400).json({ error: 'User must be associated with a shop' });
+    return;
+  }
+
+  if (user.role !== 'owner') {
+    res.status(403).json({ error: 'Access Denied: Only shop admins/owners can delete member records.' });
+    return;
+  }
+
+  const { id } = req.params;
+
+  try {
+    const { error } = await supabaseAdmin
+      .from('subscription_members')
+      .delete()
+      .eq('id', id)
+      .eq('shop_id', user.shop_id);
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({ message: 'Member deleted successfully' });
+  } catch (err: any) {
+    console.error('Error deleting subscription member:', err);
+    res.status(500).json({ error: 'Internal Server Error', message: err.message });
+  }
+}
+
+/**
+ * Get complete shop details & multi-year payment audit history
+ */
+export async function getShopSubscriptionHistory(req: Request, res: Response): Promise<void> {
+  const user = (req as any).user;
+  if (!user || !user.shop_id) {
+    res.status(400).json({ error: 'User must be associated with a shop' });
+    return;
+  }
+
+  const phone = (req.query.phone as string || '').trim();
+  const shopName = (req.query.shop_name as string || '').trim();
+  const memberId = (req.query.member_id as string || '').trim();
+
+  try {
+    // 1. Fetch Member Registration Info
+    let memberInfo = null;
+    if (memberId) {
+      const { data } = await supabaseAdmin
+        .from('subscription_members')
+        .select('*')
+        .eq('id', memberId)
+        .single();
+      memberInfo = data;
+    }
+
+    if (!memberInfo && phone) {
+      const { data } = await supabaseAdmin
+        .from('subscription_members')
+        .select('*')
+        .eq('shop_id', user.shop_id)
+        .eq('phone_number', phone)
+        .limit(1);
+      if (data && data.length > 0) memberInfo = data[0];
+    }
+
+    // 2. Fetch all annual monthly_subscriptions records for this phone/shop
+    let subQuery = supabaseAdmin
+      .from('monthly_subscriptions')
+      .select('*')
+      .eq('shop_id', user.shop_id);
+
+    if (phone) {
+      subQuery = subQuery.eq('phone_number', phone);
+    } else if (shopName) {
+      subQuery = subQuery.ilike('shop_name', `%${shopName}%`);
+    }
+
+    const { data: records, error } = await subQuery.order('year', { ascending: false });
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    // Calculate total lifetime subscription paid
+    const lifetimeTotal = (records || []).reduce((acc, r) => acc + Number(r.total_received || 0), 0);
+
+    res.status(200).json({
+      member: memberInfo || {
+        member_name: records && records[0] ? records[0].customer_name : 'Shop Member',
+        phone_number: phone,
+        shop_name: shopName || (records && records[0] ? records[0].shop_name : ''),
+        subscription_start_date: records && records[0] ? records[0].created_at?.slice(0, 10) : null
+      },
+      records: records || [],
+      lifetime_total_received: lifetimeTotal
+    });
+  } catch (err: any) {
+    console.error('Error fetching shop subscription history:', err);
+    res.status(500).json({ error: 'Internal Server Error', message: err.message });
+  }
+}

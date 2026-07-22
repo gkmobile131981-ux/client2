@@ -5,7 +5,12 @@ import {
   getSubscriptionRecord,
   saveSubscriptionRecord,
   getSubscriptionSummary,
-  sendSubscriptionBill
+  sendSubscriptionBill,
+  listSubscriptionMembers,
+  createSubscriptionMember,
+  updateSubscriptionMember,
+  deleteSubscriptionMember,
+  getShopSubscriptionHistory
 } from '../controllers/subscriptions.controller';
 
 const router = Router();
@@ -18,6 +23,15 @@ router.get('/record', getSubscriptionRecord);
 router.get('/summary', getSubscriptionSummary);
 router.post('/save', saveSubscriptionRecord);
 router.post('/send-bill', sendSubscriptionBill);
+
+// Member & Shop Management Routes (Admin Restricted)
+router.get('/members', listSubscriptionMembers);
+router.post('/members', createSubscriptionMember);
+router.put('/members/:id', updateSubscriptionMember);
+router.delete('/members/:id', deleteSubscriptionMember);
+
+// Detailed Shop Subscription History Audit Route
+router.get('/shop-history', getShopSubscriptionHistory);
 
 export default router;
 

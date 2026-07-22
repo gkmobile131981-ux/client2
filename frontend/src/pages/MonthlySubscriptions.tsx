@@ -20,10 +20,20 @@ import {
   X,
   ExternalLink,
   Banknote,
-  ArrowUpRight
+  ArrowUpRight,
+  Plus,
+  Edit3,
+  Trash2,
+  Eye,
+  Lock,
+  ShieldAlert,
+  Clock,
+  UserCheck,
+  Check
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 // ─── Interfaces ────────────────────────────────────────────────────────────
 
@@ -57,6 +67,19 @@ interface MonthlyRecordData {
   notes?: string;
 }
 
+interface SubscriptionMember {
+  id: string;
+  shop_id: string;
+  member_name: string;
+  phone_number: string;
+  shop_name: string;
+  address?: string | null;
+  notes?: string | null;
+  subscription_start_date?: string | null;
+  is_active: boolean;
+  year_total_received?: number;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────
 
 const MONTHS = [
@@ -79,7 +102,7 @@ type MonthKey = typeof MONTHS[number]['key'];
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
 function formatINR(v: number) {
-  return v.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  return (v || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
 function todayISO() {
@@ -88,17 +111,26 @@ function todayISO() {
 
 function formatDisplayDate(isoDate?: string | null) {
   if (!isoDate) return '—';
-  const [y, m, d] = isoDate.split('-');
-  return `${d}/${m}/${y}`;
+  try {
+    const parts = isoDate.slice(0, 10).split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return isoDate;
+  } catch {
+    return isoDate;
+  }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────
 
 export default function MonthlySubscriptions() {
   const currentYear = new Date().getFullYear();
+  const { role } = useAuth();
+  const isAdmin = role === 'owner';
 
   // ── Top-level state ──
-  const [activeTab, setActiveTab] = useState<'register' | 'analytics'>('register');
+  const [activeTab, setActiveTab] = useState<'register' | 'members' | 'analytics'>('register');
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
 
   // ── Register tab state ──
@@ -124,12 +156,36 @@ export default function MonthlySubscriptions() {
   const [sendingBill, setSendingBill]     = useState<string | null>(null);
   const [recordId, setRecordId]           = useState<string | undefined>();
 
+  // ── Members & Shops tab state (Admin CRUD) ──
+  const [membersList, setMembersList]     = useState<SubscriptionMember[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [memberSearch, setMemberSearch]   = useState('');
+  const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<SubscriptionMember | null>(null);
+
+  // Member Form State
+  const [formMemberName, setFormMemberName] = useState('');
+  const [formPhoneNumber, setFormPhoneNumber] = useState('');
+  const [formShopName, setFormShopName]     = useState('');
+  const [formAddress, setFormAddress]       = useState('');
+  const [formNotes, setFormNotes]           = useState('');
+  const [formStartDate, setFormStartDate]   = useState(todayISO());
+  const [isSavingMember, setIsSavingMember] = useState(false);
+
+  // ── Shop Details & Audit Modal State ──
+  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+  const [loadingAudit, setLoadingAudit]         = useState(false);
+  const [auditMemberInfo, setAuditMemberInfo]   = useState<any | null>(null);
+  const [auditRecords, setAuditRecords]         = useState<MonthlyRecordData[]>([]);
+  const [auditLifetimeTotal, setAuditLifetimeTotal] = useState<number>(0);
+  const [auditSelectedYear, setAuditSelectedYear] = useState<number>(currentYear);
+
   // ── Analytics tab state ──
   const [summaryRecords, setSummaryRecords]           = useState<MonthlyRecordData[]>([]);
   const [loadingSummary, setLoadingSummary]           = useState(false);
   const [selectedAnalyticsMonth, setSelectedAnalyticsMonth] = useState<MonthKey | null>(null);
 
-  // ── Live total ──
+  // ── Live total for register form ──
   const totalReceivedAmount = useMemo(
     () => MONTHS.reduce((s, m) => s + (Number(amounts[m.key]) || 0), 0),
     [amounts]
@@ -158,114 +214,128 @@ export default function MonthlySubscriptions() {
     [summaryRecords, selectedAnalyticsMonth]
   );
 
-  // ─── Load summary when analytics tab is opened or year changes ───
+  // ─── Loaders ───────────────────────────────────────────────────────────
+
   const loadSummary = useCallback(async (year: number) => {
     setLoadingSummary(true);
     try {
       const res = await apiClient.get<{ data: MonthlyRecordData[] }>(`/subscriptions/summary?year=${year}`);
       setSummaryRecords(res.data || []);
-    } catch (err: any) {
+    } catch {
       toast.error('Failed to load analytics');
     } finally {
       setLoadingSummary(false);
     }
   }, []);
 
+  const loadMembers = useCallback(async (search: string = '', year: number = currentYear) => {
+    setLoadingMembers(true);
+    try {
+      const res = await apiClient.get<{ data: SubscriptionMember[] }>(
+        `/subscriptions/members?search=${encodeURIComponent(search)}&year=${year}`
+      );
+      setMembersList(res.data || []);
+    } catch {
+      toast.error('Failed to load members list');
+    } finally {
+      setLoadingMembers(false);
+    }
+  }, [currentYear]);
+
   useEffect(() => {
     if (activeTab === 'analytics') {
       loadSummary(selectedYear);
+    } else if (activeTab === 'members') {
+      loadMembers(memberSearch, selectedYear);
     }
-  }, [activeTab, selectedYear, loadSummary]);
+  }, [activeTab, selectedYear, loadSummary, loadMembers, memberSearch]);
 
-  // ─── Search ───────────────────────────────────────────────────────────
-  const handleSearch = async (queryOverride?: string) => {
-    const query = queryOverride !== undefined
-      ? queryOverride
-      : (nameSearch || numberSearch).trim();
-    if (!query) {
-      toast.error('Please enter a Name or Phone Number to search');
+  // ─── Search Customers / Members ─────────────────────────────────────────
+
+  const handleSearch = async (term: string) => {
+    if (!term || term.trim().length < 1) {
+      setSearchResults([]);
+      setShowDropdown(false);
       return;
     }
+
     setIsSearching(true);
     try {
       const res = await apiClient.get<{ data: CustomerSearchResult[] }>(
-        `/subscriptions/search?search=${encodeURIComponent(query)}`
+        `/subscriptions/search?search=${encodeURIComponent(term.trim())}`
       );
-      const results = res.data || [];
-      setSearchResults(results);
-      setShowDropdown(results.length > 0);
-      if (results.length === 1) selectCustomer(results[0]);
-      else if (results.length === 0) toast.error('No matching member found');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to search');
+      setSearchResults(res.data || []);
+      setShowDropdown(true);
+    } catch {
+      toast.error('Error searching members');
     } finally {
       setIsSearching(false);
     }
   };
 
-  const selectCustomer = async (c: CustomerSearchResult) => {
+  const handleSelectCustomer = async (item: CustomerSearchResult) => {
+    setCustomerId(item.customer_id || null);
+    setCustomerName(item.customer_name);
+    setPhoneNumber(item.phone_number);
+    setShopName(item.shop_name);
+    setNameSearch(item.customer_name);
+    setNumberSearch(item.phone_number);
     setShowDropdown(false);
-    setCustomerId(c.customer_id || null);
-    setCustomerName(c.customer_name);
-    setPhoneNumber(c.phone_number);
-    setShopName(c.shop_name);
-    setNameSearch(c.customer_name);
-    setNumberSearch(c.phone_number);
-    await loadRecord(c.phone_number, c.customer_id, selectedYear);
+
+    await loadSubscriptionRecord(item.phone_number, item.customer_id, selectedYear);
   };
 
-  // ─── Load existing record ─────────────────────────────────────────────
-  const loadRecord = async (phone: string, id: string | null | undefined, year: number) => {
+  const loadSubscriptionRecord = async (phone: string, custId?: string | null, year: number = selectedYear) => {
     try {
-      const q = id ? `customer_id=${id}&year=${year}` : `phone=${encodeURIComponent(phone)}&year=${year}`;
-      const res = await apiClient.get<{ data: MonthlyRecordData }>(`/subscriptions/record?${q}`);
-      const rec = res.data;
-      if (rec) {
-        setRecordId(rec.id);
-        const newAmounts = {} as Record<MonthKey, number>;
-        const newDates   = {} as Record<MonthKey, string>;
+      const queryParam = phone ? `phone=${encodeURIComponent(phone)}` : `customer_id=${custId}`;
+      const res = await apiClient.get<{ data: MonthlyRecordData }>(
+        `/subscriptions/record?${queryParam}&year=${year}`
+      );
+
+      if (res.data) {
+        setRecordId(res.data.id);
+        if (res.data.customer_name) setCustomerName(res.data.customer_name);
+        if (res.data.shop_name) setShopName(res.data.shop_name);
+        if (res.data.notes) setNotes(res.data.notes);
+
+        const newAmounts: Record<MonthKey, number> = {} as any;
+        const newPaidDates: Record<MonthKey, string> = {} as any;
+
         MONTHS.forEach(m => {
-          newAmounts[m.key] = Number((rec as any)[m.key]) || 0;
-          newDates[m.key]   = (rec as any)[`${m.key}_paid_at`] || '';
+          newAmounts[m.key] = Number((res.data as any)[m.key]) || 0;
+          newPaidDates[m.key] = (res.data as any)[`${m.key}_paid_at`] || '';
         });
+
         setAmounts(newAmounts);
-        setPaidDates(newDates);
-        setNotes(rec.notes || '');
-        if (rec.shop_name) setShopName(rec.shop_name);
-        if (rec.customer_name) setCustomerName(rec.customer_name);
+        setPaidDates(newPaidDates);
+        toast.success(`Loaded subscription record for ${year}`);
       }
-    } catch { /* silent */ }
-  };
-
-  useEffect(() => {
-    if (phoneNumber || customerId) {
-      loadRecord(phoneNumber, customerId, selectedYear);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedYear]);
-
-  // ─── Amount change — auto-fill today's date ───────────────────────────
-  const handleAmountChange = (monthKey: MonthKey, value: string) => {
-    const num = Math.max(0, parseFloat(value) || 0);
-    setAmounts(prev => ({ ...prev, [monthKey]: num }));
-    if (num > 0 && !paidDates[monthKey]) {
-      setPaidDates(prev => ({ ...prev, [monthKey]: todayISO() }));
-    }
-    if (num === 0) {
-      setPaidDates(prev => ({ ...prev, [monthKey]: '' }));
+    } catch {
+      toast.error('Failed to load subscription record');
     }
   };
 
-  const handleDateChange = (monthKey: MonthKey, value: string) => {
-    setPaidDates(prev => ({ ...prev, [monthKey]: value }));
+  const handleAmountChange = (key: MonthKey, val: string) => {
+    const num = parseFloat(val) || 0;
+    setAmounts(prev => ({ ...prev, [key]: num }));
+
+    if (num > 0 && !paidDates[key]) {
+      setPaidDates(prev => ({ ...prev, [key]: todayISO() }));
+    } else if (num === 0) {
+      setPaidDates(prev => ({ ...prev, [key]: '' }));
+    }
   };
 
-  // ─── Save ─────────────────────────────────────────────────────────────
-  const handleSave = async () => {
+  const handleDateChange = (key: MonthKey, dateVal: string) => {
+    setPaidDates(prev => ({ ...prev, [key]: dateVal }));
+  };
+
+  const handleSaveRecord = async () => {
     if (!customerName.trim() || !phoneNumber.trim()) {
-      toast.error('Please specify a member name and phone number');
+      toast.error('Please enter customer name and phone number');
       return;
     }
+
     setIsSaving(true);
     try {
       const payload: any = {
@@ -274,37 +344,59 @@ export default function MonthlySubscriptions() {
         phone_number: phoneNumber,
         shop_name: shopName,
         year: selectedYear,
-        notes,
+        notes: notes,
+        ...amounts
       };
+
       MONTHS.forEach(m => {
-        payload[m.key]              = amounts[m.key] || 0;
         payload[`${m.key}_paid_at`] = paidDates[m.key] || null;
       });
 
-      const res = await apiClient.post<{ data: MonthlyRecordData }>('/subscriptions/save', payload);
-      setRecordId(res.data?.id);
-      toast.success(`Subscription saved for ${customerName} (${selectedYear})`);
+      const res = await apiClient.post<{ message: string; data: MonthlyRecordData }>(
+        '/subscriptions/save',
+        payload
+      );
+
+      if (res.data) {
+        setRecordId(res.data.id);
+      }
+      toast.success('Subscription record saved successfully!');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to save');
+      toast.error(err.message || 'Failed to save subscription record');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // ─── Send WhatsApp bill ───────────────────────────────────────────────
+  const handleResetForm = () => {
+    setNameSearch('');
+    setNumberSearch('');
+    setCustomerId(null);
+    setCustomerName('');
+    setPhoneNumber('');
+    setShopName('');
+    setNotes('');
+    setRecordId(undefined);
+    setAmounts(Object.fromEntries(MONTHS.map(m => [m.key, 0])) as Record<MonthKey, number>);
+    setPaidDates(Object.fromEntries(MONTHS.map(m => [m.key, ''])) as Record<MonthKey, string>);
+    toast.success('Form cleared');
+  };
+
   const handleSendBill = async (monthKey: MonthKey, monthLabel: string) => {
-    if (!customerName || !phoneNumber) {
-      toast.error('Select a member first');
-      return;
-    }
-    const amount = amounts[monthKey];
-    if (!amount || amount <= 0) {
+    const amt = amounts[monthKey];
+    if (!amt || amt <= 0) {
       toast.error(`No payment recorded for ${monthLabel}`);
       return;
     }
+
+    if (!phoneNumber) {
+      toast.error('Phone number required to send WhatsApp bill');
+      return;
+    }
+
     setSendingBill(monthKey);
     try {
-      const res = await apiClient.post<{ success: boolean; isSandbox?: boolean; whatsappUrl?: string }>(
+      const res = await apiClient.post<{ message: string; success: boolean; whatsappUrl?: string }>(
         '/subscriptions/send-bill',
         {
           id: recordId,
@@ -313,536 +405,1003 @@ export default function MonthlySubscriptions() {
           shop_name: shopName,
           year: selectedYear,
           month_name: monthLabel,
-          amount,
+          amount: amt,
           total_received: totalReceivedAmount,
-          notes,
+          notes: notes
         }
       );
-      if (res.isSandbox && res.whatsappUrl) {
+
+      toast.success(`WhatsApp bill generated for ${monthLabel}!`);
+      if (res.whatsappUrl) {
         window.open(res.whatsappUrl, '_blank');
-        toast.success(`WhatsApp bill opened for ${monthLabel}`);
-      } else {
-        toast.success(`Bill sent to ${customerName} for ${monthLabel}`);
       }
     } catch (err: any) {
-      toast.error(err.message || 'Failed to send bill');
+      toast.error(err.message || 'Failed to send WhatsApp bill');
     } finally {
       setSendingBill(null);
     }
   };
 
-  // ─── Print ────────────────────────────────────────────────────────────
-  const handlePrint = () => window.print();
+  // ─── Member CRUD Handlers (Admin Only) ──────────────────────────────────
 
-  // ─── Reset ────────────────────────────────────────────────────────────
-  const handleReset = () => {
-    setNameSearch(''); setNumberSearch('');
-    setCustomerId(null); setCustomerName(''); setPhoneNumber(''); setShopName(''); setNotes('');
-    setSearchResults([]); setShowDropdown(false); setRecordId(undefined);
-    const emptyAmounts = Object.fromEntries(MONTHS.map(m => [m.key, 0])) as Record<MonthKey, number>;
-    const emptyDates   = Object.fromEntries(MONTHS.map(m => [m.key, ''])) as Record<MonthKey, string>;
-    setAmounts(emptyAmounts);
-    setPaidDates(emptyDates);
+  const openCreateMemberModal = () => {
+    if (!isAdmin) {
+      toast.error('Admin Access Required to register members');
+      return;
+    }
+    setEditingMember(null);
+    setFormMemberName('');
+    setFormPhoneNumber('');
+    setFormShopName('');
+    setFormAddress('');
+    setFormNotes('');
+    setFormStartDate(todayISO());
+    setIsMemberModalOpen(true);
   };
 
-  // ─── Render ───────────────────────────────────────────────────────────
-  return (
-    <div className="space-y-5 pb-16 max-w-5xl mx-auto">
+  const openEditMemberModal = (m: SubscriptionMember) => {
+    if (!isAdmin) {
+      toast.error('Admin Access Required to edit members');
+      return;
+    }
+    setEditingMember(m);
+    setFormMemberName(m.member_name);
+    setFormPhoneNumber(m.phone_number);
+    setFormShopName(m.shop_name);
+    setFormAddress(m.address || '');
+    setFormNotes(m.notes || '');
+    setFormStartDate(m.subscription_start_date || todayISO());
+    setIsMemberModalOpen(true);
+  };
 
-      {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card border border-border p-5 rounded-2xl shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 rounded-xl">
-            <Calendar className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground tracking-tight">Monthly Subscription Register</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Track member payments, dates, and revenue analytics</p>
+  const handleSaveMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+
+    if (!formMemberName.trim() || !formPhoneNumber.trim() || !formShopName.trim()) {
+      toast.error('Member name, phone, and shop name are required');
+      return;
+    }
+
+    setIsSavingMember(true);
+    try {
+      const payload = {
+        member_name: formMemberName.trim(),
+        phone_number: formPhoneNumber.trim(),
+        shop_name: formShopName.trim(),
+        address: formAddress.trim(),
+        notes: formNotes.trim(),
+        subscription_start_date: formStartDate
+      };
+
+      if (editingMember) {
+        await apiClient.put(`/subscriptions/members/${editingMember.id}`, payload);
+        toast.success('Member details updated successfully');
+      } else {
+        await apiClient.post('/subscriptions/members', payload);
+        toast.success('New Member & Shop registered successfully');
+      }
+
+      setIsMemberModalOpen(false);
+      loadMembers(memberSearch, selectedYear);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to save member details');
+    } finally {
+      setIsSavingMember(false);
+    }
+  };
+
+  const handleDeleteMember = async (id: string, name: string) => {
+    if (!isAdmin) {
+      toast.error('Admin Access Required');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to delete member "${name}"?`)) return;
+
+    try {
+      await apiClient.delete(`/subscriptions/members/${id}`);
+      toast.success(`Member "${name}" removed`);
+      loadMembers(memberSearch, selectedYear);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to delete member');
+    }
+  };
+
+  // ─── Shop Details & Audit History Modal Handlers ───────────────────────
+
+  const openShopAudit = async (phone: string, shop_name: string, member_id?: string) => {
+    setIsAuditModalOpen(true);
+    setLoadingAudit(true);
+    try {
+      const res = await apiClient.get<{ member: any; records: MonthlyRecordData[]; lifetime_total_received: number }>(
+        `/subscriptions/shop-history?phone=${encodeURIComponent(phone)}&shop_name=${encodeURIComponent(shop_name)}&member_id=${member_id || ''}`
+      );
+      setAuditMemberInfo(res.member);
+      setAuditRecords(res.records || []);
+      setAuditLifetimeTotal(res.lifetime_total_received || 0);
+    } catch {
+      toast.error('Failed to load shop subscription audit history');
+    } finally {
+      setLoadingAudit(false);
+    }
+  };
+
+  const selectedAuditYearRecord = useMemo(() => {
+    return auditRecords.find(r => r.year === auditSelectedYear);
+  }, [auditRecords, auditSelectedYear]);
+
+  // Quick switch from Audit Modal or Members table to Register Form
+  const loadMemberIntoRegister = (mem: { member_name: string; phone_number: string; shop_name: string }) => {
+    setNameSearch(mem.member_name);
+    setNumberSearch(mem.phone_number);
+    setCustomerName(mem.member_name);
+    setPhoneNumber(mem.phone_number);
+    setShopName(mem.shop_name);
+    setActiveTab('register');
+    loadSubscriptionRecord(mem.phone_number, null, selectedYear);
+    setIsAuditModalOpen(false);
+  };
+
+  return (
+    <div className="space-y-6">
+
+      {/* ─── Top Header & Year Selector ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/60 pb-5">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-xl text-black font-extrabold shadow-md shadow-amber-500/20">
+              <Calendar className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
+                Monthly Subscription Register
+              </h2>
+              <p className="text-muted-foreground text-xs font-semibold">
+                Record and manage monthly member subscription payments & shop audit history
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Year Selector */}
-          <div className="flex items-center gap-1.5 bg-secondary/60 px-3 py-2 rounded-xl border border-border text-sm">
-            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="text-xs font-semibold text-muted-foreground">Year:</span>
+        {/* Navigation Tabs & Year Selector */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex bg-secondary/40 border border-border/80 rounded-xl p-1 shadow-inner">
+            <button
+              onClick={() => setActiveTab('register')}
+              className={`px-3.5 py-1.5 text-xs font-extrabold rounded-lg transition-all flex items-center gap-1.5 ${
+                activeTab === 'register'
+                  ? 'bg-amber-500 text-black shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <ClipboardList className="h-3.5 w-3.5" /> Register
+            </button>
+            <button
+              onClick={() => setActiveTab('members')}
+              className={`px-3.5 py-1.5 text-xs font-extrabold rounded-lg transition-all flex items-center gap-1.5 ${
+                activeTab === 'members'
+                  ? 'bg-amber-500 text-black shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Store className="h-3.5 w-3.5" /> Members & Shops
+              {!isAdmin && <Lock className="h-3 w-3 text-amber-400 ml-0.5" />}
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`px-3.5 py-1.5 text-xs font-extrabold rounded-lg transition-all flex items-center gap-1.5 ${
+                activeTab === 'analytics'
+                  ? 'bg-amber-500 text-black shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <BarChart3 className="h-3.5 w-3.5" /> Analytics
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 bg-secondary/40 border border-border/80 rounded-xl px-3 py-1.5">
+            <Calendar className="h-4 w-4 text-amber-500" />
+            <span className="text-xs font-bold text-muted-foreground uppercase">Year:</span>
             <select
               value={selectedYear}
-              onChange={e => setSelectedYear(parseInt(e.target.value))}
-              className="bg-transparent text-foreground font-bold text-sm focus:outline-none"
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="bg-transparent text-sm font-black text-foreground focus:outline-none cursor-pointer"
             >
-              {[2023,2024,2025,2026,2027,2028,2029,2030].map(y => (
-                <option key={y} value={y}>{y}</option>
+              {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(y => (
+                <option key={y} value={y} className="bg-card text-foreground font-bold">{y}</option>
               ))}
             </select>
           </div>
         </div>
       </div>
 
-      {/* ── Tab Switcher ── */}
-      <div className="flex gap-1 bg-secondary/60 p-1 rounded-xl border border-border w-fit">
-        <button
-          onClick={() => setActiveTab('register')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-            activeTab === 'register'
-              ? 'bg-card shadow-sm text-foreground border border-border'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <ClipboardList className="h-4 w-4" />
-          Register Entry
-        </button>
-        <button
-          onClick={() => setActiveTab('analytics')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-            activeTab === 'analytics'
-              ? 'bg-card shadow-sm text-foreground border border-border'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <BarChart3 className="h-4 w-4" />
-          Analytics & Summary
-        </button>
-      </div>
-
-      {/* ════════════════════════════════════════════════════════════════
-          TAB 1 — REGISTER ENTRY
-          ════════════════════════════════════════════════════════════════ */}
+      {/* ════════════════════════════════════════════════════════════════════
+          TAB 1: REGISTER PAYMENT FORM
+      ════════════════════════════════════════════════════════════════════ */}
       {activeTab === 'register' && (
-        <div className="space-y-5">
+        <div className="space-y-6">
 
-          {/* ── Member Search Box ── */}
-          <div className="relative bg-gradient-to-br from-amber-500/10 via-card to-amber-400/5 border-2 border-amber-400/70 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4 border-b border-amber-300/40 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-500 animate-pulse" />
-                <h2 className="text-sm font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wide">
-                  Member Search & Identification
-                </h2>
-              </div>
-              {customerName && (
-                <span className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-full border border-emerald-400/40">
-                  <CheckCircle2 className="h-3 w-3" /> Member Loaded
+          {/* Member Search & Info Header Card */}
+          <div className="bg-card/90 border border-amber-500/30 rounded-2xl p-5 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <span className="text-xs font-black text-amber-400 uppercase tracking-widest flex items-center gap-1.5">
+                <UserCheck className="h-4 w-4 text-amber-400" /> Member Search & Identification
+              </span>
+              {phoneNumber && (
+                <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  Active Member Loaded
                 </span>
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-              {/* Name */}
-              <div className="md:col-span-4 space-y-1.5">
-                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <User className="h-3.5 w-3.5 text-primary" /> Name search
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+              <div className="md:col-span-4 relative">
+                <label className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block mb-1">
+                  Name search
                 </label>
-                <input
-                  type="text"
-                  placeholder="Enter member name..."
-                  value={nameSearch}
-                  onChange={e => { setNameSearch(e.target.value); setCustomerName(e.target.value); }}
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                  className="w-full bg-card text-foreground px-3.5 py-2.5 rounded-xl border border-border text-sm font-medium focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all"
-                />
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search member name..."
+                    value={nameSearch}
+                    onChange={(e) => {
+                      setNameSearch(e.target.value);
+                      handleSearch(e.target.value);
+                    }}
+                    className="w-full bg-secondary/35 border border-border rounded-xl pl-9 pr-3 py-2.5 text-sm font-bold text-foreground focus:outline-none focus:border-amber-500"
+                  />
+                </div>
               </div>
 
-              {/* Phone */}
-              <div className="md:col-span-4 space-y-1.5">
-                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <Phone className="h-3.5 w-3.5 text-primary" /> Phone search
+              <div className="md:col-span-4 relative">
+                <label className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block mb-1">
+                  Number search
                 </label>
-                <input
-                  type="text"
-                  placeholder="Enter phone number..."
-                  value={numberSearch}
-                  onChange={e => { setNumberSearch(e.target.value); setPhoneNumber(e.target.value); }}
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                  className="w-full bg-card text-foreground px-3.5 py-2.5 rounded-xl border border-border text-sm font-medium focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all"
-                />
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search phone number..."
+                    value={numberSearch}
+                    onChange={(e) => {
+                      setNumberSearch(e.target.value);
+                      handleSearch(e.target.value);
+                    }}
+                    className="w-full bg-secondary/35 border border-border rounded-xl pl-9 pr-3 py-2.5 text-sm font-bold text-foreground focus:outline-none focus:border-amber-500"
+                  />
+                </div>
               </div>
 
-              {/* Search button */}
-              <div className="md:col-span-4">
+              <div className="md:col-span-4 flex gap-2">
                 <button
-                  onClick={() => handleSearch()}
+                  type="button"
+                  onClick={() => handleSearch(nameSearch || numberSearch)}
                   disabled={isSearching}
-                  className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-4 rounded-xl transition-all text-sm disabled:opacity-60"
+                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs tracking-wider py-2.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                  {isSearching ? 'Searching...' : 'Search Member'}
+                  Search
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetForm}
+                  className="bg-secondary/60 hover:bg-secondary text-foreground p-2.5 rounded-xl border border-border transition-all cursor-pointer"
+                  title="Clear Form"
+                >
+                  <RotateCcw className="h-4 w-4" />
                 </button>
               </div>
+
+              {/* Search Dropdown Overlay */}
+              {showDropdown && searchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border border-amber-500/40 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
+                  {searchResults.map((item, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => handleSelectCustomer(item)}
+                      className="p-3 hover:bg-amber-500/10 cursor-pointer border-b border-border/40 flex items-center justify-between transition-colors"
+                    >
+                      <div>
+                        <div className="font-extrabold text-sm text-foreground">{item.customer_name}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                          <span>📱 {item.phone_number}</span>
+                          {item.shop_name && <span>🏬 {item.shop_name}</span>}
+                        </div>
+                      </div>
+                      <ArrowUpRight className="h-4 w-4 text-amber-400" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Dropdown results */}
-            {showDropdown && searchResults.length > 0 && (
-              <div className="absolute left-5 right-5 top-[158px] z-30 bg-card border border-amber-400/80 rounded-xl shadow-2xl overflow-hidden max-h-56 overflow-y-auto">
-                <div className="px-3 py-2 text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 border-b border-border flex items-center justify-between">
-                  Select Member from Results
-                  <button onClick={() => setShowDropdown(false)}><X className="h-3.5 w-3.5" /></button>
-                </div>
-                {searchResults.map((res, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => selectCustomer(res)}
-                    className="p-3 hover:bg-amber-500/15 cursor-pointer border-b border-border/40 last:border-0 flex items-center justify-between text-sm"
-                  >
-                    <div>
-                      <p className="font-bold text-foreground">{res.customer_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        📱 {res.phone_number}{res.shop_name && ` • 🏬 ${res.shop_name}`}
-                      </p>
-                    </div>
-                    <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-1 rounded-md">Select</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Shop name & total row */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mt-4 pt-4 border-t border-amber-300/40">
-              <div className="md:col-span-7 space-y-1.5">
-                <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                  <Building2 className="h-3.5 w-3.5 text-amber-600" /> Shop / Business Name
-                </label>
+            {/* Member Details Readout */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border/30">
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Shop name</label>
                 <input
                   type="text"
-                  placeholder="Shop or business name..."
+                  placeholder="Enter shop name..."
                   value={shopName}
-                  onChange={e => setShopName(e.target.value)}
-                  className="w-full bg-card/90 text-foreground px-3.5 py-2.5 rounded-xl border border-border text-sm font-semibold focus:ring-2 focus:ring-amber-500"
+                  onChange={(e) => setShopName(e.target.value)}
+                  className="w-full bg-secondary/20 border border-border/60 rounded-lg px-3 py-1.5 text-sm font-extrabold text-foreground"
                 />
               </div>
 
-              <div className="md:col-span-5 bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border-2 border-amber-400 p-3 rounded-xl flex items-center justify-between">
+              <div>
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Customer Name</label>
+                <input
+                  type="text"
+                  placeholder="Enter customer name..."
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full bg-secondary/20 border border-border/60 rounded-lg px-3 py-1.5 text-sm font-extrabold text-foreground"
+                />
+              </div>
+
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-300">
-                    Year Total Received
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">Auto-calculated for {selectedYear}</p>
+                  <span className="text-[10px] uppercase font-black text-amber-400 tracking-wider block">Total Received Amount</span>
+                  <span className="text-[10px] text-muted-foreground">For Year {selectedYear}</span>
                 </div>
-                <span className="text-2xl font-black text-amber-700 dark:text-amber-300 tracking-tight">
-                  ₹{formatINR(totalReceivedAmount)}
-                </span>
+                <div className="text-2xl font-black text-amber-400">₹{formatINR(totalReceivedAmount)}</div>
               </div>
             </div>
           </div>
 
-          {/* ── 12-Month Register Table ── */}
-          <div className="bg-card border-2 border-amber-400/70 rounded-2xl overflow-hidden shadow-sm">
-            <div className="bg-amber-400/20 px-5 py-3.5 border-b border-amber-400/60 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-amber-700 dark:text-amber-300" />
-                <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">
-                  Monthly Payment Register — {selectedYear}
-                </h2>
-              </div>
-              <span className="text-xs text-muted-foreground hidden sm:block">
-                Enter amount & date for each paid month
+          {/* Month Payments Grid Form */}
+          <div className="bg-card/90 border border-border rounded-2xl p-5 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <span className="text-xs font-black text-foreground uppercase tracking-widest flex items-center gap-1.5">
+                <Banknote className="h-4 w-4 text-amber-500" /> Monthly Payment Entry ({selectedYear})
               </span>
+              <span className="text-xs text-muted-foreground font-medium">Type payment amounts & timestamps below</span>
             </div>
 
-            {/* Table header */}
-            <div className="grid grid-cols-12 bg-secondary/80 px-4 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
-              <div className="col-span-3">Month</div>
-              <div className="col-span-4 text-center">Amount (₹)</div>
-              <div className="col-span-3 text-center">Payment Date</div>
-              <div className="col-span-2 text-center">Bill</div>
-            </div>
-
-            <div className="divide-y divide-border/50">
-              {MONTHS.map(m => {
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {MONTHS.map((m) => {
                 const isPaid = (amounts[m.key] || 0) > 0;
                 return (
                   <div
                     key={m.key}
-                    className={`grid grid-cols-12 items-center px-4 py-3 transition-colors ${
-                      isPaid ? 'bg-emerald-500/5 hover:bg-emerald-500/10' : 'hover:bg-secondary/30'
+                    className={`p-3.5 rounded-xl border transition-all ${
+                      isPaid
+                        ? 'bg-emerald-500/10 border-emerald-500/40 shadow-sm'
+                        : 'bg-secondary/25 border-border/60 hover:border-border'
                     }`}
                   >
-                    {/* Month label */}
-                    <div className="col-span-3 flex items-center gap-2 font-bold text-sm text-foreground">
-                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                        isPaid ? 'bg-emerald-500' : 'bg-border'
-                      }`} />
-                      <span>{m.label}</span>
-                      {isPaid && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-black uppercase text-foreground flex items-center gap-1.5">
+                        <span className={`h-2 w-2 rounded-full ${isPaid ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`} />
+                        {m.label}
+                      </span>
+
+                      {isPaid && (
+                        <button
+                          type="button"
+                          onClick={() => handleSendBill(m.key, m.label)}
+                          disabled={sendingBill === m.key}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase px-2 py-0.5 rounded-md flex items-center gap-1 transition-all cursor-pointer"
+                          title="Send WhatsApp Bill"
+                        >
+                          {sendingBill === m.key ? <Loader2 className="h-3 w-3 animate-spin" /> : <MessageCircle className="h-3 w-3" />}
+                          Bill
+                        </button>
+                      )}
                     </div>
 
-                    {/* Amount */}
-                    <div className="col-span-4 flex items-center justify-center px-2">
-                      <div className="relative w-full max-w-[140px]">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-bold">₹</span>
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground">₹</span>
                         <input
                           type="number"
-                          min="0"
-                          step="50"
-                          placeholder="0"
-                          value={amounts[m.key] === 0 ? '' : amounts[m.key]}
-                          onChange={e => handleAmountChange(m.key, e.target.value)}
-                          className="w-full bg-background text-foreground font-bold text-sm pl-7 pr-2 py-2 rounded-lg border border-border focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-right transition-all"
+                          placeholder="0.00"
+                          value={amounts[m.key] || ''}
+                          onChange={(e) => handleAmountChange(m.key, e.target.value)}
+                          className="w-full bg-background border border-border rounded-lg pl-7 pr-3 py-1.5 text-sm font-extrabold text-foreground focus:border-amber-500 focus:outline-none"
                         />
                       </div>
-                    </div>
 
-                    {/* Date */}
-                    <div className="col-span-3 flex items-center justify-center px-2">
-                      <input
-                        type="date"
-                        value={paidDates[m.key] || ''}
-                        onChange={e => handleDateChange(m.key, e.target.value)}
-                        disabled={!isPaid}
-                        className="w-full text-xs bg-background text-foreground font-medium py-2 px-2 rounded-lg border border-border focus:ring-2 focus:ring-amber-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                      />
-                    </div>
-
-                    {/* WhatsApp bill button */}
-                    <div className="col-span-2 flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => handleSendBill(m.key, m.label)}
-                        disabled={!isPaid || sendingBill === m.key}
-                        title={`Send WhatsApp bill for ${m.label}`}
-                        className="p-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-600 dark:text-emerald-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                      >
-                        {sendingBill === m.key
-                          ? <Loader2 className="h-4 w-4 animate-spin" />
-                          : <MessageCircle className="h-4 w-4" />
-                        }
-                      </button>
+                      {isPaid && (
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                          <Clock className="h-3 w-3 text-emerald-400" />
+                          <span>Paid Date:</span>
+                          <input
+                            type="date"
+                            value={paidDates[m.key] || todayISO()}
+                            onChange={(e) => handleDateChange(m.key, e.target.value)}
+                            className="bg-background border border-border/80 rounded px-1.5 py-0.5 text-xs text-foreground focus:outline-none"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
               })}
-
-              {/* Year Total Row */}
-              <div className="grid grid-cols-12 px-4 py-4 bg-amber-500/15 border-t-2 border-amber-400 items-center">
-                <div className="col-span-3 text-base font-extrabold text-amber-900 dark:text-amber-300 uppercase tracking-wide">
-                  1 Year Total
-                </div>
-                <div className="col-span-9">
-                  <span className="text-2xl font-black text-amber-800 dark:text-amber-200 tracking-tight">
-                    ₹{formatINR(totalReceivedAmount)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Notes & Actions ── */}
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-foreground">Register Notes / Remarks (Optional)</label>
-              <textarea
-                rows={2}
-                placeholder="Add any notes (e.g. Paid via Cash / UPI ref...)"
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                className="w-full bg-card text-foreground px-3.5 py-2.5 rounded-xl border border-border text-sm focus:ring-2 focus:ring-amber-500 resize-none"
-              />
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-              <div className="flex gap-2">
-                <button
-                  onClick={handleReset}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-secondary text-sm font-semibold transition-all"
-                >
-                  <RotateCcw className="h-4 w-4" /> Reset
-                </button>
-                <button
-                  onClick={handlePrint}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card hover:bg-secondary text-sm font-semibold transition-all"
-                >
-                  <Printer className="h-4 w-4" /> Print Register
-                </button>
+            {/* Bottom Action Footer */}
+            <div className="pt-4 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="w-full sm:w-auto">
+                <input
+                  type="text"
+                  placeholder="Add notes / remark for this subscription..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full sm:w-96 bg-secondary/35 border border-border rounded-xl px-4 py-2 text-xs text-foreground focus:outline-none"
+                />
               </div>
+
               <button
-                onClick={handleSave}
+                type="button"
+                onClick={handleSaveRecord}
                 disabled={isSaving}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm transition-all disabled:opacity-60 shadow-lg shadow-primary/25"
+                className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs tracking-wider px-6 py-3 rounded-xl transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer"
               >
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                {isSaving ? 'Saving...' : 'Save Register Entry'}
+                Save Subscription Record
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ════════════════════════════════════════════════════════════════
-          TAB 2 — ANALYTICS & SUMMARY
-          ════════════════════════════════════════════════════════════════ */}
-      {activeTab === 'analytics' && (
-        <div className="space-y-5">
+      {/* ════════════════════════════════════════════════════════════════════
+          TAB 2: REGISTERED MEMBERS & SHOPS (ADMIN CRUD + AUDIT)
+      ════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'members' && (
+        <div className="space-y-6">
 
-          {/* ── Year Total Card ── */}
-          <div className="bg-gradient-to-br from-amber-500/20 via-card to-amber-400/5 border-2 border-amber-500/60 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-amber-500/20 rounded-2xl">
-                <TrendingUp className="h-7 w-7 text-amber-600 dark:text-amber-400" />
+          {/* Admin Restricted Access Warning Banner */}
+          {!isAdmin ? (
+            <div className="p-6 bg-amber-500/10 border border-amber-500/40 rounded-2xl flex flex-col items-center text-center gap-3">
+              <div className="p-3 bg-amber-500/20 rounded-full text-amber-400">
+                <ShieldAlert className="h-8 w-8" />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total Subscription Revenue</p>
-                <p className="text-4xl font-black text-amber-700 dark:text-amber-300 tracking-tight">
-                  ₹{formatINR(yearTotal)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {summaryRecords.length} active subscriber{summaryRecords.length !== 1 ? 's' : ''} · Year {selectedYear}
+                <h3 className="text-lg font-black text-amber-400">Admin Restricted Access</h3>
+                <p className="text-sm text-muted-foreground max-w-lg mt-1">
+                  Member & shop CRUD registration operations are restricted to Shop Owners/Admins. Staff members can view shop histories and record subscription payments in the Register tab.
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-center">
-              <div className="bg-card border border-border rounded-xl px-4 py-3">
-                <p className="text-2xl font-black text-foreground">{summaryRecords.length}</p>
-                <p className="text-[11px] text-muted-foreground font-semibold mt-0.5">Members</p>
-              </div>
-              <div className="bg-card border border-border rounded-xl px-4 py-3">
-                <p className="text-2xl font-black text-foreground">
-                  {MONTHS.filter(m => monthlyTotals[m.key] > 0).length}
-                </p>
-                <p className="text-[11px] text-muted-foreground font-semibold mt-0.5">Active Months</p>
-              </div>
-            </div>
-          </div>
+          ) : null}
 
-          {/* ── Monthly Revenue Grid ── */}
-          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-5 py-3.5 border-b border-border flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-primary" />
-              <h2 className="text-sm font-bold text-foreground">Monthly Revenue Breakdown — {selectedYear}</h2>
+          {/* Members Table Card */}
+          <div className="bg-card/90 border border-border rounded-2xl p-5 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/40 pb-4">
+              <div>
+                <h3 className="text-base font-black text-foreground uppercase tracking-wider flex items-center gap-2">
+                  <Store className="h-5 w-5 text-amber-500" />
+                  Registered Association Members & Shops ({membersList.length})
+                </h3>
+                <p className="text-xs text-muted-foreground font-semibold">
+                  Manage member database records & view comprehensive shop audit histories
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search name, phone, shop..."
+                    value={memberSearch}
+                    onChange={(e) => {
+                      setMemberSearch(e.target.value);
+                      loadMembers(e.target.value, selectedYear);
+                    }}
+                    className="w-full bg-secondary/35 border border-border rounded-xl pl-8 pr-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-amber-500 font-semibold"
+                  />
+                </div>
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={openCreateMemberModal}
+                    className="bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs tracking-wider px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 shrink-0 cursor-pointer"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Register Member
+                  </button>
+                )}
+              </div>
             </div>
 
-            {loadingSummary ? (
-              <div className="flex items-center justify-center py-16 text-muted-foreground gap-2">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span className="text-sm">Loading analytics...</span>
+            {/* Table Content */}
+            {loadingMembers ? (
+              <div className="p-12 text-center text-muted-foreground flex flex-col items-center gap-2">
+                <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
+                <span className="text-xs font-semibold">Loading members & shop directory...</span>
+              </div>
+            ) : membersList.length === 0 ? (
+              <div className="p-12 text-center text-muted-foreground space-y-2">
+                <Store className="h-10 w-10 mx-auto text-muted-foreground/40" />
+                <p className="text-sm font-bold text-foreground">No registered members found</p>
+                <p className="text-xs">Click "Register Member" above to add your first association member & shop.</p>
               </div>
             ) : (
-              <>
-                {/* Column headers */}
-                <div className="grid grid-cols-12 bg-secondary/60 px-5 py-2.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider border-b border-border">
-                  <div className="col-span-3">Month</div>
-                  <div className="col-span-3 text-right">Revenue</div>
-                  <div className="col-span-3 text-center">Subscribers</div>
-                  <div className="col-span-3 text-right">View</div>
-                </div>
-
-                <div className="divide-y divide-border/40">
-                  {MONTHS.map(m => {
-                    const total = monthlyTotals[m.key];
-                    const count = summaryRecords.filter(r => (Number((r as any)[m.key]) || 0) > 0).length;
-                    const isSelected = selectedAnalyticsMonth === m.key;
-                    return (
-                      <div key={m.key}>
-                        <div
-                          className={`grid grid-cols-12 items-center px-5 py-3 cursor-pointer transition-colors ${
-                            isSelected
-                              ? 'bg-primary/10 border-l-4 border-l-primary'
-                              : total > 0
-                                ? 'hover:bg-secondary/50'
-                                : 'opacity-50'
-                          }`}
-                          onClick={() => setSelectedAnalyticsMonth(isSelected ? null : m.key)}
-                        >
-                          {/* Month */}
-                          <div className="col-span-3 flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${total > 0 ? 'bg-emerald-500' : 'bg-border'}`} />
-                            <span className="font-bold text-sm text-foreground">{m.label}</span>
-                          </div>
-
-                          {/* Revenue */}
-                          <div className="col-span-3 text-right">
-                            <span className={`text-base font-black ${total > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
-                              {total > 0 ? `₹${formatINR(total)}` : '—'}
-                            </span>
-                          </div>
-
-                          {/* Subscriber count */}
-                          <div className="col-span-3 text-center">
-                            {count > 0 ? (
-                              <span className="inline-flex items-center gap-1 text-xs font-semibold bg-primary/10 text-primary px-2.5 py-1 rounded-full">
-                                <Store className="h-3 w-3" /> {count}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">—</span>
-                            )}
-                          </div>
-
-                          {/* Toggle */}
-                          <div className="col-span-3 flex justify-end">
-                            {total > 0 && (
-                              <span className={`text-xs font-semibold px-2 py-1 rounded-lg transition-all ${
-                                isSelected
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'bg-secondary text-muted-foreground hover:text-foreground'
-                              }`}>
-                                {isSelected ? 'Close' : 'View Shops'}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Expanded shops list */}
-                        {isSelected && activeMonthRecords.length > 0 && (
-                          <div className="px-5 pb-4 bg-primary/5 border-b border-border">
-                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide pt-3 pb-2">
-                              Shops that paid in {m.label} {selectedYear}
-                            </p>
-                            <div className="space-y-2">
-                              {activeMonthRecords.map((rec, idx) => (
-                                <div
-                                  key={rec.id || idx}
-                                  className="flex items-center justify-between bg-card border border-border rounded-xl px-4 py-3"
-                                >
-                                  <div className="flex items-center gap-3 min-w-0">
-                                    <div className="p-1.5 bg-primary/10 rounded-lg flex-shrink-0">
-                                      <Store className="h-3.5 w-3.5 text-primary" />
-                                    </div>
-                                    <div className="min-w-0">
-                                      <p className="font-bold text-sm text-foreground truncate">{rec.customer_name}</p>
-                                      <p className="text-xs text-muted-foreground truncate">
-                                        📱 {rec.phone_number}
-                                        {rec.shop_name && <span> · 🏬 {rec.shop_name}</span>}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-3 flex-shrink-0">
-                                    <div className="text-right">
-                                      <p className="font-black text-base text-emerald-600 dark:text-emerald-400">
-                                        ₹{formatINR(Number((rec as any)[m.key]) || 0)}
-                                      </p>
-                                      <p className="text-[11px] text-muted-foreground">
-                                        {formatDisplayDate((rec as any)[`${m.key}_paid_at`])}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-border/60 bg-secondary/30 text-muted-foreground uppercase font-black text-[10px] tracking-wider">
+                      <th className="p-3">Member Name</th>
+                      <th className="p-3">Shop Name & Address</th>
+                      <th className="p-3">Phone Number</th>
+                      <th className="p-3">Joined Date</th>
+                      <th className="p-3 text-right">Year Total ({selectedYear})</th>
+                      <th className="p-3 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {membersList.map((m) => (
+                      <tr key={m.id} className="hover:bg-secondary/20 transition-colors">
+                        <td className="p-3 font-extrabold text-foreground">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-500">
+                              <User className="h-3.5 w-3.5" />
                             </div>
+                            <span>{m.member_name}</span>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                        </td>
 
-                {/* Bottom Year Total */}
-                <div className="grid grid-cols-12 items-center px-5 py-4 bg-amber-500/15 border-t-2 border-amber-400">
-                  <div className="col-span-3 font-extrabold text-base text-amber-900 dark:text-amber-300 uppercase">
-                    Year Total
-                  </div>
-                  <div className="col-span-3 text-right font-black text-xl text-amber-800 dark:text-amber-200">
-                    ₹{formatINR(yearTotal)}
-                  </div>
-                  <div className="col-span-3 text-center">
-                    <span className="text-xs font-semibold text-muted-foreground">
-                      {summaryRecords.length} members
-                    </span>
-                  </div>
-                  <div className="col-span-3" />
-                </div>
-              </>
+                        <td className="p-3 font-bold text-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <Store className="h-3.5 w-3.5 text-primary shrink-0" />
+                            <span>{m.shop_name}</span>
+                          </div>
+                          {m.address && <div className="text-[10px] text-muted-foreground pl-5">{m.address}</div>}
+                        </td>
+
+                        <td className="p-3 font-semibold text-muted-foreground">
+                          <div className="flex items-center gap-2">
+                            <span>📱 {m.phone_number}</span>
+                            <a
+                              href={`https://wa.me/91${m.phone_number.replace(/\D/g, '')}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-emerald-400 hover:text-emerald-300"
+                              title="WhatsApp"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5" />
+                            </a>
+                          </div>
+                        </td>
+
+                        <td className="p-3 font-medium text-muted-foreground">
+                          {formatDisplayDate(m.subscription_start_date)}
+                        </td>
+
+                        <td className="p-3 text-right font-black text-sm text-emerald-400">
+                          ₹{formatINR(m.year_total_received || 0)}
+                        </td>
+
+                        <td className="p-3">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* View Audit Details Button */}
+                            <button
+                              type="button"
+                              onClick={() => openShopAudit(m.phone_number, m.shop_name, m.id)}
+                              className="p-1.5 bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 rounded-lg transition-all cursor-pointer"
+                              title="View Shop Details & Audit History"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+
+                            {/* Load into Register */}
+                            <button
+                              type="button"
+                              onClick={() => loadMemberIntoRegister(m)}
+                              className="p-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/30 rounded-lg transition-all cursor-pointer"
+                              title="Register Payment"
+                            >
+                              <Banknote className="h-3.5 w-3.5" />
+                            </button>
+
+                            {/* Admin Edit */}
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => openEditMemberModal(m)}
+                                className="p-1.5 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 rounded-lg transition-all cursor-pointer"
+                                title="Edit Member (Admin)"
+                              >
+                                <Edit3 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+
+                            {/* Admin Delete */}
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMember(m.id, m.member_name)}
+                                className="p-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 rounded-lg transition-all cursor-pointer"
+                                title="Delete Member (Admin)"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
       )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          TAB 3: ANALYTICS & SUMMARY
+      ════════════════════════════════════════════════════════════════════ */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-6">
+
+          {/* Overview Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-5 bg-card/90 border border-border rounded-2xl shadow-xl flex items-center justify-between">
+              <div>
+                <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block">Total Members</span>
+                <span className="text-3xl font-black text-foreground mt-1 block">{summaryRecords.length}</span>
+              </div>
+              <div className="p-3 bg-primary/10 text-primary rounded-xl">
+                <Store className="h-6 w-6" />
+              </div>
+            </div>
+
+            <div className="p-5 bg-card/90 border border-border rounded-2xl shadow-xl flex items-center justify-between">
+              <div>
+                <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block">Year Total Collected</span>
+                <span className="text-3xl font-black text-amber-400 mt-1 block">₹{formatINR(yearTotal)}</span>
+              </div>
+              <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl">
+                <IndianRupee className="h-6 w-6" />
+              </div>
+            </div>
+
+            <div className="p-5 bg-card/90 border border-border rounded-2xl shadow-xl flex items-center justify-between">
+              <div>
+                <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block">Average Monthly Collection</span>
+                <span className="text-3xl font-black text-emerald-400 mt-1 block">₹{formatINR(yearTotal / 12)}</span>
+              </div>
+              <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl">
+                <TrendingUp className="h-6 w-6" />
+              </div>
+            </div>
+          </div>
+
+          {/* Monthly Collection Matrix */}
+          <div className="bg-card/90 border border-border rounded-2xl p-5 shadow-xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <span className="text-xs font-black text-foreground uppercase tracking-widest flex items-center gap-1.5">
+                <BarChart3 className="h-4 w-4 text-amber-500" /> Monthly Collection Breakdown ({selectedYear})
+              </span>
+              <span className="text-xs text-muted-foreground">Click any month to expand paying shops</span>
+            </div>
+
+            {loadingSummary ? (
+              <div className="p-12 text-center text-muted-foreground flex flex-col items-center gap-2">
+                <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
+                <span className="text-xs font-semibold">Loading analytics summary...</span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {MONTHS.map((m) => {
+                  const total = monthlyTotals[m.key] || 0;
+                  const isSelected = selectedAnalyticsMonth === m.key;
+                  const count = summaryRecords.filter(r => (Number((r as any)[m.key]) || 0) > 0).length;
+
+                  return (
+                    <div key={m.key} className="border border-border/60 rounded-xl overflow-hidden">
+                      <div
+                        onClick={() => setSelectedAnalyticsMonth(isSelected ? null : m.key)}
+                        className={`grid grid-cols-12 items-center p-3.5 cursor-pointer transition-all ${
+                          isSelected ? 'bg-amber-500/10' : 'bg-secondary/20 hover:bg-secondary/40'
+                        }`}
+                      >
+                        <div className="col-span-3 font-extrabold text-sm text-foreground uppercase">
+                          {m.label}
+                        </div>
+                        <div className="col-span-3 text-right font-black text-base text-emerald-400">
+                          ₹{formatINR(total)}
+                        </div>
+                        <div className="col-span-3 text-center text-xs font-semibold text-muted-foreground">
+                          {count} shops paid
+                        </div>
+                        <div className="col-span-3 text-right">
+                          <span className="text-xs text-amber-400 font-bold">{isSelected ? 'Hide ▲' : 'View ▼'}</span>
+                        </div>
+                      </div>
+
+                      {isSelected && (
+                        <div className="p-4 bg-background border-t border-border/40 space-y-2">
+                          {activeMonthRecords.length === 0 ? (
+                            <p className="text-xs text-muted-foreground italic">No payments recorded for this month.</p>
+                          ) : (
+                            activeMonthRecords.map((r, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2.5 bg-secondary/30 rounded-lg border border-border/40">
+                                <div>
+                                  <div className="font-extrabold text-xs text-foreground">{r.customer_name} ({r.shop_name})</div>
+                                  <div className="text-[10px] text-muted-foreground">Paid on: {formatDisplayDate((r as any)[`${m.key}_paid_at`])}</div>
+                                </div>
+                                <div className="font-black text-sm text-emerald-400">₹{formatINR(Number((r as any)[m.key]))}</div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          MEMBER REGISTRATION / EDIT MODAL (ADMIN ONLY)
+      ════════════════════════════════════════════════════════════════════ */}
+      {isMemberModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-card border border-amber-500/40 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden space-y-4 p-6">
+            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <h3 className="text-base font-black text-foreground uppercase tracking-wider flex items-center gap-2">
+                <Store className="h-5 w-5 text-amber-500" />
+                {editingMember ? 'Edit Member & Shop' : 'Register New Member & Shop'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsMemberModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMember} className="space-y-4">
+              <div>
+                <label className="text-xs font-extrabold text-primary uppercase block mb-1">Member Name *</label>
+                <input
+                  type="text"
+                  placeholder="Enter full member name..."
+                  value={formMemberName}
+                  onChange={(e) => setFormMemberName(e.target.value)}
+                  className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-foreground focus:outline-none focus:border-amber-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-extrabold text-primary uppercase block mb-1">Phone Number *</label>
+                <input
+                  type="text"
+                  placeholder="Enter 10-digit phone number..."
+                  value={formPhoneNumber}
+                  onChange={(e) => setFormPhoneNumber(e.target.value)}
+                  className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-foreground focus:outline-none focus:border-amber-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-extrabold text-primary uppercase block mb-1">Shop Name *</label>
+                <input
+                  type="text"
+                  placeholder="Enter member shop name..."
+                  value={formShopName}
+                  onChange={(e) => setFormShopName(e.target.value)}
+                  className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-foreground focus:outline-none focus:border-amber-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-extrabold text-muted-foreground uppercase block mb-1">Shop Address / Location</label>
+                <input
+                  type="text"
+                  placeholder="Enter shop address..."
+                  value={formAddress}
+                  onChange={(e) => setFormAddress(e.target.value)}
+                  className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-extrabold text-muted-foreground uppercase block mb-1">Subscription Start Date</label>
+                <input
+                  type="date"
+                  value={formStartDate}
+                  onChange={(e) => setFormStartDate(e.target.value)}
+                  className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-extrabold text-muted-foreground uppercase block mb-1">Notes</label>
+                <textarea
+                  placeholder="Optional notes..."
+                  value={formNotes}
+                  onChange={(e) => setFormNotes(e.target.value)}
+                  rows={2}
+                  className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-2 text-xs text-foreground focus:outline-none"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-border/40 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsMemberModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:bg-secondary cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingMember}
+                  className="bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs px-5 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isSavingMember ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {editingMember ? 'Update Member' : 'Register Member'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════
+          SHOP SUBSCRIPTION AUDIT DETAILS MODAL
+      ════════════════════════════════════════════════════════════════════ */}
+      {isAuditModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-card border border-amber-500/40 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            
+            {/* Header */}
+            <div className="p-5 bg-gradient-to-r from-amber-500/20 to-yellow-600/10 border-b border-border/40 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black text-foreground flex items-center gap-2">
+                  <Store className="h-5 w-5 text-amber-500" />
+                  {auditMemberInfo?.shop_name || 'Shop Details & Audit History'}
+                </h3>
+                <p className="text-xs text-muted-foreground font-semibold">
+                  Member: <span className="text-foreground font-bold">{auditMemberInfo?.member_name}</span> · Phone: <span className="text-foreground font-bold">{auditMemberInfo?.phone_number}</span>
+                  {auditMemberInfo?.subscription_start_date && (
+                    <span> · Joined: {formatDisplayDate(auditMemberInfo.subscription_start_date)}</span>
+                  )}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAuditModalOpen(false)}
+                className="text-muted-foreground hover:text-foreground p-1"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {loadingAudit ? (
+                <div className="p-12 text-center text-muted-foreground flex flex-col items-center gap-2">
+                  <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+                  <span className="text-xs font-semibold">Loading detailed shop audit history...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Summary Banner */}
+                  <div className="p-4 bg-secondary/30 border border-border rounded-xl flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-black uppercase text-muted-foreground tracking-wider block">Lifetime Total Paid</span>
+                      <span className="text-2xl font-black text-emerald-400">₹{formatINR(auditLifetimeTotal)}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-muted-foreground">Audit Year:</span>
+                      <select
+                        value={auditSelectedYear}
+                        onChange={(e) => setAuditSelectedYear(parseInt(e.target.value))}
+                        className="bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs font-extrabold text-foreground"
+                      >
+                        {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Monthly Audit Table */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+                      Monthly Payment Matrix & Timestamps ({auditSelectedYear})
+                    </h4>
+
+                    {!selectedAuditYearRecord ? (
+                      <div className="p-8 text-center bg-secondary/20 rounded-xl text-muted-foreground text-xs font-semibold">
+                        No subscription record found for year {auditSelectedYear}.
+                      </div>
+                    ) : (
+                      <div className="border border-border/60 rounded-xl overflow-hidden">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="bg-secondary/40 border-b border-border/60 text-muted-foreground font-black text-[10px] uppercase tracking-wider">
+                              <th className="p-3">Month</th>
+                              <th className="p-3">Status</th>
+                              <th className="p-3 text-right">Amount Paid</th>
+                              <th className="p-3 text-center">Payment Date</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/40">
+                            {MONTHS.map((m) => {
+                              const amt = Number((selectedAuditYearRecord as any)[m.key]) || 0;
+                              const paidAt = (selectedAuditYearRecord as any)[`${m.key}_paid_at`];
+                              const isPaid = amt > 0;
+
+                              return (
+                                <tr key={m.key} className={isPaid ? 'bg-emerald-500/5' : ''}>
+                                  <td className="p-3 font-extrabold uppercase text-foreground">{m.label}</td>
+                                  <td className="p-3">
+                                    {isPaid ? (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                        <Check className="h-3 w-3" /> Paid
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-secondary text-muted-foreground border border-border">
+                                        Unpaid / Pending
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="p-3 text-right font-black text-sm">
+                                    {isPaid ? <span className="text-emerald-400">₹{formatINR(amt)}</span> : <span className="text-muted-foreground">—</span>}
+                                  </td>
+                                  <td className="p-3 text-center font-semibold text-muted-foreground">
+                                    {isPaid ? (
+                                      <span className="inline-flex items-center gap-1 text-xs text-foreground">
+                                        <Clock className="h-3 w-3 text-amber-400" />
+                                        {formatDisplayDate(paidAt)}
+                                      </span>
+                                    ) : '—'}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="p-4 border-t border-border/40 bg-secondary/20 flex items-center justify-between">
+              {auditMemberInfo && (
+                <button
+                  type="button"
+                  onClick={() => loadMemberIntoRegister(auditMemberInfo)}
+                  className="bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs px-4 py-2 rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Banknote className="h-4 w-4" />
+                  Load into Payment Register
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsAuditModalOpen(false)}
+                className="px-4 py-2 bg-secondary hover:bg-secondary/80 rounded-xl text-xs font-extrabold text-foreground"
+              >
+                Close Audit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
