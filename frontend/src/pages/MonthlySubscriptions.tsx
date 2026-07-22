@@ -243,12 +243,11 @@ export default function MonthlySubscriptions() {
   }, [currentYear]);
 
   useEffect(() => {
-    if (activeTab === 'analytics') {
-      loadSummary(selectedYear);
-    } else if (activeTab === 'members') {
+    loadSummary(selectedYear);
+    if (activeTab === 'members') {
       loadMembers(memberSearch, selectedYear);
     }
-  }, [activeTab, selectedYear, loadSummary, loadMembers, memberSearch]);
+  }, [selectedYear, activeTab, loadSummary, loadMembers, memberSearch]);
 
   // ─── Search Customers / Members ─────────────────────────────────────────
 
@@ -361,6 +360,7 @@ export default function MonthlySubscriptions() {
         setRecordId(res.data.id);
       }
       toast.success('Subscription record saved successfully!');
+      loadSummary(selectedYear);
     } catch (err: any) {
       toast.error(err.message || 'Failed to save subscription record');
     } finally {
@@ -743,10 +743,23 @@ export default function MonthlySubscriptions() {
 
               <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase font-black text-amber-400 tracking-wider block">Total Received Amount</span>
-                  <span className="text-[10px] text-muted-foreground">For Year {selectedYear}</span>
+                  <span className="text-[10px] uppercase font-black text-amber-400 tracking-wider block">
+                    {phoneNumber ? 'Member Year Total' : 'Total Received Amount'}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {phoneNumber ? `Loaded Shop Total` : `All Shops Total (Year ${selectedYear})`}
+                  </span>
                 </div>
-                <div className="text-2xl font-black text-amber-400">₹{formatINR(totalReceivedAmount)}</div>
+                <div className="text-right">
+                  <div className="text-2xl font-black text-amber-400">
+                    ₹{formatINR(phoneNumber ? totalReceivedAmount : yearTotal)}
+                  </div>
+                  {phoneNumber && (
+                    <div className="text-[10px] text-muted-foreground font-semibold">
+                      All Shops Year Total: ₹{formatINR(yearTotal)}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
