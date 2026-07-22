@@ -3,7 +3,9 @@ import { authenticateToken } from '../middleware/auth';
 import {
   searchSubscriptions,
   getSubscriptionRecord,
-  saveSubscriptionRecord
+  saveSubscriptionRecord,
+  getSubscriptionSummary,
+  sendSubscriptionBill
 } from '../controllers/subscriptions.controller';
 
 const router = Router();
@@ -13,6 +15,9 @@ router.use(authenticateToken);
 
 router.get('/search', searchSubscriptions);
 router.get('/record', getSubscriptionRecord);
+router.get('/summary', getSubscriptionSummary);
 router.post('/save', saveSubscriptionRecord);
+router.post('/send-bill', sendSubscriptionBill);
 
 export default router;
+

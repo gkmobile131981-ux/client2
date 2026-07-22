@@ -30,3 +30,17 @@ CREATE TABLE IF NOT EXISTS public.monthly_subscriptions (
 CREATE INDEX IF NOT EXISTS idx_monthly_subscriptions_phone ON public.monthly_subscriptions(phone_number);
 CREATE INDEX IF NOT EXISTS idx_monthly_subscriptions_year ON public.monthly_subscriptions(year);
 CREATE INDEX IF NOT EXISTS idx_monthly_subscriptions_shop ON public.monthly_subscriptions(shop_id);
+
+-- Alter table to add payment date columns if they do not exist
+ALTER TABLE public.monthly_subscriptions ADD COLUMN IF NOT EXISTS january_paid_at DATE;
+ALTER TABLE public.monthly_subscriptions ADD COLUMN IF NOT EXISTS february_paid_at DATE;
+ALTER TABLE public.monthly_subscriptions ADD COLUMN IF NOT EXISTS march_paid_at DATE;
+ALTER TABLE public.monthly_subscriptions ADD COLUMN IF NOT EXISTS april_paid_at DATE;
+ALTER TABLE public.monthly_subscriptions ADD COLUMN IF NOT EXISTS may_paid_at DATE;
+ALTER TABLE public.monthly_subscriptions ADD COLUMN IF NOT EXISTS june_paid_at DATE;
+ALTER TABLE public.monthly_subscriptions ADD COLUMN IF NOT EXISTS july_paid_at DATE;
+ALTER TABLE public.monthly_subscriptions ADD COLUMN IF NOT EXISTS august_paid_at DATE;
+ALTER TABLE public.monthly_subscriptions ADD COLUMN IF NOT EXISTS september_paid_at DATE;
+ALTER TABLE public.monthly_subscriptions ADD COLUMN IF NOT EXISTS october_paid_at DATE;
+ALTER TABLE public.monthly_subscriptions ADD COLUMN IF NOT EXISTS november_paid_at DATE;
+ALTER TABLE public.monthly_subscriptions ADD COLUMN IF NOT EXISTS december_paid_at DATE;
