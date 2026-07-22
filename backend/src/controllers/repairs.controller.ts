@@ -13,6 +13,7 @@ const createRepairSchema = z.object({
   customerId: z.string().uuid('Invalid Customer ID'),
   brand: z.string().min(1, 'Brand is required'),
   model: z.string().min(1, 'Model is required'),
+  status: z.enum(['booking', 'pending', 'repairing', 'ready', 'delivered', 'delivered_pending_balance', 'cancelled']).optional().default('booking'),
   imei: z.string().optional().nullable(),
   problem: z.string().min(1, 'Problem description is required'),
   quality: z.enum(['good', 'fair', 'poor', 'damaged']).optional().default('good'),
@@ -431,7 +432,7 @@ export async function createRepair(req: Request, res: Response): Promise<void> {
         shop_id: user.shop_id,
         estimate: validatedData.estimate,
         advance: validatedData.advance,
-        status: 'pending',
+        status: validatedData.status || 'booking',
         delivery_date: validatedData.deliveryDate || null,
         staff_id: validatedData.staffId || null,
         created_by: user.id,
@@ -454,11 +455,12 @@ export async function createRepair(req: Request, res: Response): Promise<void> {
     }
 
     // 6. Insert initial status history log
+    const initialStatus = validatedData.status || 'booking';
     await supabaseAdmin.from('repair_history').insert({
       repair_id: repairId,
       changed_by: user.id,
-      old_status: 'pending',
-      new_status: 'pending',
+      old_status: initialStatus,
+      new_status: initialStatus,
       note: 'Repair order initialized'
     });
 
@@ -481,7 +483,7 @@ export async function createRepair(req: Request, res: Response): Promise<void> {
           .eq('id', repairId)
           .single();
         if (fullRepair) {
-          await sendWhatsAppUpdate(fullRepair, 'pending', 'Repair order initialized');
+          await sendWhatsAppUpdate(fullRepair, initialStatus, 'Repair order initialized');
         }
       } catch (e) {
         console.error('[WhatsApp Trigger] Error in createRepair notification:', e);
@@ -504,7 +506,7 @@ export async function updateRepairStatus(req: Request, res: Response): Promise<v
   const { id } = req.params;
 
   const statusSchema = z.object({
-    status: z.enum(['pending', 'repairing', 'ready', 'delivered', 'delivered_pending_balance', 'cancelled']),
+    status: z.enum(['booking', 'pending', 'repairing', 'ready', 'delivered', 'delivered_pending_balance', 'cancelled']),
     notes: z.string().optional().nullable()
   });
 

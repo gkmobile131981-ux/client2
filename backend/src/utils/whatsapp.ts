@@ -93,6 +93,9 @@ function formatMessage(
   
   let stageMsg = '';
   switch (status) {
+    case 'booking':
+      stageMsg = `has been booked and registered into our system.`;
+      break;
     case 'pending':
       stageMsg = `has been registered and is pending analysis.`;
       break;

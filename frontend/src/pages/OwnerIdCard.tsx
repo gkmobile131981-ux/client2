@@ -265,16 +265,19 @@ export default function OwnerIdCard() {
                     }
                   </div>
 
-                  {/* ── Serial Number (top-right area on front) ── */}
+                  {/* ── Serial Number (straight aligned with அடையாள அட்டை at top-right) ── */}
                   <div style={{
-                    position: 'absolute', top: 63, right: 12,
+                    position: 'absolute', top: 57, right: 14,
                     zIndex: 4,
+                    display: 'flex', alignItems: 'center',
                   }}>
                     <span style={{
-                      fontSize: 10, color: 'white', fontWeight: 700,
-                      background: 'rgba(0,0,0,0.25)',
-                      padding: '1px 6px', borderRadius: 4,
+                      fontSize: 10, color: 'white', fontWeight: 800,
+                      background: 'rgba(0,0,0,0.30)',
+                      padding: '2px 8px', borderRadius: 4,
                       letterSpacing: 1,
+                      textTransform: 'uppercase',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
                     }}>{serialNumber || 'SL.NO'}</span>
                   </div>
 

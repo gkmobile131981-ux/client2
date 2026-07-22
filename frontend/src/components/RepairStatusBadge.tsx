@@ -1,12 +1,13 @@
 import React from 'react';
 
-export type RepairStatus = 'pending' | 'repairing' | 'ready' | 'delivered' | 'cancelled';
+export type RepairStatus = 'booking' | 'pending' | 'repairing' | 'ready' | 'delivered' | 'cancelled';
 
 interface RepairStatusBadgeProps {
   status: RepairStatus;
 }
 
 export const statusColors: Record<RepairStatus, string> = {
+  booking: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
   pending: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
   repairing: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
   ready: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
@@ -15,6 +16,7 @@ export const statusColors: Record<RepairStatus, string> = {
 };
 
 export const statusDotColors: Record<RepairStatus, string> = {
+  booking: 'bg-purple-400',
   pending: 'bg-amber-500',
   repairing: 'bg-blue-500',
   ready: 'bg-emerald-500',

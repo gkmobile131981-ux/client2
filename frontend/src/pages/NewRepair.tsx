@@ -288,7 +288,7 @@ export function fixProblemSpelling(text: string): string {
 }
 
 const repairOrderSchema = z.object({
-  status: z.enum(['pending', 'repairing', 'ready', 'delivered', 'cancelled']).default('pending'),
+  status: z.enum(['booking', 'pending', 'repairing', 'ready', 'delivered', 'cancelled']).default('booking'),
   customerId: z.string().optional().nullable(),
   brand: z.string().min(1, 'Brand is required'),
   model: z.string().min(1, 'Model is required'),
@@ -499,7 +499,7 @@ export default function NewRepair() {
   const form = useForm<RepairOrderFormValues>({
     resolver: zodResolver(repairOrderSchema),
     defaultValues: {
-      status: 'pending',
+      status: 'booking',
       customerId: '',
       brand: '',
       model: '',
@@ -1460,6 +1460,7 @@ export default function NewRepair() {
                 {...register('status')}
                 className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 font-bold uppercase cursor-pointer transition-all shadow-sm min-h-[44px]"
               >
+                <option value="booking" className="bg-card text-foreground font-bold py-2">📋 BOOKING</option>
                 <option value="pending" className="bg-card text-foreground font-bold py-2">😊 PENDING</option>
                 <option value="repairing" className="bg-card text-foreground font-bold py-2">🔧 REPAIRING</option>
                 <option value="ready" className="bg-card text-foreground font-bold py-2">✅ READY</option>
@@ -2032,44 +2033,7 @@ export default function NewRepair() {
           )}
         </div>
 
-        {/* SECTION 4: ACCESSORY RECEIVED */}
-        <div className="space-y-4 pt-6">
-          <div className="flex items-center gap-2 border-b border-border/40 pb-2">
-            <Package className="h-5 w-5 text-purple-500" />
-            <span className="text-sm font-extrabold text-foreground uppercase tracking-wider">📦 ACCESSORY RECEIVED</span>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {QUICK_ACCESSORIES.map((item) => {
-              const isSelected = selectedAccessories.includes(item);
-              return (
-                <button
-                  type="button"
-                  key={item}
-                  onClick={() => toggleAccessoryChip(item)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer min-h-[40px] ${
-                    isSelected
-                      ? 'bg-gradient-to-r from-primary to-purple-600 text-white shadow-md shadow-primary/20 scale-105 border border-primary/40'
-                      : 'bg-secondary/40 border border-border/70 text-foreground/80 hover:bg-secondary/70 hover:text-foreground'
-                  }`}
-                >
-                  <span>{isSelected ? '✓ ' : ''}{item}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Additional Accessory details text box */}
-          <textarea
-            placeholder="Add details about received accessories (e.g., color, brand, physical condition)..."
-            value={accessoryDetails}
-            onChange={(e) => setAccessoryDetails(e.target.value)}
-            rows={2}
-            className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-medium resize-none shadow-sm"
-          />
-        </div>
-
-        {/* SECTION 5: SECURITY LOCK & PASSCODE */}
+        {/* SECTION 4: SECURITY LOCK & PASSCODE */}
         <div className="space-y-4 pt-6">
           <div className="flex items-center gap-2 border-b border-border/40 pb-2">
             <span className="text-base">🔒</span>
@@ -2180,7 +2144,7 @@ export default function NewRepair() {
           )}
         </div>
 
-        {/* SECTION 6: SERIAL NUMBER, IMEI & TECHNICIAN */}
+        {/* SECTION 5: SERIAL NUMBER, IMEI & TECHNICIAN */}
         <div className="space-y-4 pt-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex gap-2">
@@ -2228,7 +2192,7 @@ export default function NewRepair() {
           )}
         </div>
 
-        {/* SECTION 7: FINANCIALS & REPAIR ESTIMATE */}
+        {/* SECTION 6: FINANCIALS & REPAIR ESTIMATE */}
         <div className="space-y-4 pt-6">
           <div className="flex items-center gap-2 border-b border-border/40 pb-2">
             <span className="text-base">💳</span>
@@ -2271,6 +2235,43 @@ export default function NewRepair() {
             </div>
             <span className="text-xs text-muted-foreground font-medium italic">Balance = Estimate - Paid</span>
           </div>
+        </div>
+
+        {/* SECTION 7: ACCESSORY RECEIVED */}
+        <div className="space-y-4 pt-6">
+          <div className="flex items-center gap-2 border-b border-border/40 pb-2">
+            <Package className="h-5 w-5 text-purple-500" />
+            <span className="text-sm font-extrabold text-foreground uppercase tracking-wider">📦 ACCESSORY RECEIVED</span>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {QUICK_ACCESSORIES.map((item) => {
+              const isSelected = selectedAccessories.includes(item);
+              return (
+                <button
+                  type="button"
+                  key={item}
+                  onClick={() => toggleAccessoryChip(item)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer min-h-[40px] ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-primary to-purple-600 text-white shadow-md shadow-primary/20 scale-105 border border-primary/40'
+                      : 'bg-secondary/40 border border-border/70 text-foreground/80 hover:bg-secondary/70 hover:text-foreground'
+                  }`}
+                >
+                  <span>{isSelected ? '✓ ' : ''}{item}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Additional Accessory details text box */}
+          <textarea
+            placeholder="Add details about received accessories (e.g., color, brand, physical condition)..."
+            value={accessoryDetails}
+            onChange={(e) => setAccessoryDetails(e.target.value)}
+            rows={2}
+            className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-medium resize-none shadow-sm"
+          />
         </div>
 
         {/* SECTION 8: REPAIR DATE, TIME & REMINDER */}

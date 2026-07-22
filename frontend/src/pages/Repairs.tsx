@@ -261,6 +261,7 @@ export default function Repairs() {
       <div className="flex flex-wrap gap-2.5 border-b border-border/40 pb-3 select-none">
         {[
           { key: 'all', label: 'All Jobs' },
+          { key: 'booking', label: 'Booking 📋' },
           { key: 'pending', label: 'Ordered' },
           { key: 'repairing', label: 'Repairing' },
           { key: 'ready', label: 'Repaired' },
