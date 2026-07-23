@@ -28,8 +28,8 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-// stripWhite: removes near-white pixels AND remaps remaining ink pixels to black
-// so signatures render as crisp black strokes on any background
+// stripWhite: auto-detects white paper area, crops outer border frames/backgrounds,
+// and remaps signature ink pixels to crisp black strokes on transparent canvas
 function stripWhite(imgSrc: string, threshold = 200): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
@@ -40,23 +40,48 @@ function stripWhite(imgSrc: string, threshold = 200): Promise<string> {
       c.width = img.width; c.height = img.height;
       const ctx = c.getContext('2d')!;
       ctx.drawImage(img, 0, 0);
-      const d = ctx.getImageData(0, 0, c.width, c.height);
-      for (let i = 0; i < d.data.length; i += 4) {
-        const r = d.data[i], g = d.data[i+1], b = d.data[i+2];
-        const brightness = (r + g + b) / 3;
-        if (brightness > threshold) {
-          // near-white → fully transparent
-          d.data[i+3] = 0;
-        } else {
-          // ink pixel → remap to solid black, preserve darkness as opacity
-          const darkness = 1 - brightness / threshold;
-          d.data[i]   = 0;   // R
-          d.data[i+1] = 0;   // G
-          d.data[i+2] = 0;   // B
-          d.data[i+3] = Math.round(darkness * 255); // alpha = how dark it is
+      const imgData = ctx.getImageData(0, 0, c.width, c.height);
+      const d = imgData.data;
+
+      // 1. Pass 1: find bounding box of white paper (brightness > threshold)
+      let minX = c.width, maxX = 0, minY = c.height, maxY = 0;
+      let hasWhite = false;
+      for (let y = 0; y < c.height; y++) {
+        for (let x = 0; x < c.width; x++) {
+          const i = (y * c.width + x) * 4;
+          const br = (d[i] + d[i+1] + d[i+2]) / 3;
+          if (br > threshold) {
+            hasWhite = true;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
         }
       }
-      ctx.putImageData(d, 0, 0);
+
+      // Inset bounds by 6px inside white area to discard any border frame lines
+      const insetMinX = hasWhite ? minX + 6 : 0;
+      const insetMaxX = hasWhite ? maxX - 6 : c.width;
+      const insetMinY = hasWhite ? minY + 6 : 0;
+      const insetMaxY = hasWhite ? maxY - 6 : c.height;
+
+      // 2. Pass 2: convert only inner ink pixels to transparent black strokes
+      for (let y = 0; y < c.height; y++) {
+        for (let x = 0; x < c.width; x++) {
+          const i = (y * c.width + x) * 4;
+          const br = (d[i] + d[i+1] + d[i+2]) / 3;
+          if (!hasWhite || x < insetMinX || x > insetMaxX || y < insetMinY || y > insetMaxY || br > threshold) {
+            d[i+3] = 0; // fully transparent
+          } else {
+            const darkness = 1 - br / threshold;
+            d[i] = 0; d[i+1] = 0; d[i+2] = 0;
+            d[i+3] = Math.round(darkness * 255);
+          }
+        }
+      }
+
+      ctx.putImageData(imgData, 0, 0);
       resolve(c.toDataURL('image/png'));
     };
     img.onerror = () => resolve(imgSrc);
@@ -193,7 +218,7 @@ export default function OwnerIdCard() {
         fc.drawImage(ownerPhoto, px+(pw-dw)/2+photoX*S, py+(ph-dh)/2+photoY*S, dw, dh);
         fc.restore();
       }
-      // SL.NO — plain text aligned with the அடையாள அட்டை pill (top ~57)
+      // SL.NO — plain text aligned straight with the அடையாள அட்டை pill (centerY = 60.5)
       {
         const slText = serialNumber || '';
         if (slText) {
@@ -202,8 +227,7 @@ export default function OwnerIdCard() {
           fc.fillStyle = '#FFFFFF';
           fc.textBaseline = 'middle';
           const tx = W - fc.measureText(slText).width - 16 * S;
-          // pill vertical center is at roughly y=63 in 204px card coords
-          fc.fillText(slText, tx, 63 * S);
+          fc.fillText(slText, tx, 60.5 * S);
         }
       }
       // Text rows
@@ -220,18 +244,13 @@ export default function OwnerIdCard() {
       fc.font=`500 ${11*S}px Arial, sans-serif`; fc.fillStyle='#FFFFFF';
       fc.fillText('Email :', 98*S, 128*S);
       ft(emailAddress, 148, 128, 165, 11);
-      // Signatures — crop 6px inset to eliminate any border frame in the PNG
+
+      // Signatures — drawn with multiply blend for crisp dark strokes
       const drawSig = (img: HTMLImageElement, dx: number, dy: number, dw: number) => {
         const dh = (img.height / img.width) * dw;
-        const inset = 6 * S;  // crop this many px from each edge to hide border frame
-        fc.save();
-        fc.beginPath();
-        fc.rect(dx + inset, dy + inset, dw - inset * 2, dh - inset * 2);
-        fc.clip();
         fc.globalCompositeOperation = 'multiply';
         fc.drawImage(img, dx, dy, dw, dh);
         fc.globalCompositeOperation = 'source-over';
-        fc.restore();
       };
       drawSig(thalSig, 105 * S, 151 * S, 60 * S);
       drawSig(secSig, W - 15 * S - 68 * S, 153 * S, 68 * S);
@@ -331,8 +350,8 @@ export default function OwnerIdCard() {
                       : <User style={{ width:28, height:28, color:'#bbb' }} />}
                   </div>
                   {serialNumber && (
-                    <div style={{ position:'absolute', top:57, right:14, zIndex:4 }}>
-                      <span style={{ fontSize:13, color:'#FFFFFF', fontWeight:800, letterSpacing:0.5, fontFamily:'Arial, sans-serif', textShadow:'0 1px 4px rgba(0,0,0,0.6)' }}>{serialNumber}</span>
+                    <div style={{ position:'absolute', top:53.5, right:14, height:14, display:'flex', alignItems:'center', zIndex:4 }}>
+                      <span style={{ fontSize:13, color:'#FFFFFF', fontWeight:800, letterSpacing:0.5, fontFamily:'Arial, sans-serif', textShadow:'0 1px 4px rgba(0,0,0,0.6)', lineHeight:1 }}>{serialNumber}</span>
                     </div>
                   )}
                   <div style={{ position:'absolute', top:79, left:148, zIndex:4 }}>
@@ -347,13 +366,13 @@ export default function OwnerIdCard() {
                   <div style={{ position:'absolute', top:128, left:148, width:165, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', zIndex:4 }}>
                     <span style={{ fontSize:11, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif' }}>{emailAddress}</span>
                   </div>
-                  {/* Thalaivar Signature — overflow hidden crops any PNG border frame */}
-                  <div style={{ position:'absolute', top:153, left:107, width:56, height:32, overflow:'hidden', zIndex:4 }}>
-                    <img src={thalaivarSigUrl} alt="Thalaivar Sig" style={{ width:60, height:'auto', display:'block', marginLeft:-2, marginTop:-2 }} />
+                  {/* Thalaivar Signature */}
+                  <div style={{ position:'absolute', top:151, left:105, width:60, zIndex:4 }}>
+                    <img src={thalaivarSigUrl} alt="Thalaivar Sig" style={{ width:'100%', height:'auto', display:'block' }} />
                   </div>
                   {/* Secretary Signature */}
-                  <div style={{ position:'absolute', top:155, right:17, width:64, height:28, overflow:'hidden', zIndex:4 }}>
-                    <img src={secretarySigUrl} alt="Secretary Sig" style={{ width:68, height:'auto', display:'block', marginLeft:-2, marginTop:-2 }} />
+                  <div style={{ position:'absolute', top:153, right:15, width:68, zIndex:4 }}>
+                    <img src={secretarySigUrl} alt="Secretary Sig" style={{ width:'100%', height:'auto', display:'block' }} />
                   </div>
                 </div>
                 <div className="id-card-back" style={{ position:'relative', width:CW, height:CH, borderRadius:14, backgroundImage:`url(${cardBackTemplate})`, backgroundSize:'cover', backgroundPosition:'center', overflow:'hidden', boxShadow:'0 8px 32px rgba(0,0,0,0.55)', flexShrink:0 }}>
