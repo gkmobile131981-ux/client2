@@ -102,15 +102,6 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
   return lines;
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-}
-
 export default function OwnerIdCard() {
   const { user, reloadProfile, role, shop } = useAuth();
 
@@ -134,29 +125,19 @@ export default function OwnerIdCard() {
   const [thalaivarSigUrl, setThalaivarSigUrl] = useState<string>(thalaivarSignature);
   const [secretarySigUrl, setSecretarySigUrl] = useState<string>(secretarySignature);
 
-  // Preloaded HTMLImageElements for INSTANT download (0 network latency)
   const frontTplRef = useRef<HTMLImageElement | null>(null);
   const backTplRef = useRef<HTMLImageElement | null>(null);
   const thalSigRef = useRef<HTMLImageElement | null>(null);
   const secSigRef = useRef<HTMLImageElement | null>(null);
   const photoRef = useRef<HTMLImageElement | null>(null);
 
-  // Preload template & signature images on mount
   useEffect(() => {
     loadImage(cardFrontTemplate).then(img => { frontTplRef.current = img; });
     loadImage(cardBackTemplate).then(img => { backTplRef.current = img; });
-
-    stripWhite(thalaivarSignature, 200).then(url => {
-      setThalaivarSigUrl(url);
-      loadImage(url).then(img => { thalSigRef.current = img; });
-    });
-    stripWhite(secretarySignature, 200).then(url => {
-      setSecretarySigUrl(url);
-      loadImage(url).then(img => { secSigRef.current = img; });
-    });
+    loadImage(thalaivarSignature).then(img => { thalSigRef.current = img; });
+    loadImage(secretarySignature).then(img => { secSigRef.current = img; });
   }, []);
 
-  // Preload photo whenever preview changes
   useEffect(() => {
     if (photoPreview) {
       loadImage(photoPreview).then(img => { photoRef.current = img; }).catch(() => { photoRef.current = null; });
@@ -224,63 +205,64 @@ export default function OwnerIdCard() {
   };
   const formatAadhar = (v?: string) => !v ? '' : v.replace(/\D/g, '').slice(0, 12).replace(/(\d{4})(?=\d)/g, '$1 ');
 
-  // ── INSTANT html2canvas DOM Snapshot Download ─────────────────────────────
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const frontEl = document.querySelector('.id-card-front') as HTMLElement;
-      const backEl = document.querySelector('.id-card-back') as HTMLElement;
-
-      if (!frontEl || !backEl) {
-        toast.error('Card preview elements not found');
-        setIsDownloading(false);
-        return;
+      const S = EXPORT_SCALE;
+      const W = CW * S, H = CH * S;
+      const frontTpl = frontTplRef.current || await loadImage(cardFrontTemplate);
+      const backTpl = backTplRef.current || await loadImage(cardBackTemplate);
+      const thalSig = thalSigRef.current || await loadImage(thalaivarSigUrl);
+      const secSig = secSigRef.current || await loadImage(secretarySigUrl);
+      const ownerPhoto = photoRef.current;
+      const frontCanvas = document.createElement('canvas');
+      frontCanvas.width = W; frontCanvas.height = H;
+      const fc = frontCanvas.getContext('2d')!;
+      fc.drawImage(frontTpl, 0, 0, W, H);
+      if (ownerPhoto) {
+        const px = 11 * S, py = 81 * S, pw = 88 * S, ph = 108 * S;
+        fc.save(); fc.beginPath(); fc.rect(px, py, pw, ph); fc.clip();
+        const ratio = Math.max(pw / ownerPhoto.width, ph / ownerPhoto.height) * photoScale;
+        const dw = ownerPhoto.width * ratio, dh = ownerPhoto.height * ratio;
+        fc.drawImage(ownerPhoto, px + (pw - dw) / 2 + photoX * S, py + (ph - dh) / 2 + photoY * S, dw, dh);
+        fc.restore();
       }
-
-      const options = { scale: 4, useCORS: true, allowTaint: true, backgroundColor: null };
-      const canvasFront = await html2canvas(frontEl, options);
-      const canvasBack = await html2canvas(backEl, options);
-
-      const GAP = 24 * 4;
+      if (serialNumber) {
+        fc.font = `800 ${13 * S}px Arial, sans-serif`;
+        fc.fillStyle = '#FFFFFF';
+        fc.fillText(serialNumber, (CW - 14 - fc.measureText(serialNumber).width) * S, 64 * S);
+      }
+      fc.font = `500 ${12 * S}px Arial, sans-serif`; fc.fillStyle = '#FFFFFF'; fc.fillText(ownerName, 148 * S, 96 * S);
+      fc.font = `500 ${11 * S}px Arial, sans-serif`; fc.fillText(shopName, 148 * S, 123 * S);
+      fc.fillText('Email :', 98 * S, 146 * S); fc.fillText(emailAddress, 148 * S, 146 * S);
+      fc.globalCompositeOperation = 'multiply';
+      fc.drawImage(thalSig, 105 * S, 160 * S, 60 * S, (thalSig.height / thalSig.width) * 60 * S);
+      fc.drawImage(secSig, (CW - 15 - 68) * S, 160 * S, 68 * S, (secSig.height / secSig.width) * 68 * S);
+      const backCanvas = document.createElement('canvas');
+      backCanvas.width = W; backCanvas.height = H;
+      const bc = backCanvas.getContext('2d')!;
+      bc.drawImage(backTpl, 0, 0, W, H);
+      bc.font = `500 ${9.5 * S}px Arial, sans-serif`; bc.fillStyle = '#1E469C';
+      wrapText(bc, homeAddress || '', 230 * S).forEach((line, i) => bc.fillText(line, 50 * S, (44 + i * 13) * S));
+      bc.font = `700 ${9.5 * S}px Arial, sans-serif`; bc.fillText('ஆதார் கார்டு', 50 * S, 125 * S);
+      bc.fillText(':', 124 * S, 125 * S);
+      bc.font = `500 ${11 * S}px Arial, sans-serif`; bc.fillText(formatAadhar(aadharNumber), 130 * S, 125 * S);
+      bc.fillText(bloodGroup, 130 * S, 147 * S); bc.fillText(formatDob(dob), 130 * S, 169 * S);
+      bc.fillText(personalPhone, 130 * S, 191 * S);
       const combined = document.createElement('canvas');
-      combined.width = canvasFront.width;
-      combined.height = canvasFront.height + canvasBack.height + GAP;
+      combined.width = W; combined.height = H * 2 + 24 * S;
       const cc = combined.getContext('2d')!;
-
-      cc.fillStyle = '#111111';
-      cc.fillRect(0, 0, combined.width, combined.height);
-      cc.drawImage(canvasFront, 0, 0);
-      cc.drawImage(canvasBack, 0, canvasFront.height + GAP);
-
-      const slug = (ownerName || 'id-card').replace(/\s+/g, '_').toLowerCase();
-      const fileName = `${slug}_id_card.png`;
-
+      cc.fillStyle = '#111111'; cc.fillRect(0, 0, combined.width, combined.height);
+      cc.drawImage(frontCanvas, 0, 0); cc.drawImage(backCanvas, 0, H + 24 * S);
       combined.toBlob((blob) => {
-        if (!blob) { toast.error('Failed to generate card image'); setIsDownloading(false); return; }
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        const blobUrl = URL.createObjectURL(blob);
-
-        if (isIOS) {
-          const w = window.open(blobUrl, '_blank');
-          if (!w) window.location.href = blobUrl;
-          toast.success('Image opened! Press & hold to Save to Photos.');
-        } else {
-          const a = document.createElement('a');
-          a.download = fileName;
-          a.href = blobUrl;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
-          toast.success('ID Card downloaded successfully!');
-        }
+        if (!blob) return;
+        const a = document.createElement('a');
+        a.download = `${(ownerName || 'id_card').replace(/\s+/g, '_')}.png`;
+        a.href = URL.createObjectURL(blob);
+        a.click();
         setIsDownloading(false);
-      }, 'image/png', 1.0);
-    } catch (err: any) {
-      console.error('Download error:', err);
-      toast.error('Download failed. Please try again.');
-      setIsDownloading(false);
-    }
+      });
+    } catch (err) { setIsDownloading(false); toast.error('Download failed.'); }
   };
 
   return (
