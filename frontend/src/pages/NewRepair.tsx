@@ -2320,40 +2320,6 @@ export default function NewRepair() {
           </div>
         </div>
 
-        {/* SECTION 9: MESSAGING & CASHBACK SWITCHES */}
-        <div className="space-y-3 pt-6">
-          {/* Whatsapp Switch */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-4.5 w-4.5 text-emerald-400" />
-              <span className="text-xs text-foreground/95 font-semibold">Send Whatsapp Message ?</span>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer select-none">
-              <input
-                type="checkbox"
-                {...register('sendWhatsapp')}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-secondary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-            </label>
-          </div>
-
-          {/* Email Switch */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-4.5 w-4.5 text-blue-400" />
-              <span className="text-xs text-foreground/95 font-semibold">Send Email To Customer ?</span>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer select-none">
-              <input
-                type="checkbox"
-                {...register('sendEmail')}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-secondary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-            </label>
-          </div>
-        </div>
 
         {/* SECTION 10: ADDITIONAL DETAILS & WARRANTY */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
