@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../lib/api';
+import html2canvas from 'html2canvas';
 import cardFrontTemplate from '../card-front-template.png';
 import cardBackTemplate from '../card-back-template.png';
 import thalaivarSignature from '../thalaivar-signature.png';
@@ -223,121 +224,33 @@ export default function OwnerIdCard() {
   };
   const formatAadhar = (v?: string) => !v ? '' : v.replace(/\D/g, '').slice(0, 12).replace(/(\d{4})(?=\d)/g, '$1 ');
 
-  // ── INSTANT Canvas2D Download ─────────────────────────────────────────────
+  // ── INSTANT html2canvas DOM Snapshot Download ─────────────────────────────
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const S = EXPORT_SCALE;
-      const W = CW * S, H = CH * S;
+      const frontEl = document.querySelector('.id-card-front') as HTMLElement;
+      const backEl = document.querySelector('.id-card-back') as HTMLElement;
 
-      // Use preloaded images or fallback load
-      const frontTpl = frontTplRef.current || await loadImage(cardFrontTemplate);
-      const backTpl = backTplRef.current || await loadImage(cardBackTemplate);
-      const thalSig = thalSigRef.current || await loadImage(thalaivarSigUrl);
-      const secSig = secSigRef.current || await loadImage(secretarySigUrl);
-      const ownerPhoto = photoRef.current;
-
-      // ── FRONT CARD ────────────────────────────────────────────────────────
-      const frontCanvas = document.createElement('canvas');
-      frontCanvas.width = W; frontCanvas.height = H;
-      const fc = frontCanvas.getContext('2d')!;
-      fc.drawImage(frontTpl, 0, 0, W, H);
-
-      // Photo
-      if (ownerPhoto) {
-        const px = 11 * S, py = 81 * S, pw = 88 * S, ph = 108 * S;
-        fc.save(); fc.beginPath(); fc.rect(px, py, pw, ph); fc.clip();
-        const ratio = Math.max(pw / ownerPhoto.width, ph / ownerPhoto.height) * photoScale;
-        const dw = ownerPhoto.width * ratio, dh = ownerPhoto.height * ratio;
-        fc.drawImage(ownerPhoto, px + (pw - dw) / 2 + photoX * S, py + (ph - dh) / 2 + photoY * S, dw, dh);
-        fc.restore();
+      if (!frontEl || !backEl) {
+        toast.error('Card preview elements not found');
+        setIsDownloading(false);
+        return;
       }
 
-      // SL.NO — center Y = 60.5 (straight with அடையாள அட்டை pill)
-      {
-        const slText = serialNumber || '';
-        if (slText) {
-          const fontSize = 13 * S;
-          fc.font = `bold ${fontSize}px Arial, sans-serif`;
-          fc.fillStyle = '#FFFFFF';
-          fc.textBaseline = 'middle';
-          const tx = W - fc.measureText(slText).width - 16 * S;
-          fc.fillText(slText, tx, 60.5 * S);
-        }
-      }
+      const options = { scale: 4, useCORS: true, allowTaint: true, backgroundColor: null };
+      const canvasFront = await html2canvas(frontEl, options);
+      const canvasBack = await html2canvas(backEl, options);
 
-      // Front Text Rows (middle textBaseline for 100% exact vertical alignment with pre-printed template labels)
-      fc.textBaseline = 'middle';
-      const ft = (text: string, x: number, centerY: number, maxW: number, fs = 12) => {
-        fc.font = `500 ${fs * S}px Arial, sans-serif`;
-        fc.fillStyle = '#FFFFFF';
-        let t = text;
-        while (t.length > 1 && fc.measureText(t).width > maxW * S) t = t.slice(0, -1);
-        if (t !== text) t += '\u2026';
-        fc.fillText(t, x * S, centerY * S);
-      };
-
-      // 1. Owner Name (aligned next to pre-printed பெயர் : at Y = 82.0)
-      ft(ownerName, 148, 82.0, 168, 12);
-      // 2. Shop Name (aligned next to pre-printed கடை : at Y = 108.0)
-      ft(shopName, 148, 108.0, 168, 11);
-      // 3. Email Label & Value (at Y = 134.0)
-      ft('Email :', 98, 134.0, 44, 11);
-      ft(emailAddress, 148, 134.0, 165, 11);
-
-      // Signatures
-      const drawSig = (img: HTMLImageElement, dx: number, dy: number, dw: number) => {
-        const dh = (img.height / img.width) * dw;
-        fc.globalCompositeOperation = 'multiply';
-        fc.drawImage(img, dx, dy, dw, dh);
-        fc.globalCompositeOperation = 'source-over';
-      };
-      drawSig(thalSig, 105 * S, 153 * S, 60 * S);
-      drawSig(secSig, W - 15 * S - 68 * S, 153 * S, 68 * S);
-
-      // ── BACK CARD ─────────────────────────────────────────────────────────
-      const backCanvas = document.createElement('canvas');
-      backCanvas.width = W; backCanvas.height = H;
-      const bc = backCanvas.getContext('2d')!;
-      bc.drawImage(backTpl, 0, 0, W, H);
-
-      // Address (multi-line)
-      bc.font = `500 ${11 * S}px Arial, sans-serif`;
-      bc.fillStyle = '#1E469C';
-      bc.textBaseline = 'top';
-      wrapText(bc, homeAddress || '', 230 * S).slice(0, 5).forEach((line, i) => bc.fillText(line, 50 * S, (44 + i * 13) * S));
-
-      // Back Text Rows (middle textBaseline matching exact pre-printed label Y-centers)
-      bc.textBaseline = 'middle';
-      const bt = (text: string, x: number, centerY: number, bold = false, size = 11) => {
-        bc.font = `${bold ? 'bold' : '500'} ${size * S}px Arial, sans-serif`;
-        bc.fillStyle = '#1E469C';
-        bc.fillText(text, x * S, centerY * S);
-      };
-
-      // Row 1: Aadhaar Label + Colon + Value (Y = 111.0)
-      bt('ஆதார் கார்டு', 50, 111.0, true, 9.5);
-      bt(':', 124, 111.0, true, 11);
-      bt(formatAadhar(aadharNumber) || '---- ---- ----', 130, 111.0, false, 11);
-
-      // Row 2: Blood Group (Y = 131.0 next to pre-printed இரத்த வகை :)
-      bt(bloodGroup || '', 130, 131.0, false, 11);
-
-      // Row 3: DOB (Y = 152.0 next to pre-printed பிறந்த தேதி :)
-      bt(formatDob(dob), 130, 152.0, false, 11);
-
-      // Row 4: Phone (Y = 172.0 next to pre-printed செல் நெம்பர் :)
-      bt(personalPhone || '', 130, 172.0, false, 11);
-
-      // ── COMBINE ───────────────────────────────────────────────────────────
-      const GAP = 24 * S;
+      const GAP = 24 * 4;
       const combined = document.createElement('canvas');
-      combined.width = W; combined.height = H * 2 + GAP;
+      combined.width = canvasFront.width;
+      combined.height = canvasFront.height + canvasBack.height + GAP;
       const cc = combined.getContext('2d')!;
+
       cc.fillStyle = '#111111';
       cc.fillRect(0, 0, combined.width, combined.height);
-      cc.drawImage(frontCanvas, 0, 0);
-      cc.drawImage(backCanvas, 0, H + GAP);
+      cc.drawImage(canvasFront, 0, 0);
+      cc.drawImage(canvasBack, 0, canvasFront.height + GAP);
 
       const slug = (ownerName || 'id-card').replace(/\s+/g, '_').toLowerCase();
       const fileName = `${slug}_id_card.png`;
