@@ -253,7 +253,7 @@ export default function OwnerIdCard() {
         fc.restore();
       }
 
-      // SL.NO — center Y = 70.0 (aligned dead-center with அடையாள அட்டை pill)
+      // SL.NO — center Y = 60.5 (straight with அடையாள அட்டை pill)
       {
         const slText = serialNumber || '';
         if (slText) {
@@ -262,7 +262,7 @@ export default function OwnerIdCard() {
           fc.fillStyle = '#FFFFFF';
           fc.textBaseline = 'middle';
           const tx = W - fc.measureText(slText).width - 16 * S;
-          fc.fillText(slText, tx, 70.0 * S);
+          fc.fillText(slText, tx, 60.5 * S);
         }
       }
 
@@ -277,13 +277,13 @@ export default function OwnerIdCard() {
         fc.fillText(t, x * S, centerY * S);
       };
 
-      // 1. Owner Name (aligned with pre-printed பெயர் : at Y = 93.8)
-      ft(ownerName, 148, 93.8, 168, 12);
-      // 2. Shop Name (aligned with pre-printed கடை : at Y = 120.8)
-      ft(shopName, 148, 120.8, 168, 11);
-      // 3. Email Label & Value (at Y = 144.0)
-      ft('Email :', 98, 144.0, 44, 11);
-      ft(emailAddress, 148, 144.0, 165, 11);
+      // 1. Owner Name (aligned next to pre-printed பெயர் : at Y = 82.0)
+      ft(ownerName, 148, 82.0, 168, 12);
+      // 2. Shop Name (aligned next to pre-printed கடை : at Y = 108.0)
+      ft(shopName, 148, 108.0, 168, 11);
+      // 3. Email Label & Value (at Y = 134.0)
+      ft('Email :', 98, 134.0, 44, 11);
+      ft(emailAddress, 148, 134.0, 165, 11);
 
       // Signatures
       const drawSig = (img: HTMLImageElement, dx: number, dy: number, dw: number) => {
@@ -292,8 +292,8 @@ export default function OwnerIdCard() {
         fc.drawImage(img, dx, dy, dw, dh);
         fc.globalCompositeOperation = 'source-over';
       };
-      drawSig(thalSig, 105 * S, 160 * S, 60 * S);
-      drawSig(secSig, W - 15 * S - 68 * S, 160 * S, 68 * S);
+      drawSig(thalSig, 105 * S, 153 * S, 60 * S);
+      drawSig(secSig, W - 15 * S - 68 * S, 153 * S, 68 * S);
 
       // ── BACK CARD ─────────────────────────────────────────────────────────
       const backCanvas = document.createElement('canvas');
@@ -315,19 +315,19 @@ export default function OwnerIdCard() {
         bc.fillText(text, x * S, centerY * S);
       };
 
-      // Row 1: Aadhaar Label + Colon + Value (Y = 123.0)
-      bt('ஆதார் கார்டு', 50, 123.0, true, 9.5);
-      bt(':', 124, 123.0, true, 11);
-      bt(formatAadhar(aadharNumber) || '---- ---- ----', 130, 123.0, false, 11);
+      // Row 1: Aadhaar Label + Colon + Value (Y = 111.0)
+      bt('ஆதார் கார்டு', 50, 111.0, true, 9.5);
+      bt(':', 124, 111.0, true, 11);
+      bt(formatAadhar(aadharNumber) || '---- ---- ----', 130, 111.0, false, 11);
 
-      // Row 2: Blood Group (Y = 145.0 next to pre-printed இரத்த வகை :)
-      bt(bloodGroup || '', 130, 145.0, false, 11);
+      // Row 2: Blood Group (Y = 131.0 next to pre-printed இரத்த வகை :)
+      bt(bloodGroup || '', 130, 131.0, false, 11);
 
-      // Row 3: DOB (Y = 167.0 next to pre-printed பிறந்த தேதி :)
-      bt(formatDob(dob), 130, 167.0, false, 11);
+      // Row 3: DOB (Y = 152.0 next to pre-printed பிறந்த தேதி :)
+      bt(formatDob(dob), 130, 152.0, false, 11);
 
-      // Row 4: Phone (Y = 188.6 next to pre-printed செல் நெம்பர் :)
-      bt(personalPhone || '', 130, 188.6, false, 11);
+      // Row 4: Phone (Y = 172.0 next to pre-printed செல் நெம்பர் :)
+      bt(personalPhone || '', 130, 172.0, false, 11);
 
       // ── COMBINE ───────────────────────────────────────────────────────────
       const GAP = 24 * S;
