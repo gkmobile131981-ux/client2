@@ -2318,18 +2318,6 @@ export default function NewRepair() {
               REPAIR TIME
             </Button>
           </div>
-
-          <div className="col-span-1 sm:col-span-2 pt-3 border-t border-border/40 flex items-center justify-between">
-            <span className="text-xs text-foreground font-semibold">Reminder Enable?</span>
-            <label className="relative inline-flex items-center cursor-pointer select-none">
-              <input
-                type="checkbox"
-                {...register('reminderEnable')}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 bg-secondary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-            </label>
-          </div>
         </div>
 
         {/* SECTION 9: MESSAGING & CASHBACK SWITCHES */}
