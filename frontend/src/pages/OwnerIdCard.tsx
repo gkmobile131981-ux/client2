@@ -49,7 +49,7 @@ function stripWhite(imgSrc: string, threshold = 200): Promise<string> {
       for (let y = 0; y < c.height; y++) {
         for (let x = 0; x < c.width; x++) {
           const i = (y * c.width + x) * 4;
-          const br = (d[i] + d[i+1] + d[i+2]) / 3;
+          const br = (d[i] + d[i + 1] + d[i + 2]) / 3;
           if (br > threshold) {
             hasWhite = true;
             if (x < minX) minX = x;
@@ -70,13 +70,13 @@ function stripWhite(imgSrc: string, threshold = 200): Promise<string> {
       for (let y = 0; y < c.height; y++) {
         for (let x = 0; x < c.width; x++) {
           const i = (y * c.width + x) * 4;
-          const br = (d[i] + d[i+1] + d[i+2]) / 3;
+          const br = (d[i] + d[i + 1] + d[i + 2]) / 3;
           if (!hasWhite || x < insetMinX || x > insetMaxX || y < insetMinY || y > insetMaxY || br > threshold) {
-            d[i+3] = 0; // fully transparent
+            d[i + 3] = 0; // fully transparent
           } else {
             const darkness = 1 - br / threshold;
-            d[i] = 0; d[i+1] = 0; d[i+2] = 0;
-            d[i+3] = Math.round(darkness * 255);
+            d[i] = 0; d[i + 1] = 0; d[i + 2] = 0;
+            d[i + 3] = Math.round(darkness * 255);
           }
         }
       }
@@ -103,31 +103,31 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number)
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
-  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
 }
 
 export default function OwnerIdCard() {
   const { user, reloadProfile, role, shop } = useAuth();
 
-  const [ownerName, setOwnerName]         = useState(user?.name || '');
-  const [shopName, setShopName]           = useState(shop?.name || '');
-  const [emailAddress, setEmailAddress]   = useState(user?.email || '');
-  const [homeAddress, setHomeAddress]     = useState(user?.home_address || '');
-  const [bloodGroup, setBloodGroup]       = useState(user?.blood_group || '');
-  const [dob, setDob]                     = useState(user?.dob || '');
+  const [ownerName, setOwnerName] = useState(user?.name || '');
+  const [shopName, setShopName] = useState(shop?.name || '');
+  const [emailAddress, setEmailAddress] = useState(user?.email || '');
+  const [homeAddress, setHomeAddress] = useState(user?.home_address || '');
+  const [bloodGroup, setBloodGroup] = useState(user?.blood_group || '');
+  const [dob, setDob] = useState(user?.dob || '');
   const [personalPhone, setPersonalPhone] = useState(user?.personal_phone || '');
-  const [aadharNumber, setAadharNumber]   = useState(user?.aadhar_number || '');
+  const [aadharNumber, setAadharNumber] = useState(user?.aadhar_number || '');
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview]   = useState<string | null>(user?.photo_url || null);
-  const [photoScale, setPhotoScale]       = useState(1.0);
-  const [photoX, setPhotoX]               = useState(0);
-  const [photoY, setPhotoY]               = useState(0);
-  const [serialNumber, setSerialNumber]   = useState('');
-  const [isSubmitting, setIsSubmitting]   = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(user?.photo_url || null);
+  const [photoScale, setPhotoScale] = useState(1.0);
+  const [photoX, setPhotoX] = useState(0);
+  const [photoY, setPhotoY] = useState(0);
+  const [serialNumber, setSerialNumber] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
   const [thalaivarSigUrl, setThalaivarSigUrl] = useState<string>(thalaivarSignature);
@@ -135,10 +135,10 @@ export default function OwnerIdCard() {
 
   // Preloaded HTMLImageElements for INSTANT download (0 network latency)
   const frontTplRef = useRef<HTMLImageElement | null>(null);
-  const backTplRef  = useRef<HTMLImageElement | null>(null);
-  const thalSigRef  = useRef<HTMLImageElement | null>(null);
-  const secSigRef   = useRef<HTMLImageElement | null>(null);
-  const photoRef    = useRef<HTMLImageElement | null>(null);
+  const backTplRef = useRef<HTMLImageElement | null>(null);
+  const thalSigRef = useRef<HTMLImageElement | null>(null);
+  const secSigRef = useRef<HTMLImageElement | null>(null);
+  const photoRef = useRef<HTMLImageElement | null>(null);
 
   // Preload template & signature images on mount
   useEffect(() => {
@@ -218,10 +218,10 @@ export default function OwnerIdCard() {
 
   const formatDob = (s: string) => {
     if (!s) return '';
-    try { const d = new Date(s); return `${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`; }
+    try { const d = new Date(s); return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`; }
     catch { return s; }
   };
-  const formatAadhar = (v?: string) => !v ? '' : v.replace(/\D/g,'').slice(0,12).replace(/(\d{4})(?=\d)/g,'$1 ');
+  const formatAadhar = (v?: string) => !v ? '' : v.replace(/\D/g, '').slice(0, 12).replace(/(\d{4})(?=\d)/g, '$1 ');
 
   // ── INSTANT Canvas2D Download ─────────────────────────────────────────────
   const handleDownload = async () => {
@@ -232,9 +232,9 @@ export default function OwnerIdCard() {
 
       // Use preloaded images or fallback load
       const frontTpl = frontTplRef.current || await loadImage(cardFrontTemplate);
-      const backTpl  = backTplRef.current  || await loadImage(cardBackTemplate);
-      const thalSig  = thalSigRef.current  || await loadImage(thalaivarSigUrl);
-      const secSig   = secSigRef.current   || await loadImage(secretarySigUrl);
+      const backTpl = backTplRef.current || await loadImage(cardBackTemplate);
+      const thalSig = thalSigRef.current || await loadImage(thalaivarSigUrl);
+      const secSig = secSigRef.current || await loadImage(secretarySigUrl);
       const ownerPhoto = photoRef.current;
 
       // ── FRONT CARD ────────────────────────────────────────────────────────
@@ -315,19 +315,19 @@ export default function OwnerIdCard() {
         bc.fillText(text, x * S, centerY * S);
       };
 
-      // Row 1: Aadhaar Label + Colon + Value (Y = 130.0)
-      bt('ஆதார் கார்டு', 50, 130.0, true, 9.5);
-      bt(':', 124, 130.0, true, 11);
-      bt(formatAadhar(aadharNumber) || '---- ---- ----', 135, 130.0, false, 11);
+      // Row 1: Aadhaar Label + Colon + Value (Y = 111.0)
+      bt('ஆதார் கார்டு', 50, 111.0, true, 9.5);
+      bt(':', 124, 111.0, true, 11);
+      bt(formatAadhar(aadharNumber) || '---- ---- ----', 135, 111.0, false, 11);
 
-      // Row 2: Blood Group (Y = 149.0 next to pre-printed இரத்த வகை :)
-      bt(bloodGroup || '', 135, 149.0, false, 11);
+      // Row 2: Blood Group (Y = 131.0 next to pre-printed இரத்த வகை :)
+      bt(bloodGroup || '', 135, 131.0, false, 11);
 
-      // Row 3: DOB (Y = 167.0 next to pre-printed பிறந்த தேதி :)
-      bt(formatDob(dob), 135, 167.0, false, 11);
+      // Row 3: DOB (Y = 152.0 next to pre-printed பிறந்த தேதி :)
+      bt(formatDob(dob), 135, 152.0, false, 11);
 
-      // Row 4: Phone (Y = 186.0 next to pre-printed செல் நெம்பர் :)
-      bt(personalPhone || '', 135, 186.0, false, 11);
+      // Row 4: Phone (Y = 172.0 next to pre-printed செல் நெம்பர் :)
+      bt(personalPhone || '', 135, 172.0, false, 11);
 
       // ── COMBINE ───────────────────────────────────────────────────────────
       const GAP = 24 * S;
@@ -404,63 +404,63 @@ export default function OwnerIdCard() {
             </CardHeader>
             <CardContent className="p-6 flex flex-col items-center gap-8">
               <div id="printable-cards-wrapper" className="flex flex-col gap-8 items-center w-full">
-                <div className="id-card-front" style={{ position:'relative', width:CW, height:CH, borderRadius:14, backgroundImage:`url(${cardFrontTemplate})`, backgroundSize:'cover', backgroundPosition:'center', overflow:'hidden', boxShadow:'0 8px 32px rgba(0,0,0,0.55)', flexShrink:0 }}>
-                  <div style={{ position:'absolute', top:81, left:11, width:88, height:108, overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', zIndex:4 }}>
+                <div className="id-card-front" style={{ position: 'relative', width: CW, height: CH, borderRadius: 14, backgroundImage: `url(${cardFrontTemplate})`, backgroundSize: 'cover', backgroundPosition: 'center', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.55)', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: 81, left: 11, width: 88, height: 108, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4 }}>
                     {photoPreview
-                      ? <img src={photoPreview} alt="Owner" style={{ width:'100%', height:'100%', objectFit:'cover', transform:`scale(${photoScale}) translate(${photoX}px,${photoY}px)`, transition:'transform 0.1s ease-out' }} />
-                      : <User style={{ width:28, height:28, color:'#bbb' }} />}
+                      ? <img src={photoPreview} alt="Owner" style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${photoScale}) translate(${photoX}px,${photoY}px)`, transition: 'transform 0.1s ease-out' }} />
+                      : <User style={{ width: 28, height: 28, color: '#bbb' }} />}
                   </div>
                   {serialNumber && (
-                    <div style={{ position:'absolute', top:54.5, right:14, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                      <span style={{ fontSize:13, color:'#FFFFFF', fontWeight:800, letterSpacing:0.5, fontFamily:'Arial, sans-serif', textShadow:'0 1px 4px rgba(0,0,0,0.6)', lineHeight:1 }}>{serialNumber}</span>
+                    <div style={{ position: 'absolute', top: 54.5, right: 14, height: 12, display: 'flex', alignItems: 'center', zIndex: 4 }}>
+                      <span style={{ fontSize: 13, color: '#FFFFFF', fontWeight: 800, letterSpacing: 0.5, fontFamily: 'Arial, sans-serif', textShadow: '0 1px 4px rgba(0,0,0,0.6)', lineHeight: 1 }}>{serialNumber}</span>
                     </div>
                   )}
-                  <div style={{ position:'absolute', top:87.8, left:148, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:12, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{ownerName}</span>
+                  <div style={{ position: 'absolute', top: 87.8, left: 148, height: 12, display: 'flex', alignItems: 'center', zIndex: 4 }}>
+                    <span style={{ fontSize: 12, color: 'white', fontWeight: 500, fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>{ownerName}</span>
                   </div>
-                  <div style={{ position:'absolute', top:114.8, left:148, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{shopName}</span>
+                  <div style={{ position: 'absolute', top: 114.8, left: 148, height: 12, display: 'flex', alignItems: 'center', zIndex: 4 }}>
+                    <span style={{ fontSize: 11, color: 'white', fontWeight: 500, fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>{shopName}</span>
                   </div>
-                  <div style={{ position:'absolute', top:138.0, left:98, width:44, textAlign:'right', whiteSpace:'nowrap', height:12, display:'flex', alignItems:'center', justifyContent:'flex-end', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'white', fontWeight:500, lineHeight:1 }}>Email :</span>
+                  <div style={{ position: 'absolute', top: 138.0, left: 98, width: 44, textAlign: 'right', whiteSpace: 'nowrap', height: 12, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', zIndex: 4 }}>
+                    <span style={{ fontSize: 11, color: 'white', fontWeight: 500, lineHeight: 1 }}>Email :</span>
                   </div>
-                  <div style={{ position:'absolute', top:138.0, left:148, width:165, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{emailAddress}</span>
+                  <div style={{ position: 'absolute', top: 138.0, left: 148, width: 165, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', height: 12, display: 'flex', alignItems: 'center', zIndex: 4 }}>
+                    <span style={{ fontSize: 11, color: 'white', fontWeight: 500, fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>{emailAddress}</span>
                   </div>
                   {/* Thalaivar Signature */}
-                  <div style={{ position:'absolute', top:160, left:105, width:60, zIndex:4 }}>
-                    <img src={thalaivarSigUrl} alt="Thalaivar Sig" style={{ width:'100%', height:'auto', display:'block' }} />
+                  <div style={{ position: 'absolute', top: 160, left: 105, width: 60, zIndex: 4 }}>
+                    <img src={thalaivarSigUrl} alt="Thalaivar Sig" style={{ width: '100%', height: 'auto', display: 'block' }} />
                   </div>
                   {/* Secretary Signature */}
-                  <div style={{ position:'absolute', top:160, right:15, width:68, zIndex:4 }}>
-                    <img src={secretarySigUrl} alt="Secretary Sig" style={{ width:'100%', height:'auto', display:'block' }} />
+                  <div style={{ position: 'absolute', top: 160, right: 15, width: 68, zIndex: 4 }}>
+                    <img src={secretarySigUrl} alt="Secretary Sig" style={{ width: '100%', height: 'auto', display: 'block' }} />
                   </div>
                 </div>
-                <div className="id-card-back" style={{ position:'relative', width:CW, height:CH, borderRadius:14, backgroundImage:`url(${cardBackTemplate})`, backgroundSize:'cover', backgroundPosition:'center', overflow:'hidden', boxShadow:'0 8px 32px rgba(0,0,0,0.55)', flexShrink:0 }}>
-                  <div style={{ position:'absolute', top:44, left:50, width:230, maxHeight:65, overflow:'hidden', zIndex:4 }}>
-                    <div style={{ fontSize:9.5, color:'#1E469C', fontWeight:500, lineHeight:1.35, wordBreak:'normal', overflowWrap:'break-word', whiteSpace:'normal', fontFamily:'Arial, sans-serif' }}>{homeAddress}</div>
+                <div className="id-card-back" style={{ position: 'relative', width: CW, height: CH, borderRadius: 14, backgroundImage: `url(${cardBackTemplate})`, backgroundSize: 'cover', backgroundPosition: 'center', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.55)', flexShrink: 0 }}>
+                  <div style={{ position: 'absolute', top: 44, left: 50, width: 230, maxHeight: 65, overflow: 'hidden', zIndex: 4 }}>
+                    <div style={{ fontSize: 9.5, color: '#1E469C', fontWeight: 500, lineHeight: 1.35, wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal', fontFamily: 'Arial, sans-serif' }}>{homeAddress}</div>
                   </div>
-                  {/* Row 1: Aadhaar Card Label + Colon + Value (Y = 130.0) */}
-                  <div style={{ position:'absolute', top:124.0, left:50, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:9.5, color:'#1E469C', fontWeight:700, whiteSpace:'nowrap', fontFamily:'Arial, sans-serif', lineHeight:1 }}>ஆதார் கார்டு</span>
+                  {/* Row 1: Aadhaar Card Label + Colon + Value (Y = 111.0) */}
+                  <div style={{ position: 'absolute', top: 105.0, left: 50, height: 12, display: 'flex', alignItems: 'center', zIndex: 4 }}>
+                    <span style={{ fontSize: 9.5, color: '#1E469C', fontWeight: 700, whiteSpace: 'nowrap', fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>ஆதார் கார்டு</span>
                   </div>
-                  <div style={{ position:'absolute', top:124.0, left:124, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:700, lineHeight:1 }}>:</span>
+                  <div style={{ position: 'absolute', top: 105.0, left: 124, height: 12, display: 'flex', alignItems: 'center', zIndex: 4 }}>
+                    <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 700, lineHeight: 1 }}>:</span>
                   </div>
-                  <div style={{ position:'absolute', top:124.0, left:135, width:157, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{formatAadhar(aadharNumber) || '---- ---- ----'}</span>
+                  <div style={{ position: 'absolute', top: 105.0, left: 135, width: 157, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', height: 12, display: 'flex', alignItems: 'center', zIndex: 4 }}>
+                    <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500, fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>{formatAadhar(aadharNumber) || '---- ---- ----'}</span>
                   </div>
-                  {/* Row 2: Blood Group Value (Y = 149.0 next to pre-printed இரத்த வகை :) */}
-                  <div style={{ position:'absolute', top:143.0, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{bloodGroup}</span>
+                  {/* Row 2: Blood Group Value (Y = 131.0 next to pre-printed இரத்த வகை :) */}
+                  <div style={{ position: 'absolute', top: 125.0, left: 135, height: 12, display: 'flex', alignItems: 'center', zIndex: 4 }}>
+                    <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500, fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>{bloodGroup}</span>
                   </div>
-                  {/* Row 3: DOB Value (Y = 167.0 next to pre-printed பிறந்த தேதி :) */}
-                  <div style={{ position:'absolute', top:161.0, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{formatDob(dob)}</span>
+                  {/* Row 3: DOB Value (Y = 152.0 next to pre-printed பிறந்த தேதி :) */}
+                  <div style={{ position: 'absolute', top: 146.0, left: 135, height: 12, display: 'flex', alignItems: 'center', zIndex: 4 }}>
+                    <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500, fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>{formatDob(dob)}</span>
                   </div>
-                  {/* Row 4: Phone Value (Y = 186.0 next to pre-printed செல் நெம்பர் :) */}
-                  <div style={{ position:'absolute', top:180.0, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{personalPhone}</span>
+                  {/* Row 4: Phone Value (Y = 172.0 next to pre-printed செல் நெம்பர் :) */}
+                  <div style={{ position: 'absolute', top: 166.0, left: 135, height: 12, display: 'flex', alignItems: 'center', zIndex: 4 }}>
+                    <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500, fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>{personalPhone}</span>
                   </div>
                 </div>
               </div>
@@ -479,26 +479,26 @@ export default function OwnerIdCard() {
                 <div className="space-y-3 border-b border-border/40 pb-4">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground">Serial Number</label>
-                    <Input placeholder="e.g. 47/2025" value={serialNumber} onChange={e=>setSerialNumber(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
+                    <Input placeholder="e.g. 47/2025" value={serialNumber} onChange={e => setSerialNumber(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground">Owner Name</label>
-                    <Input placeholder="Enter Owner Name..." value={ownerName} onChange={e=>setOwnerName(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
+                    <Input placeholder="Enter Owner Name..." value={ownerName} onChange={e => setOwnerName(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground">Shop Name</label>
-                    <Input placeholder="Enter Shop Name..." value={shopName} onChange={e=>setShopName(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
+                    <Input placeholder="Enter Shop Name..." value={shopName} onChange={e => setShopName(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground">Email Address</label>
-                    <Input type="email" placeholder="Enter Email Address..." value={emailAddress} onChange={e=>setEmailAddress(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
+                    <Input type="email" placeholder="Enter Email Address..." value={emailAddress} onChange={e => setEmailAddress(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
                   </div>
                 </div>
                 <div className="space-y-3">
                   <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Upload className="h-3.5 w-3.5" /> Owner Photo (Passport Size)</label>
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-16 rounded-lg bg-secondary/15 border border-border/60 overflow-hidden flex items-center justify-center shrink-0">
-                      {photoPreview ? <div className="w-full h-full overflow-hidden relative"><img src={photoPreview} alt="Thumb" style={{ width:'100%', height:'100%', objectFit:'cover', transform:`scale(${photoScale}) translate(${photoX}px,${photoY}px)`, transition:'transform 0.1s ease-out' }} /></div> : <User className="h-6 w-6 text-slate-500" />}
+                      {photoPreview ? <div className="w-full h-full overflow-hidden relative"><img src={photoPreview} alt="Thumb" style={{ width: '100%', height: '100%', objectFit: 'cover', transform: `scale(${photoScale}) translate(${photoX}px,${photoY}px)`, transition: 'transform 0.1s ease-out' }} /></div> : <User className="h-6 w-6 text-slate-500" />}
                     </div>
                     <div className="flex-1">
                       <Input type="file" accept="image/*" onChange={handlePhotoChange} className="bg-secondary/35 border-border/80 text-xs cursor-pointer file:text-xs" />
@@ -509,29 +509,29 @@ export default function OwnerIdCard() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> Personal Phone</label>
-                    <Input placeholder="+91 9876543210" value={personalPhone} onChange={e=>setPersonalPhone(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
+                    <Input placeholder="+91 9876543210" value={personalPhone} onChange={e => setPersonalPhone(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Fingerprint className="h-3.5 w-3.5" /> Aadhar Number</label>
-                    <Input placeholder="1234 5678 9012" value={aadharNumber} onChange={e=>setAadharNumber(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
+                    <Input placeholder="1234 5678 9012" value={aadharNumber} onChange={e => setAadharNumber(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Date of Birth</label>
-                    <Input type="date" value={dob} onChange={e=>setDob(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
+                    <Input type="date" value={dob} onChange={e => setDob(e.target.value)} className="bg-secondary/35 border-border/80 text-xs" />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><Droplet className="h-3.5 w-3.5" /> Blood Group</label>
-                    <select value={bloodGroup} onChange={e=>setBloodGroup(e.target.value)} className="flex h-9 w-full rounded-md border border-border/80 bg-secondary/35 px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary text-white">
+                    <select value={bloodGroup} onChange={e => setBloodGroup(e.target.value)} className="flex h-9 w-full rounded-md border border-border/80 bg-secondary/35 px-3 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary text-white">
                       <option className="bg-neutral-900 text-white" value="">Select Blood Group</option>
-                      {['A+','A-','B+','B-','AB+','AB-','O+','O-'].map(g=><option key={g} className="bg-neutral-900 text-white" value={g}>{g}</option>)}
+                      {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(g => <option key={g} className="bg-neutral-900 text-white" value={g}>{g}</option>)}
                     </select>
                   </div>
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> Home Address (Back of card)</label>
-                  <textarea rows={3} placeholder="Enter your residential address..." value={homeAddress} onChange={e=>setHomeAddress(e.target.value)} className="flex w-full rounded-md border border-border/80 bg-secondary/35 px-3 py-2 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary text-white resize-none" />
+                  <textarea rows={3} placeholder="Enter your residential address..." value={homeAddress} onChange={e => setHomeAddress(e.target.value)} className="flex w-full rounded-md border border-border/80 bg-secondary/35 px-3 py-2 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary text-white resize-none" />
                 </div>
                 <Button type="submit" disabled={isSubmitting} className="w-full text-xs font-bold uppercase tracking-wider mt-2 flex items-center justify-center gap-2">
                   {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving Changes...</> : 'Save Changes & Update Profile'}
