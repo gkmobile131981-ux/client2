@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../lib/api';
 import cardFrontTemplate from '../card-front-template.png';
@@ -112,6 +112,7 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 
 export default function OwnerIdCard() {
   const { user, reloadProfile, role, shop } = useAuth();
+
   const [ownerName, setOwnerName]         = useState(user?.name || '');
   const [shopName, setShopName]           = useState(shop?.name || '');
   const [emailAddress, setEmailAddress]   = useState(user?.email || '');
@@ -128,13 +129,40 @@ export default function OwnerIdCard() {
   const [serialNumber, setSerialNumber]   = useState('');
   const [isSubmitting, setIsSubmitting]   = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+
   const [thalaivarSigUrl, setThalaivarSigUrl] = useState<string>(thalaivarSignature);
   const [secretarySigUrl, setSecretarySigUrl] = useState<string>(secretarySignature);
 
+  // Preloaded HTMLImageElements for INSTANT download (0 network latency)
+  const frontTplRef = useRef<HTMLImageElement | null>(null);
+  const backTplRef  = useRef<HTMLImageElement | null>(null);
+  const thalSigRef  = useRef<HTMLImageElement | null>(null);
+  const secSigRef   = useRef<HTMLImageElement | null>(null);
+  const photoRef    = useRef<HTMLImageElement | null>(null);
+
+  // Preload template & signature images on mount
   useEffect(() => {
-    stripWhite(thalaivarSignature, 200).then(setThalaivarSigUrl);
-    stripWhite(secretarySignature, 200).then(setSecretarySigUrl);
+    loadImage(cardFrontTemplate).then(img => { frontTplRef.current = img; });
+    loadImage(cardBackTemplate).then(img => { backTplRef.current = img; });
+
+    stripWhite(thalaivarSignature, 200).then(url => {
+      setThalaivarSigUrl(url);
+      loadImage(url).then(img => { thalSigRef.current = img; });
+    });
+    stripWhite(secretarySignature, 200).then(url => {
+      setSecretarySigUrl(url);
+      loadImage(url).then(img => { secSigRef.current = img; });
+    });
   }, []);
+
+  // Preload photo whenever preview changes
+  useEffect(() => {
+    if (photoPreview) {
+      loadImage(photoPreview).then(img => { photoRef.current = img; }).catch(() => { photoRef.current = null; });
+    } else {
+      photoRef.current = null;
+    }
+  }, [photoPreview]);
 
   useEffect(() => {
     if (user) {
@@ -149,12 +177,14 @@ export default function OwnerIdCard() {
     }
   }, [user, selectedPhoto]);
 
-  useEffect(() => { if (shop) setShopName(shop.name || ''); }, [shop]);
+  useEffect(() => {
+    if (shop) setShopName(shop.name || '');
+  }, [shop]);
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 2*1024*1024) { toast.error('Photo size must be less than 2MB'); return; }
+      if (file.size > 2 * 1024 * 1024) { toast.error('Photo size must be less than 2MB'); return; }
       const compressed = await compressFileImage(file, 800, 0.80);
       setSelectedPhoto(compressed);
       setPhotoPreview(URL.createObjectURL(compressed));
@@ -169,7 +199,7 @@ export default function OwnerIdCard() {
     try {
       await apiClient.put('/auth/update-profile', { name: ownerName.trim(), email: emailAddress.trim() });
       if (role === 'owner' && shop && shopName.trim() !== shop.name)
-        await apiClient.put('/auth/shop', { name: shopName.trim(), address: shop.address||'', phone: shop.phone||'' });
+        await apiClient.put('/auth/shop', { name: shopName.trim(), address: shop.address || '', phone: shop.phone || '' });
       const formData = new FormData();
       formData.append('homeAddress', homeAddress);
       formData.append('bloodGroup', bloodGroup);
@@ -193,32 +223,37 @@ export default function OwnerIdCard() {
   };
   const formatAadhar = (v?: string) => !v ? '' : v.replace(/\D/g,'').slice(0,12).replace(/(\d{4})(?=\d)/g,'$1 ');
 
+  // ── INSTANT Canvas2D Download ─────────────────────────────────────────────
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
       const S = EXPORT_SCALE;
-      const W = CW*S, H = CH*S;
-      const [frontTpl, backTpl, thalSig, secSig] = await Promise.all([
-        loadImage(cardFrontTemplate), loadImage(cardBackTemplate),
-        loadImage(thalaivarSigUrl), loadImage(secretarySigUrl),
-      ]);
-      let ownerPhoto: HTMLImageElement | null = null;
-      if (photoPreview) { try { ownerPhoto = await loadImage(photoPreview); } catch {} }
+      const W = CW * S, H = CH * S;
 
-      // FRONT CARD
+      // Use preloaded images or fallback load
+      const frontTpl = frontTplRef.current || await loadImage(cardFrontTemplate);
+      const backTpl  = backTplRef.current  || await loadImage(cardBackTemplate);
+      const thalSig  = thalSigRef.current  || await loadImage(thalaivarSigUrl);
+      const secSig   = secSigRef.current   || await loadImage(secretarySigUrl);
+      const ownerPhoto = photoRef.current;
+
+      // ── FRONT CARD ────────────────────────────────────────────────────────
       const frontCanvas = document.createElement('canvas');
       frontCanvas.width = W; frontCanvas.height = H;
       const fc = frontCanvas.getContext('2d')!;
       fc.drawImage(frontTpl, 0, 0, W, H);
+
+      // Photo
       if (ownerPhoto) {
-        const px=11*S, py=81*S, pw=88*S, ph=108*S;
-        fc.save(); fc.beginPath(); fc.rect(px,py,pw,ph); fc.clip();
-        const ratio = Math.max(pw/ownerPhoto.width, ph/ownerPhoto.height)*photoScale;
-        const dw=ownerPhoto.width*ratio, dh=ownerPhoto.height*ratio;
-        fc.drawImage(ownerPhoto, px+(pw-dw)/2+photoX*S, py+(ph-dh)/2+photoY*S, dw, dh);
+        const px = 11 * S, py = 81 * S, pw = 88 * S, ph = 108 * S;
+        fc.save(); fc.beginPath(); fc.rect(px, py, pw, ph); fc.clip();
+        const ratio = Math.max(pw / ownerPhoto.width, ph / ownerPhoto.height) * photoScale;
+        const dw = ownerPhoto.width * ratio, dh = ownerPhoto.height * ratio;
+        fc.drawImage(ownerPhoto, px + (pw - dw) / 2 + photoX * S, py + (ph - dh) / 2 + photoY * S, dw, dh);
         fc.restore();
       }
-      // SL.NO — plain text aligned straight with the அடையாள அட்டை pill (centerY = 60.5)
+
+      // SL.NO — plain text, center Y = 63 (slightly below middle of pill)
       {
         const slText = serialNumber || '';
         if (slText) {
@@ -227,25 +262,26 @@ export default function OwnerIdCard() {
           fc.fillStyle = '#FFFFFF';
           fc.textBaseline = 'middle';
           const tx = W - fc.measureText(slText).width - 16 * S;
-          fc.fillText(slText, tx, 60.5 * S);
+          fc.fillText(slText, tx, 63 * S);
         }
       }
-      // Text rows
-      fc.textBaseline='top';
-      const ft = (text: string, x: number, y: number, maxW: number, fs=13) => {
-        fc.font=`500 ${fs*S}px Arial, sans-serif`; fc.fillStyle='#FFFFFF';
-        let t=text;
-        while(t.length>1 && fc.measureText(t).width>maxW*S) t=t.slice(0,-1);
-        if(t!==text) t+='\u2026';
-        fc.fillText(t, x*S, y*S);
-      };
-      ft(ownerName, 148, 79, 168);
-      ft(shopName, 148, 104, 168, 12);
-      fc.font=`500 ${11*S}px Arial, sans-serif`; fc.fillStyle='#FFFFFF';
-      fc.fillText('Email :', 98*S, 128*S);
-      ft(emailAddress, 148, 128, 165, 11);
 
-      // Signatures — drawn with multiply blend for crisp dark strokes
+      // Front Text Rows (middle textBaseline for exact vertical alignment with template labels)
+      fc.textBaseline = 'middle';
+      const ft = (text: string, x: number, centerY: number, maxW: number, fs = 13) => {
+        fc.font = `500 ${fs * S}px Arial, sans-serif`;
+        fc.fillStyle = '#FFFFFF';
+        let t = text;
+        while (t.length > 1 && fc.measureText(t).width > maxW * S) t = t.slice(0, -1);
+        if (t !== text) t += '\u2026';
+        fc.fillText(t, x * S, centerY * S);
+      };
+
+      ft(ownerName, 148, 82.5, 168, 12);
+      ft(shopName, 148, 108, 168, 11);
+      ft(emailAddress, 148, 133.5, 165, 11);
+
+      // Signatures
       const drawSig = (img: HTMLImageElement, dx: number, dy: number, dw: number) => {
         const dh = (img.height / img.width) * dw;
         fc.globalCompositeOperation = 'multiply';
@@ -255,58 +291,76 @@ export default function OwnerIdCard() {
       drawSig(thalSig, 105 * S, 151 * S, 60 * S);
       drawSig(secSig, W - 15 * S - 68 * S, 153 * S, 68 * S);
 
-      // BACK CARD
+      // ── BACK CARD ─────────────────────────────────────────────────────────
       const backCanvas = document.createElement('canvas');
       backCanvas.width = W; backCanvas.height = H;
       const bc = backCanvas.getContext('2d')!;
       bc.drawImage(backTpl, 0, 0, W, H);
-      // Address
-      bc.font=`500 ${11*S}px Arial, sans-serif`; bc.fillStyle='#1E469C'; bc.textBaseline='top';
-      wrapText(bc, homeAddress||'', 230*S).slice(0,5).forEach((line,i) => bc.fillText(line,50*S,(44+i*13)*S));
-      // White cover over template ஆதார் :
-      bc.fillStyle='#FFFFFF'; bc.fillRect(45*S,109*S,87*S,16*S);
-      // Aadhaar
-      bc.font=`bold ${11*S}px Arial, sans-serif`; bc.fillStyle='#1E469C'; bc.textBaseline='top';
-      bc.fillText('ஆதார் கார்டு',50*S,110*S); bc.fillText(':',124*S,110*S);
-      bc.font=`500 ${11*S}px Arial, sans-serif`; bc.fillText(formatAadhar(aadharNumber),135*S,110*S);
-      bc.fillText(bloodGroup||'',135*S,130*S);
-      bc.fillText(formatDob(dob),135*S,151*S);
-      bc.fillText(personalPhone||'',135*S,172*S);
 
-      // Combine
-      const GAP=24*S;
-      const combined=document.createElement('canvas');
-      combined.width=W; combined.height=H*2+GAP;
-      const cc=combined.getContext('2d')!;
-      cc.fillStyle='#111111'; cc.fillRect(0,0,combined.width,combined.height);
-      cc.drawImage(frontCanvas,0,0); cc.drawImage(backCanvas,0,H+GAP);
+      // Address (multi-line)
+      bc.font = `500 ${11 * S}px Arial, sans-serif`;
+      bc.fillStyle = '#1E469C';
+      bc.textBaseline = 'top';
+      wrapText(bc, homeAddress || '', 230 * S).slice(0, 5).forEach((line, i) => bc.fillText(line, 50 * S, (44 + i * 13) * S));
 
-      const slug=(ownerName||'id-card').replace(/\s+/g,'_').toLowerCase();
-      const fileName=`${slug}_id_card.png`;
+      // Cover original ஆதார் : text
+      bc.fillStyle = '#FFFFFF';
+      bc.fillRect(45 * S, 109 * S, 87 * S, 16 * S);
+
+      // Back Text Rows (middle textBaseline matching exact template label positions)
+      bc.textBaseline = 'middle';
+      const bt = (text: string, x: number, centerY: number, bold = false) => {
+        bc.font = `${bold ? 'bold' : '500'} ${11 * S}px Arial, sans-serif`;
+        bc.fillStyle = '#1E469C';
+        bc.fillText(text, x * S, centerY * S);
+      };
+
+      bt('ஆதார் கார்டு', 50, 111, true);
+      bt(':', 124, 111, true);
+      bt(formatAadhar(aadharNumber), 135, 111);
+      bt(bloodGroup || '', 135, 131.5);
+      bt(formatDob(dob), 135, 152.5);
+      bt(personalPhone || '', 135, 174.5);
+
+      // ── COMBINE ───────────────────────────────────────────────────────────
+      const GAP = 24 * S;
+      const combined = document.createElement('canvas');
+      combined.width = W; combined.height = H * 2 + GAP;
+      const cc = combined.getContext('2d')!;
+      cc.fillStyle = '#111111';
+      cc.fillRect(0, 0, combined.width, combined.height);
+      cc.drawImage(frontCanvas, 0, 0);
+      cc.drawImage(backCanvas, 0, H + GAP);
+
+      const slug = (ownerName || 'id-card').replace(/\s+/g, '_').toLowerCase();
+      const fileName = `${slug}_id_card.png`;
+
       combined.toBlob(async (blob) => {
         if (!blob) { toast.error('Failed to generate card image'); setIsDownloading(false); return; }
-        const file=new File([blob],fileName,{type:'image/png'});
-        const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-        if (navigator.canShare && navigator.canShare({files:[file]})) {
+        const file = new File([blob], fileName, { type: 'image/png' });
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
-            await navigator.share({files:[file],title:'Owner ID Card',text:'Panruti Association ID Card'});
+            await navigator.share({ files: [file], title: 'Owner ID Card', text: 'Panruti Association ID Card' });
             toast.success('ID Card shared / saved successfully!'); setIsDownloading(false); return;
-          } catch(err:any) { if(err.name==='AbortError'){setIsDownloading(false);return;} }
+          } catch (err: any) { if (err.name === 'AbortError') { setIsDownloading(false); return; } }
         }
-        const blobUrl=URL.createObjectURL(blob);
+
+        const blobUrl = URL.createObjectURL(blob);
         if (isIOS) {
-          const w=window.open(blobUrl,'_blank'); if(!w) window.location.href=blobUrl;
+          const w = window.open(blobUrl, '_blank'); if (!w) window.location.href = blobUrl;
           toast.success('Image opened! Press & hold to Save to Photos.');
         } else {
-          const a=document.createElement('a'); a.download=fileName; a.href=blobUrl;
+          const a = document.createElement('a'); a.download = fileName; a.href = blobUrl;
           document.body.appendChild(a); a.click(); document.body.removeChild(a);
-          setTimeout(()=>URL.revokeObjectURL(blobUrl),15000);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
           toast.success('ID Card downloaded successfully!');
         }
         setIsDownloading(false);
-      },'image/png',1.0);
-    } catch(err:any) {
-      console.error('Download error:',err);
+      }, 'image/png', 1.0);
+    } catch (err: any) {
+      console.error('Download error:', err);
       toast.error('Download failed. Please try again.');
       setIsDownloading(false);
     }
@@ -339,7 +393,7 @@ export default function OwnerIdCard() {
         <div className="lg:col-span-7">
           <Card className="bg-card/90 border-border/80">
             <CardHeader className="pb-3 border-b border-border/40">
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Live Card Preview (86 × 54 mm)</CardTitle>
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Live Card Preview (86 × 54 MM)</CardTitle>
             </CardHeader>
             <CardContent className="p-6 flex flex-col items-center gap-8">
               <div id="printable-cards-wrapper" className="flex flex-col gap-8 items-center w-full">
@@ -350,21 +404,21 @@ export default function OwnerIdCard() {
                       : <User style={{ width:28, height:28, color:'#bbb' }} />}
                   </div>
                   {serialNumber && (
-                    <div style={{ position:'absolute', top:53.5, right:14, height:14, display:'flex', alignItems:'center', zIndex:4 }}>
+                    <div style={{ position:'absolute', top:56, right:14, height:14, display:'flex', alignItems:'center', zIndex:4 }}>
                       <span style={{ fontSize:13, color:'#FFFFFF', fontWeight:800, letterSpacing:0.5, fontFamily:'Arial, sans-serif', textShadow:'0 1px 4px rgba(0,0,0,0.6)', lineHeight:1 }}>{serialNumber}</span>
                     </div>
                   )}
-                  <div style={{ position:'absolute', top:79, left:148, zIndex:4 }}>
-                    <span style={{ fontSize:12, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif' }}>{ownerName}</span>
+                  <div style={{ position:'absolute', top:76, left:148, height:13, display:'flex', alignItems:'center', zIndex:4 }}>
+                    <span style={{ fontSize:12, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{ownerName}</span>
                   </div>
-                  <div style={{ position:'absolute', top:104, left:148, zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif' }}>{shopName}</span>
+                  <div style={{ position:'absolute', top:102, left:148, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
+                    <span style={{ fontSize:11, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{shopName}</span>
                   </div>
-                  <div style={{ position:'absolute', top:128, left:98, width:44, textAlign:'right', whiteSpace:'nowrap', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'white', fontWeight:500 }}>Email :</span>
+                  <div style={{ position:'absolute', top:128, left:98, width:44, textAlign:'right', whiteSpace:'nowrap', height:11, display:'flex', alignItems:'center', justifyContent:'flex-end', zIndex:4 }}>
+                    <span style={{ fontSize:11, color:'white', fontWeight:500, lineHeight:1 }}>Email :</span>
                   </div>
-                  <div style={{ position:'absolute', top:128, left:148, width:165, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif' }}>{emailAddress}</span>
+                  <div style={{ position:'absolute', top:128, left:148, width:165, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', height:11, display:'flex', alignItems:'center', zIndex:4 }}>
+                    <span style={{ fontSize:11, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{emailAddress}</span>
                   </div>
                   {/* Thalaivar Signature */}
                   <div style={{ position:'absolute', top:151, left:105, width:60, zIndex:4 }}>
@@ -380,23 +434,23 @@ export default function OwnerIdCard() {
                     <div style={{ fontSize:9.5, color:'#1E469C', fontWeight:500, lineHeight:1.35, wordBreak:'normal', overflowWrap:'break-word', whiteSpace:'normal', fontFamily:'Arial, sans-serif' }}>{homeAddress}</div>
                   </div>
                   <div style={{ position:'absolute', top:109, left:45, width:86, height:16, background:'white', zIndex:3 }} />
-                  <div style={{ position:'absolute', top:110, left:50, zIndex:4 }}>
-                    <span style={{ fontSize:9.5, color:'#1E469C', fontWeight:700, whiteSpace:'nowrap', fontFamily:'Arial, sans-serif' }}>ஆதார் கார்டு</span>
+                  <div style={{ position:'absolute', top:105, left:50, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
+                    <span style={{ fontSize:9.5, color:'#1E469C', fontWeight:700, whiteSpace:'nowrap', fontFamily:'Arial, sans-serif', lineHeight:1 }}>ஆதார் கார்டு</span>
                   </div>
-                  <div style={{ position:'absolute', top:110, left:124, zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:700 }}>:</span>
+                  <div style={{ position:'absolute', top:105, left:124, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
+                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:700, lineHeight:1 }}>:</span>
                   </div>
-                  <div style={{ position:'absolute', top:110, left:135, width:157, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif' }}>{formatAadhar(aadharNumber)}</span>
+                  <div style={{ position:'absolute', top:105, left:135, width:157, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', height:12, display:'flex', alignItems:'center', zIndex:4 }}>
+                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{formatAadhar(aadharNumber)}</span>
                   </div>
-                  <div style={{ position:'absolute', top:130, left:135, zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif' }}>{bloodGroup}</span>
+                  <div style={{ position:'absolute', top:126, left:135, height:11, display:'flex', alignItems:'center', zIndex:4 }}>
+                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{bloodGroup}</span>
                   </div>
-                  <div style={{ position:'absolute', top:151, left:135, zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif' }}>{formatDob(dob)}</span>
+                  <div style={{ position:'absolute', top:147, left:135, height:11, display:'flex', alignItems:'center', zIndex:4 }}>
+                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{formatDob(dob)}</span>
                   </div>
-                  <div style={{ position:'absolute', top:172, left:135, zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif' }}>{personalPhone}</span>
+                  <div style={{ position:'absolute', top:169, left:135, height:11, display:'flex', alignItems:'center', zIndex:4 }}>
+                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{personalPhone}</span>
                   </div>
                 </div>
               </div>
