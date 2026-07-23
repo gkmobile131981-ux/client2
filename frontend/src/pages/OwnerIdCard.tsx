@@ -320,14 +320,14 @@ export default function OwnerIdCard() {
       bt(':', 124, 131.0, true, 11);
       bt(formatAadhar(aadharNumber) || '---- ---- ----', 135, 131.0, false, 11);
 
-      // Row 2: Blood Group (Y = 152.0 next to pre-printed இரத்த வகை :)
-      bt(bloodGroup || '', 135, 152.0, false, 11);
+      // Row 2: Blood Group (Y = 149.0 next to pre-printed இரத்த வகை :)
+      bt(bloodGroup || '', 135, 149.0, false, 11);
 
-      // Row 3: DOB (Y = 172.0 next to pre-printed பிறந்த தேதி :)
-      bt(formatDob(dob), 135, 172.0, false, 11);
+      // Row 3: DOB (Y = 169.0 next to pre-printed பிறந்த தேதி :)
+      bt(formatDob(dob), 135, 169.0, false, 11);
 
-      // Row 4: Phone (Y = 192.0 next to pre-printed செல் நெம்பர் :)
-      bt(personalPhone || '', 135, 192.0, false, 11);
+      // Row 4: Phone (Y = 189.0 next to pre-printed செல் நெம்பர் :)
+      bt(personalPhone || '', 135, 189.0, false, 11);
 
       // ── COMBINE ───────────────────────────────────────────────────────────
       const GAP = 24 * S;
@@ -450,16 +450,16 @@ export default function OwnerIdCard() {
                   <div style={{ position:'absolute', top:125.0, left:135, width:157, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', height:12, display:'flex', alignItems:'center', zIndex:4 }}>
                     <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{formatAadhar(aadharNumber) || '---- ---- ----'}</span>
                   </div>
-                  {/* Row 2: Blood Group Value (Y = 152.0 next to pre-printed இரத்த வகை :) */}
-                  <div style={{ position:'absolute', top:146.0, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
+                  {/* Row 2: Blood Group Value (Y = 149.0 next to pre-printed இரத்த வகை :) */}
+                  <div style={{ position:'absolute', top:143.0, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
                     <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{bloodGroup}</span>
                   </div>
-                  {/* Row 3: DOB Value (Y = 172.0 next to pre-printed பிறந்த தேதி :) */}
-                  <div style={{ position:'absolute', top:166.0, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
+                  {/* Row 3: DOB Value (Y = 169.0 next to pre-printed பிறந்த தேதி :) */}
+                  <div style={{ position:'absolute', top:163.0, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
                     <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{formatDob(dob)}</span>
                   </div>
-                  {/* Row 4: Phone Value (Y = 192.0 next to pre-printed செல் நெம்பர் :) */}
-                  <div style={{ position:'absolute', top:186.0, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
+                  {/* Row 4: Phone Value (Y = 189.0 next to pre-printed செல் நெம்பர் :) */}
+                  <div style={{ position:'absolute', top:183.0, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
                     <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{personalPhone}</span>
                   </div>
                 </div>
