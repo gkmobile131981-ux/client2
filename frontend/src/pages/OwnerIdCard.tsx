@@ -342,25 +342,22 @@ export default function OwnerIdCard() {
       const slug = (ownerName || 'id-card').replace(/\s+/g, '_').toLowerCase();
       const fileName = `${slug}_id_card.png`;
 
-      combined.toBlob(async (blob) => {
+      combined.toBlob((blob) => {
         if (!blob) { toast.error('Failed to generate card image'); setIsDownloading(false); return; }
-        const file = new File([blob], fileName, { type: 'image/png' });
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({ files: [file], title: 'Owner ID Card', text: 'Panruti Association ID Card' });
-            toast.success('ID Card shared / saved successfully!'); setIsDownloading(false); return;
-          } catch (err: any) { if (err.name === 'AbortError') { setIsDownloading(false); return; } }
-        }
-
         const blobUrl = URL.createObjectURL(blob);
+
         if (isIOS) {
-          const w = window.open(blobUrl, '_blank'); if (!w) window.location.href = blobUrl;
+          const w = window.open(blobUrl, '_blank');
+          if (!w) window.location.href = blobUrl;
           toast.success('Image opened! Press & hold to Save to Photos.');
         } else {
-          const a = document.createElement('a'); a.download = fileName; a.href = blobUrl;
-          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          const a = document.createElement('a');
+          a.download = fileName;
+          a.href = blobUrl;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
           setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
           toast.success('ID Card downloaded successfully!');
         }
