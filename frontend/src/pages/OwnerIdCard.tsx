@@ -114,16 +114,16 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 export default function OwnerIdCard() {
   const { user, reloadProfile, role, shop } = useAuth();
 
-  const [ownerName, setOwnerName] = useState(user?.name || '');
-  const [shopName, setShopName] = useState(shop?.name || '');
-  const [emailAddress, setEmailAddress] = useState(user?.email || '');
-  const [homeAddress, setHomeAddress] = useState(user?.home_address || '');
-  const [bloodGroup, setBloodGroup] = useState(user?.blood_group || '');
-  const [dob, setDob] = useState(user?.dob || '');
-  const [personalPhone, setPersonalPhone] = useState(user?.personal_phone || '');
-  const [aadharNumber, setAadharNumber] = useState(user?.aadhar_number || '');
+  const [ownerName, setOwnerName] = useState('');
+  const [shopName, setShopName] = useState('');
+  const [emailAddress, setEmailAddress] = useState('');
+  const [homeAddress, setHomeAddress] = useState('');
+  const [bloodGroup, setBloodGroup] = useState('');
+  const [dob, setDob] = useState('');
+  const [personalPhone, setPersonalPhone] = useState('');
+  const [aadharNumber, setAadharNumber] = useState('');
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(user?.photo_url || null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoScale, setPhotoScale] = useState(1.0);
   const [photoX, setPhotoX] = useState(0);
   const [photoY, setPhotoY] = useState(0);
@@ -174,22 +174,7 @@ export default function OwnerIdCard() {
     }
   }, [photoPreview]);
 
-  useEffect(() => {
-    if (user) {
-      setOwnerName(user.name || '');
-      setEmailAddress(user.email || '');
-      setHomeAddress(user.home_address || '');
-      setBloodGroup(user.blood_group || '');
-      setDob(user.dob || '');
-      setPersonalPhone(user.personal_phone || '');
-      setAadharNumber(user.aadhar_number || '');
-      if (!selectedPhoto) setPhotoPreview(user.photo_url || null);
-    }
-  }, [user, selectedPhoto]);
 
-  useEffect(() => {
-    if (shop) setShopName(shop.name || '');
-  }, [shop]);
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -201,29 +186,28 @@ export default function OwnerIdCard() {
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const resetForm = () => {
+    setOwnerName('');
+    setShopName('');
+    setEmailAddress('');
+    setHomeAddress('');
+    setBloodGroup('');
+    setDob('');
+    setPersonalPhone('');
+    setAadharNumber('');
+    setSelectedPhoto(null);
+    setPhotoPreview(null);
+    setSerialNumber('');
+    photoRef.current = null;
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    if (fileInput) fileInput.value = '';
+    toast.success('Form cleared.');
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!ownerName.trim()) { toast.error('Owner name is required.'); return; }
-    if (!emailAddress.trim()) { toast.error('Email address is required.'); return; }
-    setIsSubmitting(true);
-    try {
-      await apiClient.put('/auth/update-profile', { name: ownerName.trim(), email: emailAddress.trim() });
-      if (role === 'owner' && shop && shopName.trim() !== shop.name)
-        await apiClient.put('/auth/shop', { name: shopName.trim(), address: shop.address || '', phone: shop.phone || '' });
-      const formData = new FormData();
-      formData.append('homeAddress', homeAddress);
-      formData.append('bloodGroup', bloodGroup);
-      formData.append('dob', dob);
-      formData.append('personalPhone', personalPhone);
-      formData.append('aadharNumber', aadharNumber);
-      if (selectedPhoto) formData.append('photo', selectedPhoto);
-      await apiClient.put('/auth/profile/id-card', formData);
-      toast.success('Profile and ID Card details updated successfully!');
-      setSelectedPhoto(null);
-      await reloadProfile();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to save changes.');
-    } finally { setIsSubmitting(false); }
+    handleDownload();
   };
 
   const formatDob = (s: string) => {
@@ -500,7 +484,7 @@ export default function OwnerIdCard() {
               <CardDescription className="text-xs">Fill in details manually — updates the card preview live.</CardDescription>
             </CardHeader>
             <CardContent className="p-5">
-              <form onSubmit={handleSave} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-3 border-b border-border/40 pb-4">
                   <div className="space-y-1">
                     <label className="text-xs font-semibold text-muted-foreground">Serial Number</label>
@@ -558,9 +542,14 @@ export default function OwnerIdCard() {
                   <label className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> Home Address (Back of card)</label>
                   <textarea rows={3} placeholder="Enter your residential address..." value={homeAddress} onChange={e => setHomeAddress(e.target.value)} className="flex w-full rounded-md border border-border/80 bg-secondary/35 px-3 py-2 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary text-white resize-none" />
                 </div>
-                <Button type="submit" disabled={isSubmitting} className="w-full text-xs font-bold uppercase tracking-wider mt-2 flex items-center justify-center gap-2">
-                  {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Saving Changes...</> : 'Save Changes & Update Profile'}
-                </Button>
+                <div className="flex gap-4 mt-2">
+                  <Button type="button" variant="outline" onClick={resetForm} className="w-1/3 text-xs font-bold uppercase tracking-wider border-border/80 text-foreground bg-secondary/15 hover:bg-secondary/40">
+                    Clear Form
+                  </Button>
+                  <Button type="submit" disabled={isDownloading} className="w-2/3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2">
+                    {isDownloading ? <><Loader2 className="h-4 w-4 animate-spin" /> Downloading...</> : <><Download className="h-4 w-4" /> Download ID Card</>}
+                  </Button>
+                </div>
               </form>
             </CardContent>
           </Card>
