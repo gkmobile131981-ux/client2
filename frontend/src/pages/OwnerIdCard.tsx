@@ -140,28 +140,37 @@ export default function OwnerIdCard() {
   const thalSigRef = useRef<HTMLImageElement | null>(null);
   const secSigRef = useRef<HTMLImageElement | null>(null);
   const photoRef = useRef<HTMLImageElement | null>(null);
+  const frontCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const backCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Preload template & signature images on mount
   useEffect(() => {
-    loadImage(cardFrontTemplate).then(img => { frontTplRef.current = img; });
-    loadImage(cardBackTemplate).then(img => { backTplRef.current = img; });
+    loadImage(cardFrontTemplate).then(img => { frontTplRef.current = img; drawCards(); });
+    loadImage(cardBackTemplate).then(img => { backTplRef.current = img; drawCards(); });
 
     stripWhite(thalaivarSignature, 200).then(url => {
       setThalaivarSigUrl(url);
-      loadImage(url).then(img => { thalSigRef.current = img; });
+      loadImage(url).then(img => { thalSigRef.current = img; drawCards(); });
     });
     stripWhite(secretarySignature, 200).then(url => {
       setSecretarySigUrl(url);
-      loadImage(url).then(img => { secSigRef.current = img; });
+      loadImage(url).then(img => { secSigRef.current = img; drawCards(); });
     });
   }, []);
 
   // Preload photo whenever preview changes
   useEffect(() => {
     if (photoPreview) {
-      loadImage(photoPreview).then(img => { photoRef.current = img; }).catch(() => { photoRef.current = null; });
+      loadImage(photoPreview).then(img => {
+        photoRef.current = img;
+        drawCards();
+      }).catch(() => {
+        photoRef.current = null;
+        drawCards();
+      });
     } else {
       photoRef.current = null;
+      drawCards();
     }
   }, [photoPreview]);
 
@@ -224,33 +233,178 @@ export default function OwnerIdCard() {
   };
   const formatAadhar = (v?: string) => !v ? '' : v.replace(/\D/g, '').slice(0, 12).replace(/(\d{4})(?=\d)/g, '$1 ');
 
-  // ── INSTANT html2canvas DOM Snapshot Download ─────────────────────────────
+  const drawCards = async () => {
+    const frontCanvas = frontCanvasRef.current;
+    const backCanvas = backCanvasRef.current;
+    if (!frontCanvas || !backCanvas) return;
+
+    const S = EXPORT_SCALE; // 4
+    const W = CW * S; // 1300
+    const H = CH * S; // 816
+
+    if (frontCanvas.width !== W) frontCanvas.width = W;
+    if (frontCanvas.height !== H) frontCanvas.height = H;
+    if (backCanvas.width !== W) backCanvas.width = W;
+    if (backCanvas.height !== H) backCanvas.height = H;
+
+    const fc = frontCanvas.getContext('2d')!;
+    const bc = backCanvas.getContext('2d')!;
+
+    // 1. Draw Front Card
+    const frontTpl = frontTplRef.current || await loadImage(cardFrontTemplate).then(img => { frontTplRef.current = img; return img; }).catch(() => null);
+    if (frontTpl) {
+      fc.drawImage(frontTpl, 0, 0, W, H);
+    } else {
+      fc.fillStyle = '#1e3a8a';
+      fc.fillRect(0, 0, W, H);
+    }
+
+    // Photo
+    const ownerPhoto = photoRef.current;
+    if (ownerPhoto) {
+      const px = 11 * S, py = 81 * S, pw = 88 * S, ph = 108 * S;
+      fc.save();
+      fc.beginPath();
+      fc.rect(px, py, pw, ph);
+      fc.clip();
+      const ratio = Math.max(pw / ownerPhoto.width, ph / ownerPhoto.height) * photoScale;
+      const dw = ownerPhoto.width * ratio, dh = ownerPhoto.height * ratio;
+      fc.drawImage(ownerPhoto, px + (pw - dw) / 2 + photoX * S, py + (ph - dh) / 2 + photoY * S, dw, dh);
+      fc.restore();
+    } else {
+      const px = 11 * S, py = 81 * S, pw = 88 * S, ph = 108 * S;
+      fc.fillStyle = '#111528';
+      fc.fillRect(px, py, pw, ph);
+      fc.strokeStyle = '#334155';
+      fc.lineWidth = S;
+      fc.strokeRect(px, py, pw, ph);
+      
+      fc.fillStyle = '#475569';
+      fc.font = `${32 * S}px Arial, sans-serif`;
+      fc.textAlign = 'center';
+      fc.textBaseline = 'middle';
+      fc.fillText('👤', px + pw / 2, py + ph / 2);
+      fc.textAlign = 'left'; // restore
+    }
+
+    // Serial Number
+    if (serialNumber) {
+      const fontSize = 13 * S;
+      fc.font = `bold ${fontSize}px Arial, sans-serif`;
+      fc.fillStyle = '#FFFFFF';
+      fc.textBaseline = 'middle';
+      const tx = W - fc.measureText(serialNumber).width - 14 * S;
+      fc.fillText(serialNumber, tx, 70.0 * S);
+    }
+
+    const ft = (ctx: CanvasRenderingContext2D, text: string, x: number, centerY: number, maxW: number, fs = 12) => {
+      ctx.font = `500 ${fs * S}px Arial, sans-serif`;
+      ctx.fillStyle = '#FFFFFF';
+      ctx.textBaseline = 'middle';
+      let t = text;
+      while (t.length > 1 && ctx.measureText(t).width > maxW * S) {
+        t = t.slice(0, -1);
+      }
+      if (t !== text) t += '\u2026';
+      ctx.fillText(t, x * S, centerY * S);
+    };
+
+    ft(fc, ownerName, 148, 93.8, 168, 12);
+    ft(fc, shopName, 148, 120.8, 168, 11);
+    
+    fc.textAlign = 'right';
+    ft(fc, 'Email :', 142, 144.0, 44, 11);
+    fc.textAlign = 'left';
+    ft(fc, emailAddress, 148, 144.0, 165, 11);
+
+    // Signatures
+    const thalSig = thalSigRef.current || await loadImage(thalaivarSigUrl).then(img => { thalSigRef.current = img; return img; }).catch(() => null);
+    const secSig = secSigRef.current || await loadImage(secretarySigUrl).then(img => { secSigRef.current = img; return img; }).catch(() => null);
+
+    const drawSig = (ctx: CanvasRenderingContext2D, img: HTMLImageElement | null, dx: number, dy: number, dw: number) => {
+      if (!img) return;
+      const dh = (img.height / img.width) * dw;
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.drawImage(img, dx, dy, dw, dh);
+      ctx.restore();
+    };
+
+    drawSig(fc, thalSig, 105 * S, 160 * S, 60 * S);
+    drawSig(fc, secSig, (325 - 15 - 68) * S, 160 * S, 68 * S);
+
+    // 2. Draw Back Card
+    const backTpl = backTplRef.current || await loadImage(cardBackTemplate).then(img => { backTplRef.current = img; return img; }).catch(() => null);
+    if (backTpl) {
+      bc.drawImage(backTpl, 0, 0, W, H);
+    } else {
+      bc.fillStyle = '#FFFFFF';
+      bc.fillRect(0, 0, W, H);
+    }
+
+    // Address
+    bc.font = `500 ${9.5 * S}px Arial, sans-serif`;
+    bc.fillStyle = '#1E469C';
+    bc.textBaseline = 'top';
+    const addressLines = wrapText(bc, homeAddress || '', 230 * S);
+    addressLines.slice(0, 5).forEach((line, i) => {
+      bc.fillText(line, 50 * S, (44 + i * 13) * S);
+    });
+
+    bc.textBaseline = 'middle';
+    const bt = (text: string, x: number, centerY: number, bold = false, size = 11) => {
+      bc.font = `${bold ? 'bold' : '500'} ${size * S}px Arial, sans-serif`;
+      bc.fillStyle = '#1E469C';
+      bc.fillText(text, x * S, centerY * S);
+    };
+
+    // Row 1: Aadhaar Label + Colon + Value
+    bt('ஆதார் கார்டு', 50, 123.0, true, 9.5);
+    bt(':', 124, 123.0, true, 11);
+    bt(formatAadhar(aadharNumber) || '---- ---- ----', 130, 123.0, false, 11);
+
+    // Row 2: Blood Group
+    bt(bloodGroup || '', 130, 145.0, false, 11);
+
+    // Row 3: DOB
+    bt(formatDob(dob), 130, 167.0, false, 11);
+
+    // Row 4: Phone
+    bt(personalPhone || '', 130, 188.6, false, 11);
+  };
+
+  useEffect(() => {
+    drawCards();
+  }, [
+    ownerName, shopName, emailAddress, serialNumber, personalPhone, homeAddress,
+    bloodGroup, dob, aadharNumber, photoPreview, photoScale, photoX, photoY,
+    thalaivarSigUrl, secretarySigUrl
+  ]);
+
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      const frontEl = document.querySelector('.id-card-front') as HTMLElement;
-      const backEl = document.querySelector('.id-card-back') as HTMLElement;
-
-      if (!frontEl || !backEl) {
-        toast.error('Card preview elements not found');
+      const frontCanvas = frontCanvasRef.current;
+      const backCanvas = backCanvasRef.current;
+      if (!frontCanvas || !backCanvas) {
+        toast.error('Card canvas not initialized');
         setIsDownloading(false);
         return;
       }
 
-      const options = { scale: 4, useCORS: true, allowTaint: true, backgroundColor: null };
-      const canvasFront = await html2canvas(frontEl, options);
-      const canvasBack = await html2canvas(backEl, options);
+      const S = EXPORT_SCALE;
+      const W = CW * S, H = CH * S;
+      const GAP = 24 * S;
 
-      const GAP = 24 * 4;
       const combined = document.createElement('canvas');
-      combined.width = canvasFront.width;
-      combined.height = canvasFront.height + canvasBack.height + GAP;
+      combined.width = W;
+      combined.height = H * 2 + GAP;
       const cc = combined.getContext('2d')!;
 
       cc.fillStyle = '#111111';
       cc.fillRect(0, 0, combined.width, combined.height);
-      cc.drawImage(canvasFront, 0, 0);
-      cc.drawImage(canvasBack, 0, canvasFront.height + GAP);
+      cc.drawImage(frontCanvas, 0, 0);
+      cc.drawImage(backCanvas, 0, H + GAP);
 
       const slug = (ownerName || 'id-card').replace(/\s+/g, '_').toLowerCase();
       const fileName = `${slug}_id_card.png`;
@@ -290,7 +444,7 @@ export default function OwnerIdCard() {
           body * { visibility: hidden !important; }
           #printable-cards-wrapper, #printable-cards-wrapper * { visibility: visible !important; }
           #printable-cards-wrapper { position: fixed !important; inset: 0; display: flex !important; flex-direction: row !important; gap: 24px !important; justify-content: center !important; align-items: center !important; background: white !important; }
-          .id-card-front, .id-card-back { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
+          canvas { print-color-adjust: exact !important; -webkit-print-color-adjust: exact !important; }
         }
       `}</style>
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/60 pb-5">
@@ -314,65 +468,26 @@ export default function OwnerIdCard() {
             </CardHeader>
             <CardContent className="p-6 flex flex-col items-center gap-8">
               <div id="printable-cards-wrapper" className="flex flex-col gap-8 items-center w-full">
-                <div className="id-card-front" style={{ position:'relative', width:CW, height:CH, borderRadius:14, backgroundImage:`url(${cardFrontTemplate})`, backgroundSize:'cover', backgroundPosition:'center', overflow:'hidden', boxShadow:'0 8px 32px rgba(0,0,0,0.55)', flexShrink:0 }}>
-                  <div style={{ position:'absolute', top:81, left:11, width:88, height:108, overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', zIndex:4 }}>
-                    {photoPreview
-                      ? <img src={photoPreview} alt="Owner" style={{ width:'100%', height:'100%', objectFit:'cover', transform:`scale(${photoScale}) translate(${photoX}px,${photoY}px)`, transition:'transform 0.1s ease-out' }} />
-                      : <User style={{ width:28, height:28, color:'#bbb' }} />}
-                  </div>
-                  {serialNumber && (
-                    <div style={{ position:'absolute', top:64.0, right:14, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                      <span style={{ fontSize:13, color:'#FFFFFF', fontWeight:800, letterSpacing:0.5, fontFamily:'Arial, sans-serif', textShadow:'0 1px 4px rgba(0,0,0,0.6)', lineHeight:1 }}>{serialNumber}</span>
-                    </div>
-                  )}
-                  <div style={{ position:'absolute', top:87.8, left:148, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:12, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{ownerName}</span>
-                  </div>
-                  <div style={{ position:'absolute', top:114.8, left:148, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{shopName}</span>
-                  </div>
-                  <div style={{ position:'absolute', top:138.0, left:98, width:44, textAlign:'right', whiteSpace:'nowrap', height:12, display:'flex', alignItems:'center', justifyContent:'flex-end', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'white', fontWeight:500, lineHeight:1 }}>Email :</span>
-                  </div>
-                  <div style={{ position:'absolute', top:138.0, left:148, width:165, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{emailAddress}</span>
-                  </div>
-                  {/* Thalaivar Signature */}
-                  <div style={{ position:'absolute', top:160, left:105, width:60, zIndex:4 }}>
-                    <img src={thalaivarSigUrl} alt="Thalaivar Sig" style={{ width:'100%', height:'auto', display:'block' }} />
-                  </div>
-                  {/* Secretary Signature */}
-                  <div style={{ position:'absolute', top:160, right:15, width:68, zIndex:4 }}>
-                    <img src={secretarySigUrl} alt="Secretary Sig" style={{ width:'100%', height:'auto', display:'block' }} />
-                  </div>
-                </div>
-                <div className="id-card-back" style={{ position:'relative', width:CW, height:CH, borderRadius:14, backgroundImage:`url(${cardBackTemplate})`, backgroundSize:'cover', backgroundPosition:'center', overflow:'hidden', boxShadow:'0 8px 32px rgba(0,0,0,0.55)', flexShrink:0 }}>
-                  <div style={{ position:'absolute', top:44, left:50, width:230, maxHeight:65, overflow:'hidden', zIndex:4 }}>
-                    <div style={{ fontSize:9.5, color:'#1E469C', fontWeight:500, lineHeight:1.35, wordBreak:'normal', overflowWrap:'break-word', whiteSpace:'normal', fontFamily:'Arial, sans-serif' }}>{homeAddress}</div>
-                  </div>
-                  {/* Row 1: Aadhaar Card Label + Colon + Value (Y = 123.0) */}
-                  <div style={{ position:'absolute', top:117.0, left:50, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:9.5, color:'#1E469C', fontWeight:700, whiteSpace:'nowrap', fontFamily:'Arial, sans-serif', lineHeight:1 }}>ஆதார் கார்டு</span>
-                  </div>
-                  <div style={{ position:'absolute', top:117.0, left:124, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:700, lineHeight:1 }}>:</span>
-                  </div>
-                  <div style={{ position:'absolute', top:117.0, left:130, width:157, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{formatAadhar(aadharNumber) || '---- ---- ----'}</span>
-                  </div>
-                  {/* Row 2: Blood Group Value (Y = 145.0 next to pre-printed இரத்த வகை :) */}
-                  <div style={{ position:'absolute', top:139.0, left:130, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{bloodGroup}</span>
-                  </div>
-                  {/* Row 3: DOB Value (Y = 167.0 next to pre-printed பிறந்த தேதி :) */}
-                  <div style={{ position:'absolute', top:161.0, left:130, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{formatDob(dob)}</span>
-                  </div>
-                  {/* Row 4: Phone Value (Y = 188.6 next to pre-printed செல் நெம்பர் :) */}
-                  <div style={{ position:'absolute', top:182.6, left:130, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{personalPhone}</span>
-                  </div>
-                </div>
+                <canvas
+                  ref={frontCanvasRef}
+                  style={{
+                    width: CW,
+                    height: CH,
+                    borderRadius: 14,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
+                    flexShrink: 0
+                  }}
+                />
+                <canvas
+                  ref={backCanvasRef}
+                  style={{
+                    width: CW,
+                    height: CH,
+                    borderRadius: 14,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.55)',
+                    flexShrink: 0
+                  }}
+                />
               </div>
               <p className="text-center text-xs text-muted-foreground max-w-xs">Click <strong>"Download ID Card"</strong> to save a high-resolution PNG.</p>
             </CardContent>
