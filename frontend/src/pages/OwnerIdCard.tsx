@@ -25,13 +25,45 @@ import { Input } from '../components/ui/Input';
 import toast from 'react-hot-toast';
 import { compressFileImage } from '../utils/imageCompressor';
 
+// Helper to remove white background from signature images for clean html2canvas rendering
+function makeWhiteTransparent(imgUrl: string, threshold = 210): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.src = imgUrl;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(imgUrl);
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      const imgData = ctx.getImageData(0, 0, img.width, img.height);
+      const data = imgData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        if (r > threshold && g > threshold && b > threshold) {
+          data[i + 3] = 0; // set alpha to 0 (transparent)
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(imgUrl);
+  });
+}
+
 // ─── Card design constants (all in px, matching 86×54mm ratio) ─────────────
 const CW = 325;    // card width
 const CH = 204;    // card height
 const LW = 110;    // orange left column width
 const LH = 65;     // logo strip height (top)
 const FH = 27;     // footer strip height (bottom)
-// Body height (middle section) = CH - LH - FH = 112px
 const OG = '#F5A623';   // orange
 const BL = '#2E3FA3';   // blue
 
@@ -54,7 +86,15 @@ export default function OwnerIdCard() {
   const [serialNumber, setSerialNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [thalaivarSigUrl, setThalaivarSigUrl] = useState<string>(thalaivarSignature);
+  const [secretarySigUrl, setSecretarySigUrl] = useState<string>(secretarySignature);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // Pre-process signature images on mount to remove white background for clean HTML5 Canvas export
+  useEffect(() => {
+    makeWhiteTransparent(thalaivarSignature, 200).then(setThalaivarSigUrl);
+    makeWhiteTransparent(secretarySignature, 200).then(setSecretarySigUrl);
+  }, []);
 
   // Sync state values when user profile / shop changes (async loading)
   useEffect(() => {
@@ -66,7 +106,6 @@ export default function OwnerIdCard() {
       setDob(user.dob || '');
       setPersonalPhone(user.personal_phone || '');
       setAadharNumber(user.aadhar_number || '');
-      // Only overwrite photoPreview if no new local file has been selected
       if (!selectedPhoto) {
         setPhotoPreview(user.photo_url || null);
       }
@@ -83,7 +122,6 @@ export default function OwnerIdCard() {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) { toast.error('Photo size must be less than 2MB'); return; }
-      // Compress to max 800px at 80% quality (profile photos don't need full resolution)
       const compressed = await compressFileImage(file, 800, 0.80);
       setSelectedPhoto(compressed);
       setPhotoPreview(URL.createObjectURL(compressed));
@@ -102,13 +140,11 @@ export default function OwnerIdCard() {
     }
     setIsSubmitting(true);
     try {
-      // 1. Update basic profile info (name, email)
       await apiClient.put('/auth/update-profile', {
         name: ownerName.trim(),
         email: emailAddress.trim()
       });
 
-      // 2. Update shop name if changed (only if user is the owner)
       if (role === 'owner' && shop && shopName.trim() !== shop.name) {
         await apiClient.put('/auth/shop', {
           name: shopName.trim(),
@@ -117,7 +153,6 @@ export default function OwnerIdCard() {
         });
       }
 
-      // 3. Update owner ID details and photo file
       const formData = new FormData();
       formData.append('homeAddress', homeAddress);
       formData.append('bloodGroup', bloodGroup);
@@ -146,6 +181,9 @@ export default function OwnerIdCard() {
     if (!el) return;
     setIsDownloading(true);
     try {
+      // Short delay to ensure image assets render cleanly
+      await new Promise(r => setTimeout(r, 100));
+
       const canvas = await html2canvas(el, {
         scale: 3,           // 3× scale for crisp high-res output
         useCORS: true,
@@ -153,14 +191,66 @@ export default function OwnerIdCard() {
         backgroundColor: null,
         logging: false,
       });
-      const link = document.createElement('a');
+
       const name = (ownerName || 'id-card').replace(/\s+/g, '_').toLowerCase();
-      link.download = `${name}_id_card.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    } catch {
+      const fileName = `${name}_id_card.png`;
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          toast.error('Failed to generate card image');
+          setIsDownloading(false);
+          return;
+        }
+
+        const file = new File([blob], fileName, { type: 'image/png' });
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        // 1. Mobile Web Share API (native iOS Safari & Android Chrome)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              files: [file],
+              title: 'Owner ID Card',
+              text: 'Panruti Association Owner ID Card'
+            });
+            toast.success('ID Card shared / saved successfully!');
+            setIsDownloading(false);
+            return;
+          } catch (shareErr: any) {
+            if (shareErr.name === 'AbortError') {
+              setIsDownloading(false);
+              return;
+            }
+            console.warn('Share API fallback:', shareErr);
+          }
+        }
+
+        // 2. iOS Safari Direct Download / View Fallback
+        const blobUrl = URL.createObjectURL(blob);
+        if (isIOS) {
+          const newWin = window.open(blobUrl, '_blank');
+          if (!newWin) {
+            window.location.href = blobUrl;
+          }
+          toast.success('Image opened! Press & hold the image to Save to Photos.');
+        } else {
+          // 3. Desktop & Android standard anchor download
+          const link = document.createElement('a');
+          link.download = fileName;
+          link.href = blobUrl;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
+          toast.success('ID Card downloaded successfully!');
+        }
+        setIsDownloading(false);
+      }, 'image/png', 1.0);
+
+    } catch (err: any) {
+      console.error('Download error:', err);
       toast.error('Download failed. Please try again.');
-    } finally {
       setIsDownloading(false);
     }
   };
@@ -272,12 +362,12 @@ export default function OwnerIdCard() {
                     display: 'flex', alignItems: 'center',
                   }}>
                     <span style={{
-                      fontSize: 10, color: 'white', fontWeight: 800,
-                      background: 'rgba(0,0,0,0.30)',
-                      padding: '2px 8px', borderRadius: 4,
-                      letterSpacing: 1,
+                      fontSize: 11, color: '#FFFFFF', fontWeight: 800,
+                      background: 'rgba(0, 0, 0, 0.25)',
+                      padding: '1px 7px', borderRadius: 4,
+                      letterSpacing: 0.5,
                       textTransform: 'uppercase',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                      fontFamily: 'sans-serif'
                     }}>{serialNumber || 'SL.NO'}</span>
                   </div>
 
@@ -314,38 +404,35 @@ export default function OwnerIdCard() {
                     <span style={{ fontSize: 11, color: 'white', fontWeight: 500 }}>{emailAddress || ''}</span>
                   </div>
 
-                  {/* ── Thalaivar Signature ── */}
+                  {/* ── Thalaivar Signature (Transparent PNG) ── */}
                   <div style={{
                     position: 'absolute',
                     top: 151,
                     left: 105,
                     width: 60,
                     zIndex: 4,
-                    mixBlendMode: 'multiply',
                   }}>
                     <img
-                      src={thalaivarSignature}
+                      src={thalaivarSigUrl}
                       alt="Thalaivar Signature"
                       style={{
                         width: '100%',
                         height: 'auto',
                         display: 'block',
-                        clipPath: 'inset(4px)',
                       }}
                     />
                   </div>
 
-                  {/* ── Secretary Signature ── */}
+                  {/* ── Secretary Signature (Transparent PNG) ── */}
                   <div style={{
                     position: 'absolute',
                     top: 153,
                     right: 15,
                     width: 68,
                     zIndex: 4,
-                    mixBlendMode: 'multiply',
                   }}>
                     <img
-                      src={secretarySignature}
+                      src={secretarySigUrl}
                       alt="Secretary Signature"
                       style={{
                         width: '100%',
@@ -369,8 +456,8 @@ export default function OwnerIdCard() {
                   boxShadow: '0 8px 32px rgba(0,0,0,0.55)', flexShrink: 0,
                 }}>
                   {/* ── Address value below template's "வீட்டு முகவரி :" ── */}
-                  <div style={{ position: 'absolute', top: 44, left: 50, width: 230, maxHeight: 60, overflow: 'hidden', zIndex: 4 }}>
-                    <div style={{ fontSize: 10, color: '#1E469C', fontWeight: 500, lineHeight: 1.4, wordBreak: 'break-all', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
+                  <div style={{ position: 'absolute', top: 44, left: 50, width: 230, maxHeight: 62, overflow: 'hidden', zIndex: 4 }}>
+                    <div style={{ fontSize: 9.5, color: '#1E469C', fontWeight: 500, lineHeight: 1.35, wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}>
                       {homeAddress || ''}
                     </div>
                   </div>
@@ -407,10 +494,6 @@ export default function OwnerIdCard() {
                     <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500 }}>{formatDob(dob)}</span>
                   </div>
 
-                  {/* ── Phone value: next to template's "செல் நெம்பர் :" ── */}
-                  <div style={{ position: 'absolute', top: 172, left: 135, zIndex: 4 }}>
-                    <span style={{ fontSize: 11, color: '#1E469C', fontWeight: 500 }}>{personalPhone || ''}</span>
-                  </div>
                 </div>
 
               </div>{/* end #printable-cards-wrapper */}
