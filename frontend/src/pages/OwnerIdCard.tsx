@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../lib/api';
 import cardFrontTemplate from '../card-front-template.png';
@@ -28,7 +28,9 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-function stripWhite(imgSrc: string, threshold = 220): Promise<string> {
+// stripWhite: removes near-white pixels AND remaps remaining ink pixels to black
+// so signatures render as crisp black strokes on any background
+function stripWhite(imgSrc: string, threshold = 200): Promise<string> {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'Anonymous';
@@ -40,7 +42,19 @@ function stripWhite(imgSrc: string, threshold = 220): Promise<string> {
       ctx.drawImage(img, 0, 0);
       const d = ctx.getImageData(0, 0, c.width, c.height);
       for (let i = 0; i < d.data.length; i += 4) {
-        if (d.data[i] > threshold && d.data[i+1] > threshold && d.data[i+2] > threshold) d.data[i+3] = 0;
+        const r = d.data[i], g = d.data[i+1], b = d.data[i+2];
+        const brightness = (r + g + b) / 3;
+        if (brightness > threshold) {
+          // near-white → fully transparent
+          d.data[i+3] = 0;
+        } else {
+          // ink pixel → remap to solid black, preserve darkness as opacity
+          const darkness = 1 - brightness / threshold;
+          d.data[i]   = 0;   // R
+          d.data[i+1] = 0;   // G
+          d.data[i+2] = 0;   // B
+          d.data[i+3] = Math.round(darkness * 255); // alpha = how dark it is
+        }
       }
       ctx.putImageData(d, 0, 0);
       resolve(c.toDataURL('image/png'));
@@ -179,18 +193,17 @@ export default function OwnerIdCard() {
         fc.drawImage(ownerPhoto, px+(pw-dw)/2+photoX*S, py+(ph-dh)/2+photoY*S, dw, dh);
         fc.restore();
       }
-      // SL.NO badge
+      // SL.NO — plain text, no background box
       {
-        const slText = serialNumber || 'SL.NO';
-        fc.font = `bold ${13*S}px Arial, sans-serif`;
-        const tw = fc.measureText(slText).width;
-        const padX=9*S, padY=5*S;
-        const bw=tw+padX*2, bh=13*S*1.2+padY*2;
-        const bx=W-bw-14*S, by=54*S;
-        roundRect(fc, bx, by, bw, bh, 5*S);
-        fc.fillStyle='rgba(10,20,80,0.75)'; fc.fill();
-        fc.fillStyle='#FFFFFF'; fc.textBaseline='middle';
-        fc.fillText(slText, bx+padX, by+bh/2);
+        const slText = serialNumber || '';
+        if (slText) {
+          const fontSize = 12 * S;
+          fc.font = `bold ${fontSize}px Arial, sans-serif`;
+          fc.fillStyle = '#FFFFFF';
+          fc.textBaseline = 'middle';
+          const tx = W - fc.measureText(slText).width - 15 * S;
+          fc.fillText(slText, tx, 65 * S);
+        }
       }
       // Text rows
       fc.textBaseline='top';
@@ -206,9 +219,11 @@ export default function OwnerIdCard() {
       fc.font=`500 ${11*S}px Arial, sans-serif`; fc.fillStyle='#FFFFFF';
       fc.fillText('Email :', 98*S, 128*S);
       ft(emailAddress, 148, 128, 165, 11);
-      // Signatures (drawn directly — no wrapper div artifacts)
+      // Signatures — drawn with multiply blend so black ink shows cleanly on any bg
+      fc.globalCompositeOperation = 'multiply';
       { const sw=60*S, sh=(thalSig.height/thalSig.width)*60*S; fc.drawImage(thalSig,105*S,151*S,sw,sh); }
       { const sw=68*S, sh=(secSig.height/secSig.width)*68*S; fc.drawImage(secSig,W-15*S-sw,153*S,sw,sh); }
+      fc.globalCompositeOperation = 'source-over';
 
       // BACK CARD
       const backCanvas = document.createElement('canvas');
@@ -304,9 +319,11 @@ export default function OwnerIdCard() {
                       ? <img src={photoPreview} alt="Owner" style={{ width:'100%', height:'100%', objectFit:'cover', transform:`scale(${photoScale}) translate(${photoX}px,${photoY}px)`, transition:'transform 0.1s ease-out' }} />
                       : <User style={{ width:28, height:28, color:'#bbb' }} />}
                   </div>
-                  <div style={{ position:'absolute', top:57, right:14, zIndex:4, background:'rgba(10,20,80,0.75)', borderRadius:5, padding:'3px 9px' }}>
-                    <span style={{ fontSize:13, color:'#FFFFFF', fontWeight:800, letterSpacing:0.5, fontFamily:'Arial, sans-serif' }}>{serialNumber||'SL.NO'}</span>
-                  </div>
+                  {serialNumber && (
+                    <div style={{ position:'absolute', top:60, right:14, zIndex:4 }}>
+                      <span style={{ fontSize:12, color:'#FFFFFF', fontWeight:800, letterSpacing:0.5, fontFamily:'Arial, sans-serif', textShadow:'0 1px 3px rgba(0,0,0,0.5)' }}>{serialNumber}</span>
+                    </div>
+                  )}
                   <div style={{ position:'absolute', top:79, left:148, zIndex:4 }}>
                     <span style={{ fontSize:12, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif' }}>{ownerName}</span>
                   </div>
@@ -319,10 +336,10 @@ export default function OwnerIdCard() {
                   <div style={{ position:'absolute', top:128, left:148, width:165, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', zIndex:4 }}>
                     <span style={{ fontSize:11, color:'white', fontWeight:500, fontFamily:'Arial, sans-serif' }}>{emailAddress}</span>
                   </div>
-                  <div style={{ position:'absolute', top:151, left:105, width:60, zIndex:4, mixBlendMode:'screen' }}>
+                  <div style={{ position:'absolute', top:151, left:105, width:60, zIndex:4 }}>
                     <img src={thalaivarSigUrl} alt="Thalaivar Sig" style={{ width:'100%', height:'auto', display:'block' }} />
                   </div>
-                  <div style={{ position:'absolute', top:153, right:15, width:68, zIndex:4, mixBlendMode:'screen' }}>
+                  <div style={{ position:'absolute', top:153, right:15, width:68, zIndex:4 }}>
                     <img src={secretarySigUrl} alt="Secretary Sig" style={{ width:'100%', height:'auto', display:'block' }} />
                   </div>
                 </div>
