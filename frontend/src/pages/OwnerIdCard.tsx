@@ -307,11 +307,7 @@ export default function OwnerIdCard() {
       bc.textBaseline = 'top';
       wrapText(bc, homeAddress || '', 230 * S).slice(0, 5).forEach((line, i) => bc.fillText(line, 50 * S, (44 + i * 13) * S));
 
-      // Cover original ஆதார் : text
-      bc.fillStyle = '#FFFFFF';
-      bc.fillRect(45 * S, 105 * S, 87 * S, 16 * S);
-
-      // Back Text Rows (middle textBaseline matching exact empirical label Y-centers)
+      // Back Text Rows (middle textBaseline matching exact pre-printed label Y-centers)
       bc.textBaseline = 'middle';
       const bt = (text: string, x: number, centerY: number, bold = false) => {
         bc.font = `${bold ? 'bold' : '500'} ${11 * S}px Arial, sans-serif`;
@@ -319,12 +315,11 @@ export default function OwnerIdCard() {
         bc.fillText(text, x * S, centerY * S);
       };
 
-      bt('ஆதார் கார்டு', 50, 113.6, true);
-      bt(':', 124, 113.6, true);
-      bt(formatAadhar(aadharNumber), 135, 113.6);
-      bt(bloodGroup || '', 135, 133.1);
-      bt(formatDob(dob), 135, 153.7);
-      bt(personalPhone || '', 135, 175.5);
+      // Values aligned with pre-printed labels at X = 135
+      bt(formatAadhar(aadharNumber), 135, 128.9);
+      bt(bloodGroup || '', 135, 151.1);
+      bt(formatDob(dob), 135, 171.0);
+      bt(personalPhone || '', 135, 189.0);
 
       // ── COMBINE ───────────────────────────────────────────────────────────
       const GAP = 24 * S;
@@ -437,23 +432,16 @@ export default function OwnerIdCard() {
                   <div style={{ position:'absolute', top:44, left:50, width:230, maxHeight:65, overflow:'hidden', zIndex:4 }}>
                     <div style={{ fontSize:9.5, color:'#1E469C', fontWeight:500, lineHeight:1.35, wordBreak:'normal', overflowWrap:'break-word', whiteSpace:'normal', fontFamily:'Arial, sans-serif' }}>{homeAddress}</div>
                   </div>
-                  <div style={{ position:'absolute', top:105, left:45, width:86, height:16, background:'white', zIndex:3 }} />
-                  <div style={{ position:'absolute', top:107.6, left:50, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:9.5, color:'#1E469C', fontWeight:700, whiteSpace:'nowrap', fontFamily:'Arial, sans-serif', lineHeight:1 }}>ஆதார் கார்டு</span>
-                  </div>
-                  <div style={{ position:'absolute', top:107.6, left:124, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
-                    <span style={{ fontSize:11, color:'#1E469C', fontWeight:700, lineHeight:1 }}>:</span>
-                  </div>
-                  <div style={{ position:'absolute', top:107.6, left:135, width:157, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', height:12, display:'flex', alignItems:'center', zIndex:4 }}>
+                  <div style={{ position:'absolute', top:122.9, left:135, width:157, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', height:12, display:'flex', alignItems:'center', zIndex:4 }}>
                     <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{formatAadhar(aadharNumber)}</span>
                   </div>
-                  <div style={{ position:'absolute', top:127.1, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
+                  <div style={{ position:'absolute', top:145.1, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
                     <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{bloodGroup}</span>
                   </div>
-                  <div style={{ position:'absolute', top:147.7, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
+                  <div style={{ position:'absolute', top:165.0, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
                     <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{formatDob(dob)}</span>
                   </div>
-                  <div style={{ position:'absolute', top:169.5, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
+                  <div style={{ position:'absolute', top:183.0, left:135, height:12, display:'flex', alignItems:'center', zIndex:4 }}>
                     <span style={{ fontSize:11, color:'#1E469C', fontWeight:500, fontFamily:'Arial, sans-serif', lineHeight:1 }}>{personalPhone}</span>
                   </div>
                 </div>
