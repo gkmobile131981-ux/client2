@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, requireOwner } from '../middleware/auth';
 import {
   searchSubscriptions,
   getSubscriptionRecord,
@@ -15,8 +15,9 @@ import {
 
 const router = Router();
 
-// Require authentication for subscription operations
+// Require authentication and Owner role for subscription operations
 router.use(authenticateToken);
+router.use(requireOwner);
 
 router.get('/search', searchSubscriptions);
 router.get('/record', getSubscriptionRecord);

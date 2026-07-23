@@ -129,6 +129,10 @@ export default function MonthlySubscriptions() {
   const { role } = useAuth();
   const isAdmin = role === 'owner';
 
+  const startYear = Math.min(2024, currentYear - 2);
+  const endYear = currentYear + 15;
+  const yearsArray = Array.from({ length: endYear - startYear + 1 }, (_, i) => startYear + i);
+
   // ── Top-level state ──
   const [activeTab, setActiveTab] = useState<'register' | 'members' | 'analytics'>('register');
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
@@ -608,7 +612,7 @@ export default function MonthlySubscriptions() {
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
               className="bg-transparent text-sm font-black text-foreground focus:outline-none cursor-pointer"
             >
-              {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(y => (
+              {yearsArray.map(y => (
                 <option key={y} value={y} className="bg-card text-foreground font-bold">{y}</option>
               ))}
             </select>
@@ -1320,7 +1324,7 @@ export default function MonthlySubscriptions() {
                         onChange={(e) => setAuditSelectedYear(parseInt(e.target.value))}
                         className="bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs font-extrabold text-foreground"
                       >
-                        {[currentYear - 2, currentYear - 1, currentYear, currentYear + 1].map(y => (
+                        {yearsArray.map(y => (
                           <option key={y} value={y}>{y}</option>
                         ))}
                       </select>

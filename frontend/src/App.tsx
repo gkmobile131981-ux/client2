@@ -53,7 +53,6 @@ export default function App() {
                 {/* Customer Routes */}
                 <Route path="/customers" element={<CustomerList />} />
                 <Route path="/customers/:id" element={<CustomerProfile />} />
-                <Route path="/subscriptions" element={<MonthlySubscriptions />} />
                 
                 {/* Repair Routes */}
                 <Route path="/repairs" element={<Repairs />} />
@@ -68,6 +67,7 @@ export default function App() {
                 
                 {/* Owner exclusive controls */}
                 <Route element={<OwnerRoute />}>
+                  <Route path="/subscriptions" element={<MonthlySubscriptions />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/settings/staff" element={<SettingsPage defaultTab="staff" />} />
                   <Route path="/settings/create-price" element={<SettingsPage defaultTab="create-price" />} />
