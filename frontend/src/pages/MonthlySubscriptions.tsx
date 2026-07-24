@@ -140,6 +140,13 @@ export default function MonthlySubscriptions() {
   // ── Register tab state ──
   const [nameSearch, setNameSearch]       = useState('');
   const [numberSearch, setNumberSearch]   = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [expenses, setExpenses] = useState<Record<MonthKey, number>>(
+    Object.fromEntries(MONTHS.map(m => [m.key, 0])) as Record<MonthKey, number>
+  );
+  const [savingMonthExpense, setSavingMonthExpense] = useState<Record<MonthKey, boolean>>(
+    Object.fromEntries(MONTHS.map(m => [m.key, false])) as Record<MonthKey, boolean>
+  );
   const [customerId, setCustomerId]       = useState<string | null>(null);
   const [customerName, setCustomerName]   = useState('');
   const [phoneNumber, setPhoneNumber]     = useState('');
@@ -211,6 +218,11 @@ export default function MonthlySubscriptions() {
     [monthlyTotals]
   );
 
+  const yearTotalTaken = useMemo(
+    () => MONTHS.reduce((s, m) => s + (expenses[m.key] || 0), 0),
+    [expenses]
+  );
+
   const activeMonthRecords = useMemo(
     () => selectedAnalyticsMonth
       ? summaryRecords.filter(r => (Number((r as any)[selectedAnalyticsMonth]) || 0) > 0)
@@ -232,6 +244,23 @@ export default function MonthlySubscriptions() {
     }
   }, []);
 
+  const loadExpenses = useCallback(async (year: number) => {
+    try {
+      const res = await apiClient.get<{ data: Array<{ month: string; amount_taken: number }> }>(`/subscriptions/expenses?year=${year}`);
+      const mapped = Object.fromEntries(MONTHS.map(m => [m.key, 0])) as Record<MonthKey, number>;
+      if (res.data) {
+        res.data.forEach(item => {
+          if (item.month in mapped) {
+            mapped[item.month as MonthKey] = Number(item.amount_taken) || 0;
+          }
+        });
+      }
+      setExpenses(mapped);
+    } catch {
+      // Silently handle
+    }
+  }, []);
+
   const loadMembers = useCallback(async (search: string = '', year: number = currentYear) => {
     setLoadingMembers(true);
     try {
@@ -246,12 +275,48 @@ export default function MonthlySubscriptions() {
     }
   }, [currentYear]);
 
+  const handleSaveExpense = async (month: MonthKey, amountTaken: number, totalReceived: number) => {
+    setSavingMonthExpense(prev => ({ ...prev, [month]: true }));
+    try {
+      await apiClient.post('/subscriptions/expenses', {
+        year: selectedYear,
+        month,
+        amount_taken: amountTaken,
+        total_received: totalReceived
+      });
+      toast.success(`Expense saved for ${month.toUpperCase()}`);
+      await loadExpenses(selectedYear);
+    } catch {
+      toast.error('Failed to save expense');
+    } finally {
+      setSavingMonthExpense(prev => ({ ...prev, [month]: false }));
+    }
+  };
+
   useEffect(() => {
     loadSummary(selectedYear);
+    loadExpenses(selectedYear);
     if (activeTab === 'members') {
       loadMembers(memberSearch, selectedYear);
     }
-  }, [selectedYear, activeTab, loadSummary, loadMembers, memberSearch]);
+  }, [selectedYear, activeTab, loadSummary, loadExpenses, loadMembers, memberSearch]);
+
+  // Execute search automatically when debounced search term changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch((nameSearch || numberSearch).trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [nameSearch, numberSearch]);
+
+  useEffect(() => {
+    if (debouncedSearch.length >= 1) {
+      handleSearch(debouncedSearch);
+    } else {
+      setSearchResults([]);
+      setShowDropdown(false);
+    }
+  }, [debouncedSearch]);
 
   // ─── Search Customers / Members ─────────────────────────────────────────
 
@@ -652,7 +717,6 @@ export default function MonthlySubscriptions() {
                     value={nameSearch}
                     onChange={(e) => {
                       setNameSearch(e.target.value);
-                      handleSearch(e.target.value);
                     }}
                     className="w-full bg-secondary/35 border border-border rounded-xl pl-9 pr-3 py-2.5 text-sm font-bold text-foreground focus:outline-none focus:border-amber-500"
                   />
@@ -671,7 +735,6 @@ export default function MonthlySubscriptions() {
                     value={numberSearch}
                     onChange={(e) => {
                       setNumberSearch(e.target.value);
-                      handleSearch(e.target.value);
                     }}
                     className="w-full bg-secondary/35 border border-border rounded-xl pl-9 pr-3 py-2.5 text-sm font-bold text-foreground focus:outline-none focus:border-amber-500"
                   />
@@ -1059,7 +1122,7 @@ export default function MonthlySubscriptions() {
         <div className="space-y-6">
 
           {/* Overview Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div className="p-5 bg-card/90 border border-border rounded-2xl shadow-xl flex items-center justify-between">
               <div>
                 <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block">Total Members</span>
@@ -1073,20 +1136,30 @@ export default function MonthlySubscriptions() {
             <div className="p-5 bg-card/90 border border-border rounded-2xl shadow-xl flex items-center justify-between">
               <div>
                 <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block">Year Total Collected</span>
-                <span className="text-3xl font-black text-amber-400 mt-1 block">₹{formatINR(yearTotal)}</span>
+                <span className="text-3xl font-black text-emerald-400 mt-1 block">₹{formatINR(yearTotal)}</span>
               </div>
-              <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl">
+              <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl">
                 <IndianRupee className="h-6 w-6" />
               </div>
             </div>
 
             <div className="p-5 bg-card/90 border border-border rounded-2xl shadow-xl flex items-center justify-between">
               <div>
-                <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block">Average Monthly Collection</span>
-                <span className="text-3xl font-black text-emerald-400 mt-1 block">₹{formatINR(yearTotal / 12)}</span>
+                <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block">Total Amount Taken</span>
+                <span className="text-3xl font-black text-rose-400 mt-1 block">₹{formatINR(yearTotalTaken)}</span>
               </div>
-              <div className="p-3 bg-emerald-500/10 text-emerald-400 rounded-xl">
-                <TrendingUp className="h-6 w-6" />
+              <div className="p-3 bg-rose-500/10 text-rose-400 rounded-xl">
+                <ArrowUpRight className="h-6 w-6" />
+              </div>
+            </div>
+
+            <div className="p-5 bg-card/90 border border-border rounded-2xl shadow-xl flex items-center justify-between">
+              <div>
+                <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block">Yearly Remaining Balance</span>
+                <span className="text-3xl font-black text-sky-400 mt-1 block">₹{formatINR(yearTotal - yearTotalTaken)}</span>
+              </div>
+              <div className="p-3 bg-sky-500/10 text-sky-400 rounded-xl">
+                <Banknote className="h-6 w-6" />
               </div>
             </div>
           </div>
@@ -1118,19 +1191,43 @@ export default function MonthlySubscriptions() {
                         onClick={() => setSelectedAnalyticsMonth(isSelected ? null : m.key)}
                         className={`grid grid-cols-12 items-center p-3.5 cursor-pointer transition-all ${
                           isSelected ? 'bg-amber-500/10' : 'bg-secondary/20 hover:bg-secondary/40'
-                        }`}
+                        } gap-2`}
                       >
                         <div className="col-span-3 font-extrabold text-sm text-foreground uppercase">
-                          {m.label}
+                          <div>{m.label}</div>
+                          <div className="text-[10px] text-muted-foreground font-semibold font-sans capitalize">{count} shops paid</div>
                         </div>
-                        <div className="col-span-3 text-right font-black text-base text-emerald-400">
+                        <div className="col-span-2 text-right font-black text-sm text-emerald-400" title="Total Received">
                           ₹{formatINR(total)}
                         </div>
-                        <div className="col-span-3 text-center text-xs font-semibold text-muted-foreground">
-                          {count} shops paid
+                        <div className="col-span-4 px-2 flex items-center gap-1.5 justify-end" onClick={(e) => e.stopPropagation()}>
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase shrink-0">Taken:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                            value={expenses[m.key] || ''}
+                            onChange={(e) => {
+                              const val = Math.max(0, Number(e.target.value) || 0);
+                              setExpenses(prev => ({ ...prev, [m.key]: val }));
+                            }}
+                            className="w-20 bg-slate-950 border border-border/80 rounded px-2 py-1 text-xs font-bold text-foreground focus:outline-none focus:border-amber-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveExpense(m.key, expenses[m.key] || 0, total)}
+                            disabled={savingMonthExpense[m.key]}
+                            className="bg-amber-500 hover:bg-amber-400 text-black px-2 py-1 rounded text-[10px] font-black uppercase transition-all disabled:opacity-50 shrink-0 cursor-pointer"
+                          >
+                            {savingMonthExpense[m.key] ? '...' : 'Save'}
+                          </button>
                         </div>
-                        <div className="col-span-3 text-right">
-                          <span className="text-xs text-amber-400 font-bold">{isSelected ? 'Hide ▲' : 'View ▼'}</span>
+                        <div className="col-span-2 text-right font-black text-xs text-sky-400" title="Remaining Amount">
+                          <span className="text-[9px] font-bold text-muted-foreground uppercase mr-1">Rem:</span>
+                          ₹{formatINR(Math.max(0, total - (expenses[m.key] || 0)))}
+                        </div>
+                        <div className="col-span-1 text-right">
+                          <span className="text-xs text-amber-400 font-bold">{isSelected ? '▲' : '▼'}</span>
                         </div>
                       </div>
 

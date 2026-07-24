@@ -69,81 +69,94 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return !localStorage.getItem('gk_cached_user') && !localStorage.getItem('gk_access_token');
   });
 
+  const profileLoadingPromiseRef = React.useRef<Promise<void> | null>(null);
+
   // Initialize and load user profile if tokens exist
   const loadProfile = async (token: string) => {
-    try {
-      localStorage.setItem('gk_access_token', token);
-      const { profile } = await apiClient.get<{ profile: UserProfile & { shop: ShopProfile } }>('/auth/me');
-      
-      const loadedUser: UserProfile = {
-        id: profile.id,
-        name: profile.name,
-        email: profile.email,
-        role: profile.role,
-        staff_id: profile.staff_id,
-        shop_id: profile.shop_id,
-        is_active: profile.is_active,
-        created_at: profile.created_at,
-        home_address: profile.home_address,
-        blood_group: profile.blood_group,
-        dob: profile.dob,
-        personal_phone: profile.personal_phone,
-        aadhar_number: profile.aadhar_number,
-        photo_url: profile.photo_url
-      };
+    if (profileLoadingPromiseRef.current) {
+      return profileLoadingPromiseRef.current;
+    }
 
-      setUser(loadedUser);
-      setRole(profile.role);
-      setShop(profile.shop);
+    const promise = (async () => {
+      try {
+        localStorage.setItem('gk_access_token', token);
+        const { profile } = await apiClient.get<{ profile: UserProfile & { shop: ShopProfile } }>('/auth/me');
+        
+        const loadedUser: UserProfile = {
+          id: profile.id,
+          name: profile.name,
+          email: profile.email,
+          role: profile.role,
+          staff_id: profile.staff_id,
+          shop_id: profile.shop_id,
+          is_active: profile.is_active,
+          created_at: profile.created_at,
+          home_address: profile.home_address,
+          blood_group: profile.blood_group,
+          dob: profile.dob,
+          personal_phone: profile.personal_phone,
+          aadhar_number: profile.aadhar_number,
+          photo_url: profile.photo_url
+        };
 
-      // Save to cache for offline/reload persistence
-      localStorage.setItem('gk_cached_user', JSON.stringify(loadedUser));
-      localStorage.setItem('gk_cached_shop', JSON.stringify(profile.shop));
-      localStorage.setItem('gk_cached_role', profile.role);
-    } catch (error) {
-      console.warn('Profile refresh notice:', error);
-      
-      // If token expired, attempt background token refresh without kicking user out
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
-        try {
-          const storedRefreshToken = localStorage.getItem('gk_refresh_token');
-          if (storedRefreshToken) {
-            const { data } = await supabase.auth.refreshSession({ refresh_token: storedRefreshToken });
-            if (data?.session?.access_token) {
-              localStorage.setItem('gk_access_token', data.session.access_token);
-              localStorage.setItem('gk_refresh_token', data.session.refresh_token);
-              const { profile } = await apiClient.get<{ profile: UserProfile & { shop: ShopProfile } }>('/auth/me');
-              if (profile) {
-                setUser(profile);
-                setRole(profile.role);
-                setShop(profile.shop);
-                localStorage.setItem('gk_cached_user', JSON.stringify(profile));
-                localStorage.setItem('gk_cached_shop', JSON.stringify(profile.shop));
-                localStorage.setItem('gk_cached_role', profile.role);
-                return;
+        setUser(loadedUser);
+        setRole(profile.role);
+        setShop(profile.shop);
+
+        // Save to cache for offline/reload persistence
+        localStorage.setItem('gk_cached_user', JSON.stringify(loadedUser));
+        localStorage.setItem('gk_cached_shop', JSON.stringify(profile.shop));
+        localStorage.setItem('gk_cached_role', profile.role);
+      } catch (error) {
+        console.warn('Profile refresh notice:', error);
+        
+        // If token expired, attempt background token refresh without kicking user out
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+          try {
+            const storedRefreshToken = localStorage.getItem('gk_refresh_token');
+            if (storedRefreshToken) {
+              const { data } = await supabase.auth.refreshSession({ refresh_token: storedRefreshToken });
+              if (data?.session?.access_token) {
+                localStorage.setItem('gk_refresh_token', data.session.refresh_token);
+                localStorage.setItem('gk_access_token', data.session.access_token);
+                const { profile } = await apiClient.get<{ profile: UserProfile & { shop: ShopProfile } }>('/auth/me');
+                if (profile) {
+                  setUser(profile);
+                  setRole(profile.role);
+                  setShop(profile.shop);
+                  localStorage.setItem('gk_cached_user', JSON.stringify(profile));
+                  localStorage.setItem('gk_cached_shop', JSON.stringify(profile.shop));
+                  localStorage.setItem('gk_cached_role', profile.role);
+                  return;
+                }
               }
             }
+          } catch (refreshErr) {
+            console.warn('Background token refresh failed:', refreshErr);
           }
-        } catch (refreshErr) {
-          console.warn('Background token refresh failed:', refreshErr);
         }
-      }
 
-      // If cached profile exists in localStorage, KEEP user logged in!
-      const cached = localStorage.getItem('gk_cached_user');
-      if (cached) {
-        try {
-          const parsedUser = JSON.parse(cached);
-          setUser(parsedUser);
-          const cachedShop = localStorage.getItem('gk_cached_shop');
-          if (cachedShop) setShop(JSON.parse(cachedShop));
-          const cachedRole = localStorage.getItem('gk_cached_role');
-          if (cachedRole) setRole(cachedRole as any);
-        } catch {
-          // Keep state intact
+        // If cached profile exists in localStorage, KEEP user logged in!
+        const cached = localStorage.getItem('gk_cached_user');
+        if (cached) {
+          try {
+            const parsedUser = JSON.parse(cached);
+            setUser(parsedUser);
+            const cachedShop = localStorage.getItem('gk_cached_shop');
+            if (cachedShop) setShop(JSON.parse(cachedShop));
+            const cachedRole = localStorage.getItem('gk_cached_role');
+            if (cachedRole) setRole(cachedRole as any);
+          } catch {
+            // Keep state intact
+          }
         }
+      } finally {
+        profileLoadingPromiseRef.current = null;
       }
-    }
+    })();
+
+    profileLoadingPromiseRef.current = promise;
+    return promise;
   };
 
   const reloadProfile = async () => {

@@ -49,39 +49,30 @@ export async function searchSubscriptions(req: Request, res: Response): Promise<
   }
 
   try {
-    // 1. Search in customers table
-    let customerQuery = supabaseAdmin
-      .from('customers')
-      .select('id, name, phone, address')
+    // Search in subscription_members table for registered members
+    let memberQuery = supabaseAdmin
+      .from('subscription_members')
+      .select('id, member_name, phone_number, shop_name, address')
       .eq('shop_id', user.shop_id)
       .eq('is_active', true);
 
     if (search) {
-      customerQuery = customerQuery.or(`name.ilike.%${search}%,phone.ilike.%${search}%`);
+      memberQuery = memberQuery.or(`member_name.ilike.%${search}%,phone_number.ilike.%${search}%`);
     }
 
-    const { data: customers, error: custErr } = await customerQuery.limit(15);
+    const { data: members, error: memErr } = await memberQuery.limit(20);
 
-    if (custErr) {
-      res.status(400).json({ error: custErr.message });
+    if (memErr) {
+      res.status(400).json({ error: memErr.message });
       return;
     }
 
-    // 2. Fetch associated shop name for current shop
-    const { data: shop } = await supabaseAdmin
-      .from('shops')
-      .select('name')
-      .eq('id', user.shop_id)
-      .single();
-
-    const shopName = shop?.name || '';
-
-    // Map customer search results
-    const results = (customers || []).map(c => ({
-      customer_id: c.id,
-      customer_name: c.name,
-      phone_number: c.phone,
-      shop_name: c.address || shopName
+    // Map search results to match front-end expectation
+    const results = (members || []).map(m => ({
+      customer_id: m.id,
+      customer_name: m.member_name,
+      phone_number: m.phone_number,
+      shop_name: m.shop_name
     }));
 
     res.status(200).json({ data: results });
@@ -700,3 +691,102 @@ export async function getShopSubscriptionHistory(req: Request, res: Response): P
     res.status(500).json({ error: 'Internal Server Error', message: err.message });
   }
 }
+
+const saveExpenseSchema = z.object({
+  year: z.number().int(),
+  month: z.string().min(1),
+  amount_taken: z.number().nonnegative(),
+  total_received: z.number().nonnegative()
+});
+
+export async function getSubscriptionExpenses(req: Request, res: Response): Promise<void> {
+  const user = (req as any).user;
+  if (!user || !user.shop_id) {
+    res.status(400).json({ error: 'User must be associated with a shop' });
+    return;
+  }
+
+  const year = parseInt(req.query.year as string) || new Date().getFullYear();
+
+  try {
+    const { data: expenses, error } = await supabaseAdmin
+      .from('monthly_subscription_expenses')
+      .select('*')
+      .eq('shop_id', user.shop_id)
+      .eq('year', year);
+
+    if (error) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.status(200).json({ data: expenses || [] });
+  } catch (err: any) {
+    console.error('Error fetching subscription expenses:', err);
+    res.status(500).json({ error: 'Internal Server Error', message: err.message });
+  }
+}
+
+export async function saveSubscriptionExpense(req: Request, res: Response): Promise<void> {
+  const user = (req as any).user;
+  if (!user || !user.shop_id) {
+    res.status(400).json({ error: 'User must be associated with a shop' });
+    return;
+  }
+
+  const validation = saveExpenseSchema.safeParse(req.body);
+  if (!validation.success) {
+    res.status(400).json({ error: validation.error.errors[0].message });
+    return;
+  }
+
+  const { year, month, amount_taken, total_received } = validation.data;
+
+  try {
+    const { data: existing } = await supabaseAdmin
+      .from('monthly_subscription_expenses')
+      .select('id')
+      .eq('shop_id', user.shop_id)
+      .eq('year', year)
+      .eq('month', month)
+      .limit(1);
+
+    const payload = {
+      shop_id: user.shop_id,
+      year,
+      month,
+      amount_taken,
+      total_received,
+      updated_at: new Date().toISOString()
+    };
+
+    let result;
+    if (existing && existing.length > 0) {
+      const { data, error } = await supabaseAdmin
+        .from('monthly_subscription_expenses')
+        .update(payload)
+        .eq('id', existing[0].id)
+        .select('*')
+        .single();
+      if (error) throw error;
+      result = data;
+    } else {
+      const { data, error } = await supabaseAdmin
+        .from('monthly_subscription_expenses')
+        .insert([{ ...payload, created_at: new Date().toISOString() }])
+        .select('*')
+        .single();
+      if (error) throw error;
+      result = data;
+    }
+
+    res.status(200).json({
+      message: 'Monthly subscription expense saved successfully',
+      data: result
+    });
+  } catch (err: any) {
+    console.error('Error saving subscription expense:', err);
+    res.status(500).json({ error: 'Internal Server Error', message: err.message });
+  }
+}
+

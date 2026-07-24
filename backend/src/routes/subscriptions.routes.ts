@@ -10,7 +10,9 @@ import {
   createSubscriptionMember,
   updateSubscriptionMember,
   deleteSubscriptionMember,
-  getShopSubscriptionHistory
+  getShopSubscriptionHistory,
+  getSubscriptionExpenses,
+  saveSubscriptionExpense
 } from '../controllers/subscriptions.controller';
 
 const router = Router();
@@ -24,6 +26,10 @@ router.get('/record', getSubscriptionRecord);
 router.get('/summary', getSubscriptionSummary);
 router.post('/save', saveSubscriptionRecord);
 router.post('/send-bill', sendSubscriptionBill);
+
+// Expense tracker endpoints
+router.get('/expenses', getSubscriptionExpenses);
+router.post('/expenses', saveSubscriptionExpense);
 
 // Member & Shop Management Routes (Admin Restricted)
 router.get('/members', listSubscriptionMembers);
