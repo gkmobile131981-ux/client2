@@ -219,57 +219,26 @@ export default function RepairPriceList() {
 
   const rateCards = data?.rateCards || [];
 
-  // Get unique brands list (merges catalog brands + any custom db brands)
+  // Get unique brands list from DB rate cards
   const uniqueBrands = useMemo(() => {
-    const brandsSet = new Set([
-      ...Object.keys(DEVICE_BRANDS),
-      ...rateCards.map((rc) => rc.brand.toUpperCase())
-    ]);
+    const brandsSet = new Set(rateCards.map((rc) => rc.brand.toUpperCase()));
     return Array.from(brandsSet).sort();
   }, [rateCards]);
 
-  // Filter models based on selected brand
+  // Filter models based on selected brand from DB rate cards
   const filteredModels = useMemo(() => {
     if (!selectedBrand) return [];
-    
-    const modelsSet = new Set<{ id: string; model: string }>();
-    
-    // 1. Add models from DB rate cards
-    rateCards
+    const models = rateCards
       .filter((rc) => rc.brand.toUpperCase() === selectedBrand.toUpperCase())
-      .forEach((rc) => {
-        modelsSet.add({ id: rc.id, model: rc.model });
-      });
-      
-    // 2. Add static models from catalog
-    const catalogModels = DEVICE_BRANDS[selectedBrand.toUpperCase()] || [];
-    catalogModels.forEach((m) => {
-      const alreadyExists = Array.from(modelsSet).some(
-        (existing) => existing.model.toUpperCase() === m.toUpperCase()
-      );
-      if (!alreadyExists) {
-        modelsSet.add({ id: m, model: m }); // Using model name string as fallback ID
-      }
-    });
-    
-    return Array.from(modelsSet).sort((a, b) => a.model.localeCompare(b.model));
+      .map((rc) => ({ id: rc.id, model: rc.model }));
+    return models.sort((a, b) => a.model.localeCompare(b.model));
   }, [selectedBrand, rateCards]);
 
-  // Find the selected rate card details or mock a default template card
+  // Find the selected rate card details
   const selectedRateCard = useMemo(() => {
     if (!selectedModelId) return null;
-    
-    const dbCard = rateCards.find((rc) => rc.id === selectedModelId);
-    if (dbCard) return dbCard;
-    
-    return {
-      id: selectedModelId,
-      brand: selectedBrand,
-      model: selectedModelId,
-      model_image_url: null,
-      services: DEFAULT_SERVICES
-    };
-  }, [selectedModelId, selectedBrand, rateCards]);
+    return rateCards.find((rc) => rc.id === selectedModelId) || null;
+  }, [selectedModelId, rateCards]);
 
   // Fallback to DEFAULT_SERVICES when no services are configured in database
   const activeServices = useMemo(() => {
