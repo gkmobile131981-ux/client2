@@ -90,6 +90,12 @@ interface SettingsPageProps {
 export default function SettingsPage({ defaultTab }: SettingsPageProps = {}) {
   const { user, role, shop, reloadProfile } = useAuth();
   const isOwner = role === 'owner';
+  const superAdminEmails = [
+    'gkmobile131981@gmail.com',
+    'admin@gkrepair.com',
+    'test@gkrepair.com'
+  ];
+  const isSuperAdmin = !!(user && ((user.role as string) === 'superadmin' || (user.email && superAdminEmails.includes(user.email.toLowerCase().trim()))));
   const navigate = useNavigate();
   
   // Shop Profile state
@@ -396,10 +402,10 @@ export default function SettingsPage({ defaultTab }: SettingsPageProps = {}) {
         setIsGenericModalOpen(true);
         break;
       case 'ratecards':
-        if (isOwner) {
+        if (isSuperAdmin) {
           setIsRateCardsOpen(true);
         } else {
-          toast.error("Access Denied: Service Rate Cards can only be updated by the store Owner.");
+          toast.error("Access Denied: Service Rate Cards can only be updated by the platform Admin.");
         }
         break;
       case 'deleted':
@@ -510,8 +516,12 @@ export default function SettingsPage({ defaultTab }: SettingsPageProps = {}) {
           { id: 'about', title: 'About', desc: 'Software terminal version details and developer info', icon: Info, color: 'text-sky-500', bg: 'bg-sky-500/10 border-sky-500/20' },
           { id: 'contact', title: 'Contacts Us', desc: 'Reach our terminal network administration support desk', icon: Phone, color: 'text-pink-500', bg: 'bg-pink-500/10 border-pink-500/20' },
           { id: 'staff', title: 'Add Staff Members', desc: 'Recruit terminal assistants, set status, and manage logins', icon: UserPlus, color: 'text-green-500', bg: 'bg-green-500/10 border-green-500/20', ownerOnly: true },
-          { id: 'ratecards', title: 'Create Repair Price', desc: 'Configure standard repair labor costs and invoicing terms', icon: ClipboardList, color: 'text-primary', bg: 'bg-primary/10 border-primary/20', ownerOnly: true }
-        ].filter(item => !item.ownerOnly || isOwner).map((item) => (
+          { id: 'ratecards', title: 'Create Repair Price', desc: 'Configure standard repair labor costs and invoicing terms', icon: ClipboardList, color: 'text-primary', bg: 'bg-primary/10 border-primary/20', superAdminOnly: true }
+        ].filter(item => {
+          if (item.superAdminOnly) return isSuperAdmin;
+          if (item.ownerOnly) return isOwner;
+          return true;
+        }).map((item) => (
           <div
             key={item.id}
             onClick={() => handleMenuClick(item.id)}

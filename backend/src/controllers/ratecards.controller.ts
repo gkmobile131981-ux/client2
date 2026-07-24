@@ -3,6 +3,38 @@ import { z } from 'zod';
 import { supabaseAdmin } from '../utils/supabase';
 import { uploadPhoto } from '../utils/photoUpload';
 
+const SUPER_ADMIN_EMAILS = [
+  'gkmobile131981@gmail.com',
+  'admin@gkrepair.com',
+  'test@gkrepair.com'
+];
+
+async function getShopIdToUse(user: any): Promise<string> {
+  const isSuperAdmin = !!(user && (user.role === 'superadmin' || (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase().trim()))));
+  if (isSuperAdmin) {
+    return user.shop_id || 'bafff8e0-53cc-45cc-afa3-1c5862e8da21';
+  }
+  
+  try {
+    const { data: adminProfile } = await supabaseAdmin
+      .from('users')
+      .select('shop_id')
+      .eq('id', '5aba93bc-6abf-4b99-8600-dff366a3a99d')
+      .single();
+    if (adminProfile?.shop_id) {
+      return adminProfile.shop_id;
+    }
+  } catch (err) {
+    // Ignore error
+  }
+  
+  return 'bafff8e0-53cc-45cc-afa3-1c5862e8da21';
+}
+
+function checkSuperAdmin(user: any): boolean {
+  return !!(user && (user.role === 'superadmin' || (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase().trim()))));
+}
+
 const createRateCardSchema = z.object({
   brand: z.string().min(1, 'Brand is required'),
   model: z.string().min(1, 'Model is required'),
@@ -29,13 +61,14 @@ export async function getRateCards(req: Request, res: Response): Promise<void> {
   }
 
   try {
+    const targetShopId = await getShopIdToUse(user);
     const { data, error } = await supabaseAdmin
       .from('rate_cards')
       .select(`
         *,
         services:rate_card_services(*)
       `)
-      .eq('shop_id', user.shop_id)
+      .eq('shop_id', targetShopId)
       .order('brand', { ascending: true })
       .order('model', { ascending: true });
 
@@ -61,11 +94,12 @@ export async function getRateCardById(req: Request, res: Response): Promise<void
   }
 
   try {
+    const targetShopId = await getShopIdToUse(user);
     const { data, error } = await supabaseAdmin
       .from('rate_cards')
       .select(`*, services:rate_card_services(*)`)
       .eq('id', id)
-      .eq('shop_id', user.shop_id)
+      .eq('shop_id', targetShopId)
       .single();
 
     if (error || !data) {
@@ -96,10 +130,11 @@ export async function lookupRateCard(req: Request, res: Response): Promise<void>
   }
 
   try {
+    const targetShopId = await getShopIdToUse(user);
     const { data, error } = await supabaseAdmin
       .from('rate_cards')
-      .select(`*, services:rate_card_services(* )`)
-      .eq('shop_id', user.shop_id)
+      .select(`*, services:rate_card_services(*)`)
+      .eq('shop_id', targetShopId)
       .ilike('brand', brand)
       .ilike('model', model)
       .maybeSingle();
@@ -115,15 +150,15 @@ export async function lookupRateCard(req: Request, res: Response): Promise<void>
   }
 }
 
-// POST /api/ratecards — create a new rate card (owner only)
+// POST /api/ratecards — create a new rate card (Super Admin only)
 export async function createRateCard(req: Request, res: Response): Promise<void> {
   const user = req.user;
   if (!user?.shop_id) {
     res.status(400).json({ error: 'User must be associated with a shop' });
     return;
   }
-  if (user.role !== 'owner') {
-    res.status(403).json({ error: 'Only owners can manage rate cards' });
+  if (!checkSuperAdmin(user)) {
+    res.status(403).json({ error: 'Only Super Admins can manage rate cards' });
     return;
   }
 
@@ -166,7 +201,7 @@ export async function createRateCard(req: Request, res: Response): Promise<void>
   }
 }
 
-// PUT /api/ratecards/:id — update rate card brand/model/image (owner only)
+// PUT /api/ratecards/:id — update rate card brand/model/image (Super Admin only)
 export async function updateRateCard(req: Request, res: Response): Promise<void> {
   const user = req.user;
   const { id } = req.params;
@@ -175,8 +210,8 @@ export async function updateRateCard(req: Request, res: Response): Promise<void>
     res.status(400).json({ error: 'User must be associated with a shop' });
     return;
   }
-  if (user.role !== 'owner') {
-    res.status(403).json({ error: 'Only owners can manage rate cards' });
+  if (!checkSuperAdmin(user)) {
+    res.status(403).json({ error: 'Only Super Admins can manage rate cards' });
     return;
   }
 
@@ -217,7 +252,7 @@ export async function updateRateCard(req: Request, res: Response): Promise<void>
   }
 }
 
-// DELETE /api/ratecards/:id — delete a rate card and all its services (owner only)
+// DELETE /api/ratecards/:id — delete a rate card and all its services (Super Admin only)
 export async function deleteRateCard(req: Request, res: Response): Promise<void> {
   const user = req.user;
   const { id } = req.params;
@@ -226,8 +261,8 @@ export async function deleteRateCard(req: Request, res: Response): Promise<void>
     res.status(400).json({ error: 'User must be associated with a shop' });
     return;
   }
-  if (user.role !== 'owner') {
-    res.status(403).json({ error: 'Only owners can delete rate cards' });
+  if (!checkSuperAdmin(user)) {
+    res.status(403).json({ error: 'Only Super Admins can delete rate cards' });
     return;
   }
 
@@ -249,7 +284,7 @@ export async function deleteRateCard(req: Request, res: Response): Promise<void>
   }
 }
 
-// POST /api/ratecards/:id/services — bulk upsert all services for a rate card (owner only)
+// POST /api/ratecards/:id/services — bulk upsert all services for a rate card (Super Admin only)
 export async function upsertRateCardServices(req: Request, res: Response): Promise<void> {
   const user = req.user;
   const { id } = req.params;
@@ -258,20 +293,21 @@ export async function upsertRateCardServices(req: Request, res: Response): Promi
     res.status(400).json({ error: 'User must be associated with a shop' });
     return;
   }
-  if (user.role !== 'owner') {
-    res.status(403).json({ error: 'Only owners can manage rate card services' });
+  if (!checkSuperAdmin(user)) {
+    res.status(403).json({ error: 'Only Super Admins can manage rate card services' });
     return;
   }
 
   try {
     const { services } = upsertServicesSchema.parse(req.body);
 
-    // Verify rate card belongs to this shop
+    // Verify rate card belongs to Super Admin's shop
+    const targetShopId = await getShopIdToUse(user);
     const { data: existing, error: verifyError } = await supabaseAdmin
       .from('rate_cards')
       .select('id')
       .eq('id', id)
-      .eq('shop_id', user.shop_id)
+      .eq('shop_id', targetShopId)
       .single();
 
     if (verifyError || !existing) {

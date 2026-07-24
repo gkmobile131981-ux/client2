@@ -67,14 +67,14 @@ export default function App() {
                 
                 {/* Owner exclusive controls */}
                 <Route element={<OwnerRoute />}>
-                  <Route path="/subscriptions" element={<MonthlySubscriptions />} />
                   <Route path="/reports" element={<Reports />} />
                   <Route path="/settings/staff" element={<SettingsPage defaultTab="staff" />} />
-                  <Route path="/settings/create-price" element={<SettingsPage defaultTab="create-price" />} />
                 </Route>
 
                 {/* Super Admin exclusive controls */}
                 <Route element={<SuperAdminRoute />}>
+                  <Route path="/subscriptions" element={<MonthlySubscriptions />} />
+                  <Route path="/settings/create-price" element={<SettingsPage defaultTab="create-price" />} />
                   <Route path="/superadmin" element={<SuperAdminDashboard />} />
                   <Route path="/id-card" element={<OwnerIdCard />} />
                 </Route>
