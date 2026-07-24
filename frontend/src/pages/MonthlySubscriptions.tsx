@@ -169,6 +169,7 @@ export default function MonthlySubscriptions() {
 
   // ── Members & Shops tab state (Admin CRUD) ──
   const [membersList, setMembersList]     = useState<SubscriptionMember[]>([]);
+  const [allMembers, setAllMembers]       = useState<SubscriptionMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [memberSearch, setMemberSearch]   = useState('');
   const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
@@ -229,6 +230,47 @@ export default function MonthlySubscriptions() {
       : [],
     [summaryRecords, selectedAnalyticsMonth]
   );
+
+  const filteredMembers = useMemo(() => {
+    const q = nameSearch.trim().toLowerCase();
+    if (!q) return [];
+
+    const matches = allMembers.filter(m => 
+      m.member_name.toLowerCase().includes(q) || 
+      m.phone_number.toLowerCase().includes(q) ||
+      (m.shop_name && m.shop_name.toLowerCase().includes(q))
+    );
+
+    return matches.sort((a, b) => {
+      const aName = a.member_name.toLowerCase();
+      const bName = b.member_name.toLowerCase();
+      const aPhone = a.phone_number.toLowerCase();
+      const bPhone = b.phone_number.toLowerCase();
+
+      const aStartsWith = aName.startsWith(q) || aPhone.startsWith(q);
+      const bStartsWith = bName.startsWith(q) || bPhone.startsWith(q);
+
+      if (aStartsWith && !bStartsWith) return -1;
+      if (!aStartsWith && bStartsWith) return 1;
+
+      const aWordStart = aName.split(/\s+/).some(w => w.startsWith(q));
+      const bWordStart = bName.split(/\s+/).some(w => w.startsWith(q));
+
+      if (aWordStart && !bWordStart) return -1;
+      if (!aWordStart && bWordStart) return 1;
+
+      return aName.localeCompare(bName);
+    });
+  }, [nameSearch, allMembers]);
+
+  const clientSearchResults = useMemo<CustomerSearchResult[]>(() => {
+    return filteredMembers.map(m => ({
+      customer_id: m.id,
+      customer_name: m.member_name,
+      phone_number: m.phone_number,
+      shop_name: m.shop_name
+    }));
+  }, [filteredMembers]);
 
   // ─── Loaders ───────────────────────────────────────────────────────────
 
@@ -293,13 +335,25 @@ export default function MonthlySubscriptions() {
     }
   };
 
+  const loadAllMembers = useCallback(async () => {
+    try {
+      const res = await apiClient.get<{ data: SubscriptionMember[] }>(
+        `/subscriptions/members?search=&year=${selectedYear}`
+      );
+      setAllMembers(res.data || []);
+    } catch {
+      // Silently handle
+    }
+  }, [selectedYear]);
+
   useEffect(() => {
     loadSummary(selectedYear);
     loadExpenses(selectedYear);
+    loadAllMembers();
     if (activeTab === 'members') {
       loadMembers(memberSearch, selectedYear);
     }
-  }, [selectedYear, activeTab, loadSummary, loadExpenses, loadMembers, memberSearch]);
+  }, [selectedYear, activeTab, loadSummary, loadExpenses, loadAllMembers, loadMembers, memberSearch]);
 
   // Execute search automatically when debounced search term changes
   useEffect(() => {
@@ -553,6 +607,7 @@ export default function MonthlySubscriptions() {
 
       setIsMemberModalOpen(false);
       loadMembers(memberSearch, selectedYear);
+      loadAllMembers();
     } catch (err: any) {
       toast.error(err.message || 'Failed to save member details');
     } finally {
@@ -572,6 +627,7 @@ export default function MonthlySubscriptions() {
       await apiClient.delete(`/subscriptions/members/${id}`);
       toast.success(`Member "${name}" removed`);
       loadMembers(memberSearch, selectedYear);
+      loadAllMembers();
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete member');
     }
@@ -744,9 +800,9 @@ export default function MonthlySubscriptions() {
               </div>
 
               {/* Search Dropdown Overlay */}
-              {showDropdown && searchResults.length > 0 && (
+              {nameSearch.trim().length >= 1 && clientSearchResults.length > 0 && (
                 <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border border-amber-500/40 rounded-xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto">
-                  {searchResults.map((item, idx) => (
+                  {clientSearchResults.map((item, idx) => (
                     <div
                       key={idx}
                       onClick={() => handleSelectCustomer(item)}
