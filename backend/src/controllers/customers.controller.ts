@@ -51,6 +51,20 @@ export async function getCustomers(req: Request, res: Response): Promise<void> {
       return;
     }
 
+    const minimal = req.query.minimal === 'true';
+    if (minimal) {
+      res.json({
+        customers: customers || [],
+        pagination: {
+          page,
+          limit,
+          total: count || 0,
+          pages: Math.ceil((count || 0) / limit)
+        }
+      });
+      return;
+    }
+
     // Load repair metrics (total repairs & last repair date) in bulk to avoid N+1 queries
     const customerIds = (customers || []).map(c => c.id);
     const deviceMap: Record<string, string[]> = {};

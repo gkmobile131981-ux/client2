@@ -112,7 +112,7 @@ export async function getAllRepairs(req: Request, res: Response): Promise<void> 
     // 3. Apply filters
     if (status && status !== 'all') {
       if (status === 'balance_due' || status === 'delivered_pending_balance' || status === 'unpaid') {
-        query = query.or('status.eq.delivered_pending_balance,and(status.eq.delivered,advance.lt.estimate)');
+        query = query.or('status.eq.delivered_pending_balance,status.eq.delivered').gt('balance', 0);
       } else {
         query = query.eq('status', status);
       }

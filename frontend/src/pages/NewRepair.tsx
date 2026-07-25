@@ -651,14 +651,14 @@ export default function NewRepair() {
   // Fetch full shop customer list for instant 0ms client-side search & ranking
   const { data: allCustomersData } = useQuery<{ customers: Customer[] }>({
     queryKey: ['all-shop-customers'],
-    queryFn: () => apiClient.get('/customers?limit=1000'),
+    queryFn: () => apiClient.get('/customers?limit=1000&minimal=true'),
     staleTime: 5 * 60 * 1000
   });
 
   // Autocomplete customer search backend fallback
   const { data: customersSearchData } = useQuery<{ customers: Customer[] }>({
     queryKey: ['customers-search', debouncedPhoneSearch],
-    queryFn: () => apiClient.get(`/customers?search=${debouncedPhoneSearch}`),
+    queryFn: () => apiClient.get(`/customers?search=${debouncedPhoneSearch}&minimal=true`),
     enabled: debouncedPhoneSearch.trim().length >= 1,
     staleTime: 60 * 1000
   });
@@ -1180,18 +1180,43 @@ export default function NewRepair() {
         return;
       }
 
-      try {
-        const res = await apiClient.post<{ customer: Customer }>('/customers', {
-          name: newCustName.trim(),
-          phone: newCustPhone.trim(),
-          address: newCustAddr.trim()
-        });
-        setSelectedCustomer(res.customer);
-        finalCustomerId = res.customer.id;
-        toast.success('Customer registered successfully!');
-      } catch (err: any) {
-        toast.error(err.message || 'Failed to auto-register customer');
-        return;
+      const cleanPhone = newCustPhone.trim();
+      
+      // Look for a local match first
+      const localMatch = allCustomersData?.customers?.find((c: any) => c.phone.trim() === cleanPhone);
+      
+      if (localMatch) {
+        finalCustomerId = localMatch.id;
+        setSelectedCustomer(localMatch);
+      } else {
+        // Query backend database matching exact phone number
+        try {
+          const searchRes = await apiClient.get<{ customers: Customer[] }>(`/customers?search=${encodeURIComponent(cleanPhone)}`);
+          const dbMatch = searchRes.customers?.find((c: any) => c.phone.trim() === cleanPhone);
+          if (dbMatch) {
+            finalCustomerId = dbMatch.id;
+            setSelectedCustomer(dbMatch);
+          }
+        } catch (e) {
+          console.warn('Customer lookup error:', e);
+        }
+      }
+
+      // If still no customer is found, create a new one
+      if (!finalCustomerId) {
+        try {
+          const res = await apiClient.post<{ customer: Customer }>('/customers', {
+            name: newCustName.trim(),
+            phone: newCustPhone.trim(),
+            address: newCustAddr.trim()
+          });
+          setSelectedCustomer(res.customer);
+          finalCustomerId = res.customer.id;
+          toast.success('Customer registered successfully!');
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to auto-register customer');
+          return;
+        }
       }
     }
 
