@@ -201,6 +201,33 @@ export async function saveSubscriptionRecord(req: Request, res: Response): Promi
     data.december;
 
   try {
+    let dbCustomerId: string | null = null;
+    if (data.customer_id && data.customer_id.trim() !== '') {
+      // Check if it exists in customers table
+      const { data: custExists } = await supabaseAdmin
+        .from('customers')
+        .select('id')
+        .eq('id', data.customer_id)
+        .eq('shop_id', user.shop_id)
+        .maybeSingle();
+      if (custExists) {
+        dbCustomerId = custExists.id;
+      }
+    }
+    
+    // Fallback: search customer by phone number
+    if (!dbCustomerId && data.phone_number) {
+      const { data: custPhoneMatch } = await supabaseAdmin
+        .from('customers')
+        .select('id')
+        .eq('phone', data.phone_number)
+        .eq('shop_id', user.shop_id)
+        .maybeSingle();
+      if (custPhoneMatch) {
+        dbCustomerId = custPhoneMatch.id;
+      }
+    }
+
     // Check if record exists for this shop, phone_number/customer_id and year
     let existingQuery = supabaseAdmin
       .from('monthly_subscriptions')
@@ -208,8 +235,8 @@ export async function saveSubscriptionRecord(req: Request, res: Response): Promi
       .eq('shop_id', user.shop_id)
       .eq('year', data.year);
 
-    if (data.customer_id && data.customer_id.trim() !== '') {
-      existingQuery = existingQuery.eq('customer_id', data.customer_id);
+    if (dbCustomerId) {
+      existingQuery = existingQuery.or(`customer_id.eq.${dbCustomerId},phone_number.eq.${data.phone_number}`);
     } else if (data.phone_number) {
       existingQuery = existingQuery.eq('phone_number', data.phone_number);
     }
@@ -218,7 +245,7 @@ export async function saveSubscriptionRecord(req: Request, res: Response): Promi
 
     const payload = {
       shop_id: user.shop_id,
-      customer_id: data.customer_id || null,
+      customer_id: dbCustomerId,
       customer_name: data.customer_name,
       phone_number: data.phone_number,
       shop_name: data.shop_name || '',
