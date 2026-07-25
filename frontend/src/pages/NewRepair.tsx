@@ -1220,6 +1220,22 @@ export default function NewRepair() {
       }
     }
 
+    // If name has been modified compared to selected customer, sync it with database
+    if (finalCustomerId && newCustName.trim()) {
+      const dbCust = allCustomersData?.customers?.find((c: any) => c.id === finalCustomerId) || selectedCustomer;
+      if (dbCust && dbCust.name !== newCustName.trim()) {
+        try {
+          await apiClient.put(`/customers/${finalCustomerId}`, {
+            name: newCustName.trim(),
+            phone: newCustPhone.trim() || dbCust.phone,
+            address: newCustAddr.trim() || dbCust.address
+          });
+        } catch (e) {
+          console.warn('Failed to update customer name:', e);
+        }
+      }
+    }
+
     const formData = new FormData();
     if (finalCustomerId) {
       formData.append('customerId', finalCustomerId);
