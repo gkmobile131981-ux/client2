@@ -172,6 +172,12 @@ export default function DeliverRepair() {
   };
 
   const startCamera = async () => {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      document.getElementById('photo-upload')?.click();
+      return;
+    }
+
     setCapturedPhoto(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
@@ -188,7 +194,7 @@ export default function DeliverRepair() {
       }
       setCameraActive(true);
     } catch (err) {
-      toast.error('Unable to access webcam. Please upload a photo instead.');
+      document.getElementById('photo-upload')?.click();
     }
   };
 
