@@ -71,8 +71,7 @@ export default function DeliverRepair() {
   const [deliveryDate, setDeliveryDate] = useState(defaultDate);
   const [deliveryTime, setDeliveryTime] = useState(defaultTime);
 
-  // Camera and Photo states
-  const [cameraActive, setCameraActive] = useState(false);
+  // Photo states
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   
   // Signature States
@@ -82,10 +81,6 @@ export default function DeliverRepair() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [amountPaidNow, setAmountPaidNow] = useState<string>('');
   const [paymentDueDate, setPaymentDueDate] = useState<string>('');
-
-  // References for camera capture
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
 
   // Fetch Repair order details
   const { data, isLoading } = useQuery<{ repair: RepairDetailData }>({
@@ -169,59 +164,6 @@ export default function DeliverRepair() {
       setReceiverName('');
       setReceiverPhone('');
     }
-  };
-
-  const startCamera = async () => {
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
-      document.getElementById('photo-upload')?.click();
-      return;
-    }
-
-    setCapturedPhoto(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 640 },
-          height: { ideal: 480 }
-        } 
-      });
-      streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play().catch(e => console.log('Video play callback notice:', e));
-      }
-      setCameraActive(true);
-    } catch (err) {
-      document.getElementById('photo-upload')?.click();
-    }
-  };
-
-  // Capture frame from camera (with compression)
-  const capturePhoto = async () => {
-    if (videoRef.current) {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const rawDataUrl = canvas.toDataURL('image/jpeg', 0.90);
-        const compressed = await compressBase64Image(rawDataUrl, 1200, 1200, 0.78);
-        setCapturedPhoto(compressed);
-        stopCamera();
-      }
-    }
-  };
-
-  // Stop camera tracks
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
-      streamRef.current = null;
-    }
-    setCameraActive(false);
   };
 
   // File fallback upload handler (with compression)
@@ -610,15 +552,7 @@ export default function DeliverRepair() {
             <CardContent className="space-y-4">
               {/* Media viewer frame */}
               <div className="relative h-60 w-full rounded-xl bg-slate-950/80 border border-dashed border-border overflow-hidden flex items-center justify-center">
-                {cameraActive ? (
-                  <video 
-                    ref={videoRef} 
-                    className="h-full w-full object-cover" 
-                    playsInline 
-                    muted 
-                    autoPlay
-                  />
-                ) : capturedPhoto ? (
+                {capturedPhoto ? (
                   <img 
                     src={capturedPhoto} 
                     alt="Recipient Preview" 
@@ -632,39 +566,33 @@ export default function DeliverRepair() {
                 )}
               </div>
 
-              {/* Camera Actions */}
+              {/* Upload Actions */}
               <div className="flex flex-wrap gap-3">
-                {cameraActive ? (
-                  <>
-                    <Button type="button" onClick={capturePhoto} className="bg-emerald-600 hover:bg-emerald-500">
-                      Capture Photo
-                    </Button>
-                    <Button type="button" variant="outline" onClick={stopCamera}>
-                      Cancel Camera
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button type="button" onClick={startCamera} className="gap-2 bg-slate-800 hover:bg-slate-700 text-white">
+                <div className="relative">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    capture="environment"
+                    id="photo-upload" 
+                    onChange={handleFileUpload} 
+                    className="hidden" 
+                  />
+                  <Button type="button" variant="outline" asChild className="bg-slate-800 hover:bg-slate-700 text-white border-none gap-2">
+                    <label htmlFor="photo-upload" className="cursor-pointer flex items-center gap-2">
                       <Camera className="h-4 w-4" />
-                      <span>{capturedPhoto ? 'Retake Photo' : 'Start Camera Capture'}</span>
-                    </Button>
-                    <div className="relative">
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        capture="environment"
-                        id="photo-upload" 
-                        onChange={handleFileUpload} 
-                        className="hidden" 
-                      />
-                      <Button type="button" variant="outline" asChild>
-                        <label htmlFor="photo-upload" className="cursor-pointer">
-                          Upload File
-                        </label>
-                      </Button>
-                    </div>
-                  </>
+                      <span>{capturedPhoto ? 'Retake / Change Photo' : 'Take / Upload Photo'}</span>
+                    </label>
+                  </Button>
+                </div>
+                {capturedPhoto && (
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => setCapturedPhoto(null)} 
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  >
+                    Remove Photo
+                  </Button>
                 )}
               </div>
             </CardContent>
