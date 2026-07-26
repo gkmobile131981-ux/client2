@@ -175,12 +175,16 @@ export default function DeliverRepair() {
     setCapturedPhoto(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user', width: 640, height: 480 } 
+        video: { 
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        } 
       });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        videoRef.current.play().catch(e => console.log('Video play callback notice:', e));
       }
       setCameraActive(true);
     } catch (err) {
@@ -606,6 +610,7 @@ export default function DeliverRepair() {
                     className="h-full w-full object-cover" 
                     playsInline 
                     muted 
+                    autoPlay
                   />
                 ) : capturedPhoto ? (
                   <img 
@@ -642,6 +647,7 @@ export default function DeliverRepair() {
                       <input 
                         type="file" 
                         accept="image/*" 
+                        capture="environment"
                         id="photo-upload" 
                         onChange={handleFileUpload} 
                         className="hidden" 
