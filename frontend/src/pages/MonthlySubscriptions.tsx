@@ -1175,7 +1175,7 @@ export default function MonthlySubscriptions() {
             <div className="p-5 bg-card/90 border border-border rounded-2xl shadow-xl flex items-center justify-between">
               <div>
                 <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider block">Total Members</span>
-                <span className="text-3xl font-black text-foreground mt-1 block">{summaryRecords.length}</span>
+                <span className="text-3xl font-black text-foreground mt-1 block">{allMembers.length}</span>
               </div>
               <div className="p-3 bg-primary/10 text-primary rounded-xl">
                 <Store className="h-6 w-6" />
