@@ -507,18 +507,25 @@ export default function Dashboard() {
             </span>
           </div>
           <div className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/50 py-1">
-            <div className="absolute left-0 top-0 bottom-0 w-16 z-10 bg-gradient-to-r from-slate-950/95 via-slate-950/75 to-transparent pointer-events-none" />
+            <div className="absolute inset-y-0 left-0 w-16 z-10 bg-gradient-to-r from-slate-950/95 via-slate-950/75 to-transparent pointer-events-none" />
             <div className="overflow-hidden pl-3 pr-3">
               <div
-                className="inline-flex whitespace-nowrap"
+                className="inline-flex items-center gap-8 whitespace-nowrap"
                 style={{
+                  transform: 'translate3d(100%, 0, 0)',
                   animation: `marquee-scroll ${marqueeSpeedSeconds}s linear infinite`,
                   minWidth: 'max-content'
                 }}
               >
-                <span className="text-xs font-medium text-foreground/85 pr-6">{marqueeText}</span>
-                <span className="text-xs font-medium text-foreground/85 pr-6" aria-hidden>{marqueeText}</span>
-                <span className="text-xs font-medium text-foreground/85 pr-6" aria-hidden>{marqueeText}</span>
+                {[0, 1, 2].map((idx) => (
+                  <span
+                    key={idx}
+                    className="text-xs font-medium text-foreground/85 pr-4"
+                    aria-hidden={idx > 0}
+                  >
+                    {marqueeText}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
