@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { authenticateToken, requireSuperAdmin } from '../middleware/auth';
-import { getSlides, createSlide, deleteSlide, updateSlide } from '../controllers/carousel.controller';
+import { getSlides, createSlide, deleteSlide, updateSlide, getMarqueeText, upsertMarqueeText } from '../controllers/carousel.controller';
 
 const router = Router();
 const upload = multer({
@@ -13,6 +13,12 @@ const upload = multer({
 
 // GET /api/carousel (authenticated users can fetch slides)
 router.get('/', authenticateToken, getSlides);
+
+// GET /api/carousel/marquee (authenticated users can fetch marquee text)
+router.get('/marquee', authenticateToken, getMarqueeText);
+
+// POST /api/carousel/marquee (superadmin only)
+router.post('/marquee', authenticateToken, requireSuperAdmin, upsertMarqueeText);
 
 // POST /api/carousel (superadmin only)
 router.post('/', authenticateToken, requireSuperAdmin, upload.single('image'), createSlide);

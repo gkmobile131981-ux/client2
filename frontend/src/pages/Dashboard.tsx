@@ -169,6 +169,14 @@ export default function Dashboard() {
   // Slide Carousel State
   const [currentSlide, setCurrentSlide] = useState(0);
 
+  // Marquee text state
+  const { data: marqueeData } = useQuery<{ text: string; is_active: boolean }>({
+    queryKey: ['marquee-text'],
+    queryFn: () => apiClient.get('/carousel/marquee'),
+    staleTime: 10 * 60 * 1000
+  });
+  const marqueeText = (marqueeData?.is_active && marqueeData?.text) ? marqueeData.text : '';
+
   const defaultSlides = [
     {
       title: "Boost Shop Operations & Pick-up Speed",
@@ -488,6 +496,26 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* ── Marquee Ticker Strip ── */}
+      {marqueeText && (
+        <div className="relative overflow-hidden rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 via-yellow-500/5 to-amber-500/5 py-2.5 px-0 shadow-sm">
+          <div className="flex items-center gap-2 absolute left-0 top-0 bottom-0 px-3 z-10 bg-gradient-to-r from-card via-card/90 to-transparent pointer-events-none">
+            <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 whitespace-nowrap">📢 Notice</span>
+          </div>
+          <div className="overflow-hidden ml-20">
+            <div
+              className="flex whitespace-nowrap"
+              style={{
+                animation: 'marquee-scroll 30s linear infinite',
+              }}
+            >
+              <span className="text-xs font-semibold text-foreground/80 pr-16">{marqueeText}</span>
+              <span className="text-xs font-semibold text-foreground/80 pr-16" aria-hidden>{marqueeText}</span>
+              <span className="text-xs font-semibold text-foreground/80 pr-16" aria-hidden>{marqueeText}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards Row */}
       {stats && (

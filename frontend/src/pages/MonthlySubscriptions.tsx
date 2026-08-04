@@ -136,6 +136,11 @@ export default function MonthlySubscriptions() {
   // ── Top-level state ──
   const [activeTab, setActiveTab] = useState<'register' | 'members' | 'analytics'>('register');
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const [yearInput, setYearInput] = useState<string>(currentYear.toString());
+
+  useEffect(() => {
+    setYearInput(selectedYear.toString());
+  }, [selectedYear]);
 
   // ── Register tab state ──
   const [nameSearch, setNameSearch]       = useState('');
@@ -191,6 +196,11 @@ export default function MonthlySubscriptions() {
   const [auditRecords, setAuditRecords]         = useState<MonthlyRecordData[]>([]);
   const [auditLifetimeTotal, setAuditLifetimeTotal] = useState<number>(0);
   const [auditSelectedYear, setAuditSelectedYear] = useState<number>(currentYear);
+  const [auditYearInput, setAuditYearInput] = useState<string>(currentYear.toString());
+
+  useEffect(() => {
+    setAuditYearInput(auditSelectedYear.toString());
+  }, [auditSelectedYear]);
 
   // ── Analytics tab state ──
   const [summaryRecords, setSummaryRecords]           = useState<MonthlyRecordData[]>([]);
@@ -728,15 +738,21 @@ export default function MonthlySubscriptions() {
           <div className="flex items-center gap-1.5 bg-secondary/40 border border-border/80 rounded-xl px-3 py-1.5">
             <Calendar className="h-4 w-4 text-amber-500" />
             <span className="text-xs font-bold text-muted-foreground uppercase">Year:</span>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="bg-transparent text-sm font-black text-foreground focus:outline-none cursor-pointer"
-            >
-              {yearsArray.map(y => (
-                <option key={y} value={y} className="bg-card text-foreground font-bold">{y}</option>
-              ))}
-            </select>
+            <input
+              type="number"
+              min="2024"
+              max="2099"
+              value={yearInput}
+              onChange={(e) => {
+                const rawVal = e.target.value;
+                setYearInput(rawVal);
+                const val = parseInt(rawVal);
+                if (val >= 2024 && val <= 2099) {
+                  setSelectedYear(val);
+                }
+              }}
+              className="bg-transparent text-sm font-black text-foreground focus:outline-none w-14 font-sans text-center border-b border-border/40 focus:border-amber-500"
+            />
           </div>
         </div>
       </div>
@@ -1109,6 +1125,15 @@ export default function MonthlySubscriptions() {
 
                         <td className="p-3">
                           <div className="flex items-center justify-center gap-1.5">
+                            {/* Call Member/Shop Owner */}
+                            <a
+                              href={`tel:${m.phone_number}`}
+                              className="p-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded-lg transition-all flex items-center justify-center cursor-pointer"
+                              title={`Call ${m.member_name}`}
+                            >
+                              <Phone className="h-3.5 w-3.5" />
+                            </a>
+
                             {/* View Audit Details Button */}
                             <button
                               type="button"
@@ -1465,15 +1490,21 @@ export default function MonthlySubscriptions() {
 
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-bold text-muted-foreground">Audit Year:</span>
-                      <select
-                        value={auditSelectedYear}
-                        onChange={(e) => setAuditSelectedYear(parseInt(e.target.value))}
-                        className="bg-secondary border border-border rounded-lg px-3 py-1.5 text-xs font-extrabold text-foreground"
-                      >
-                        {yearsArray.map(y => (
-                          <option key={y} value={y}>{y}</option>
-                        ))}
-                      </select>
+                      <input
+                        type="number"
+                        min="2024"
+                        max="2099"
+                        value={auditYearInput}
+                        onChange={(e) => {
+                          const rawVal = e.target.value;
+                          setAuditYearInput(rawVal);
+                          const val = parseInt(rawVal);
+                          if (val >= 2024 && val <= 2099) {
+                            setAuditSelectedYear(val);
+                          }
+                        }}
+                        className="bg-secondary border border-border rounded-lg px-2.5 py-1 text-xs font-extrabold text-foreground w-16 text-center focus:outline-none focus:border-amber-500"
+                      />
                     </div>
                   </div>
 

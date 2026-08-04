@@ -181,3 +181,79 @@ export async function updateSlide(req: Request, res: Response): Promise<void> {
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+/**
+ * GET /api/carousel/marquee
+ * Returns the current global marquee ticker text.
+ */
+export async function getMarqueeText(_req: Request, res: Response): Promise<void> {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('marquee_settings')
+      .select('text, is_active')
+      .order('id', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      // Table might not exist yet — return empty gracefully
+      res.json({ text: '', is_active: false });
+      return;
+    }
+
+    res.json({ text: data?.text || '', is_active: data?.is_active ?? true });
+  } catch (err) {
+    console.error('Failed to get marquee text:', err);
+    res.json({ text: '', is_active: false });
+  }
+}
+
+/**
+ * POST /api/carousel/marquee
+ * Upserts the global marquee ticker text (SuperAdmin only).
+ */
+export async function upsertMarqueeText(req: Request, res: Response): Promise<void> {
+  try {
+    const { text, is_active } = req.body;
+
+    if (typeof text !== 'string') {
+      res.status(400).json({ error: 'text field is required' });
+      return;
+    }
+
+    // Check if a row exists
+    const { data: existing } = await supabaseAdmin
+      .from('marquee_settings')
+      .select('id')
+      .limit(1)
+      .maybeSingle();
+
+    let result;
+    if (existing?.id) {
+      // Update existing row
+      const { data, error } = await supabaseAdmin
+        .from('marquee_settings')
+        .update({ text: text.trim(), is_active: is_active ?? true, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      result = data;
+    } else {
+      // Insert first row
+      const { data, error } = await supabaseAdmin
+        .from('marquee_settings')
+        .insert({ text: text.trim(), is_active: is_active ?? true })
+        .select()
+        .single();
+      if (error) throw error;
+      result = data;
+    }
+
+    res.json({ message: 'Marquee text saved successfully', data: result });
+  } catch (err: any) {
+    console.error('Failed to save marquee text:', err);
+    res.status(500).json({ error: err.message || 'Failed to save marquee text' });
+  }
+}
+

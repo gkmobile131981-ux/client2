@@ -105,6 +105,10 @@ export default function SuperAdminDashboard() {
   const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
   const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
 
+  // Marquee settings state
+  const [marqueeText, setMarqueeText] = useState('');
+  const [marqueeActive, setMarqueeActive] = useState(true);
+
   // Fetch Super Admin data
   const { data, isLoading, refetch, isFetching } = useQuery<SuperAdminDashboardResponse>({
     queryKey: ['superadmin-dashboard'],
@@ -115,6 +119,30 @@ export default function SuperAdminDashboard() {
   const { data: responseData, refetch: refetchSlides, isLoading: isSlidesLoading } = useQuery<any>({
     queryKey: ['carousel-slides'],
     queryFn: () => apiClient.get('/carousel')
+  });
+
+  // Fetch Marquee text
+  const { refetch: refetchMarquee } = useQuery<any>({
+    queryKey: ['marquee-text-admin'],
+    queryFn: async () => {
+      const res = await apiClient.get<any>('/carousel/marquee');
+      setMarqueeText(res.text || '');
+      setMarqueeActive(res.is_active ?? true);
+      return res;
+    }
+  });
+
+  // Mutation to save marquee text
+  const saveMarqueeMutation = useMutation({
+    mutationFn: (payload: { text: string; is_active: boolean }) =>
+      apiClient.post('/carousel/marquee', payload),
+    onSuccess: (res: any) => {
+      toast.success(res.message || 'Marquee text saved successfully');
+      queryClient.invalidateQueries({ queryKey: ['marquee-text-admin'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Failed to save marquee text');
+    }
   });
 
   // Fetch Supabase Storage Metrics
@@ -276,6 +304,7 @@ export default function SuperAdminDashboard() {
           onClick={() => {
             refetch();
             refetchSlides();
+            refetchMarquee();
           }} 
           disabled={isFetching || isSlidesLoading}
           className="gap-2 shrink-0 self-start sm:self-auto"
@@ -493,106 +522,165 @@ export default function SuperAdminDashboard() {
         </Card>
       ) : activeTab === 'carousel' ? (
         <div className="grid gap-6 md:grid-cols-3">
-          {/* Add/Edit Slide Panel */}
-          <Card className="bg-card/90 border-border/85 h-fit md:col-span-1">
-            <CardHeader className="pb-3 border-b border-border/40">
-              <CardTitle className="text-lg font-bold">{editingSlideId ? 'Edit Carousel Slide' : 'Add Carousel Slide'}</CardTitle>
-              <CardDescription className="text-xs">
-                {editingSlideId 
-                  ? 'Update the banner image for this active slide. Choose a new image file below to replace the current one.' 
-                  : 'Publish custom banners, training instructions, or news cards to all shop dashboards.'
-                }
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-5">
-              <form onSubmit={handleCreateSlide} className="space-y-4">
-                {editingImageUrl && !slideFile && (
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground">Current Banner Slide</label>
-                    <div className="relative rounded-lg overflow-hidden h-24 border border-border/40 bg-secondary/15">
-                      <img src={editingImageUrl} className="w-full h-full object-cover opacity-60" alt="Current banner" />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                        <span className="text-[10px] text-white font-extrabold uppercase tracking-widest">Active Slide Image</span>
+          <div className="space-y-6 md:col-span-1">
+            {/* Add/Edit Slide Panel */}
+            <Card className="bg-card/90 border-border/85 h-fit">
+              <CardHeader className="pb-3 border-b border-border/40">
+                <CardTitle className="text-lg font-bold">{editingSlideId ? 'Edit Carousel Slide' : 'Add Carousel Slide'}</CardTitle>
+                <CardDescription className="text-xs">
+                  {editingSlideId 
+                    ? 'Update the banner image for this active slide. Choose a new image file below to replace the current one.' 
+                    : 'Publish custom banners, training instructions, or news cards to all shop dashboards.'
+                  }
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-5">
+                <form onSubmit={handleCreateSlide} className="space-y-4">
+                  {editingImageUrl && !slideFile && (
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-muted-foreground">Current Banner Slide</label>
+                      <div className="relative rounded-lg overflow-hidden h-24 border border-border/40 bg-secondary/15">
+                        <img src={editingImageUrl} className="w-full h-full object-cover opacity-60" alt="Current banner" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                          <span className="text-[10px] text-white font-extrabold uppercase tracking-widest">Active Slide Image</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-muted-foreground">
-                    {editingSlideId ? 'Upload New Banner Image (To Replace)' : 'Upload Slide Banner Image'}
-                  </label>
-                  <div className="flex items-center justify-center w-full">
-                    <label className="flex flex-col items-center justify-center w-full h-32 border border-dashed rounded-lg cursor-pointer bg-secondary/15 hover:bg-secondary/25 border-border/60 transition-colors">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Plus className="h-6 w-6 text-muted-foreground mb-2" />
-                        <p className="text-xs text-muted-foreground font-semibold">Click to upload banner</p>
-                        <p className="text-[10px] text-muted-foreground/60 mt-1">PNG, JPG or WEBP (Max 5MB)</p>
-                        <p className="text-[9px] text-primary font-medium mt-0.5">Landscape (16:9 / ~1200x500px) recommended</p>
-                      </div>
-                      <input 
-                        id="slide-image"
-                        type="file" 
-                        accept="image/*" 
-                        onChange={(e) => setSlideFile(e.target.files?.[0] || null)}
-                        className="hidden" 
-                      />
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-muted-foreground">
+                      {editingSlideId ? 'Upload New Banner Image (To Replace)' : 'Upload Slide Banner Image'}
                     </label>
+                    <div className="flex items-center justify-center w-full">
+                      <label className="flex flex-col items-center justify-center w-full h-32 border border-dashed rounded-lg cursor-pointer bg-secondary/15 hover:bg-secondary/25 border-border/60 transition-colors">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                          <Plus className="h-6 w-6 text-muted-foreground mb-2" />
+                          <p className="text-xs text-muted-foreground font-semibold">Click to upload banner</p>
+                          <p className="text-[10px] text-muted-foreground/60 mt-1">PNG, JPG or WEBP (Max 5MB)</p>
+                          <p className="text-[9px] text-primary font-medium mt-0.5">Landscape (16:9 / ~1200x500px) recommended</p>
+                        </div>
+                        <input 
+                          id="slide-image"
+                          type="file" 
+                          accept="image/*" 
+                          onChange={(e) => setSlideFile(e.target.files?.[0] || null)}
+                          className="hidden" 
+                        />
+                      </label>
+                    </div>
+                    {slideFile && (
+                      <div className="mt-2 p-2 bg-secondary/25 border border-border/40 rounded flex items-center justify-between text-xs text-white">
+                        <span className="truncate max-w-[200px]">{slideFile.name}</span>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setSlideFile(null);
+                            const fileInput = document.getElementById('slide-image') as HTMLInputElement;
+                            if (fileInput) fileInput.value = '';
+                          }}
+                          className="text-red-400 hover:text-red-300 font-bold"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  {slideFile && (
-                    <div className="mt-2 p-2 bg-secondary/25 border border-border/40 rounded flex items-center justify-between text-xs text-white">
-                      <span className="truncate max-w-[200px]">{slideFile.name}</span>
-                      <button 
+
+                  <div className="space-y-2">
+                    <Button 
+                      type="submit" 
+                      className="w-full text-xs font-bold uppercase tracking-wider"
+                      disabled={createSlideMutation.isPending || updateSlideMutation.isPending}
+                    >
+                      {createSlideMutation.isPending || updateSlideMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {editingSlideId ? 'Updating Slide...' : 'Creating Slide...'}
+                        </>
+                      ) : (
+                        editingSlideId ? 'Save Slide Changes' : 'Add Banner Slide'
+                      )}
+                    </Button>
+
+                    {editingSlideId && (
+                      <Button 
                         type="button" 
+                        variant="outline"
                         onClick={() => {
+                          setEditingSlideId(null);
+                          setEditingImageUrl(null);
                           setSlideFile(null);
                           const fileInput = document.getElementById('slide-image') as HTMLInputElement;
                           if (fileInput) fileInput.value = '';
                         }}
-                        className="text-red-400 hover:text-red-300 font-bold"
+                        className="w-full text-xs font-bold uppercase tracking-wider"
                       >
-                        Remove
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Button 
-                    type="submit" 
-                    className="w-full text-xs font-bold uppercase tracking-wider"
-                    disabled={createSlideMutation.isPending || updateSlideMutation.isPending}
-                  >
-                    {createSlideMutation.isPending || updateSlideMutation.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {editingSlideId ? 'Updating Slide...' : 'Creating Slide...'}
-                      </>
-                    ) : (
-                      editingSlideId ? 'Save Slide Changes' : 'Add Banner Slide'
+                        Cancel Edit
+                      </Button>
                     )}
-                  </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
 
-                  {editingSlideId && (
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      onClick={() => {
-                        setEditingSlideId(null);
-                        setEditingImageUrl(null);
-                        setSlideFile(null);
-                        const fileInput = document.getElementById('slide-image') as HTMLInputElement;
-                        if (fileInput) fileInput.value = '';
-                      }}
-                      className="w-full text-xs font-bold uppercase tracking-wider"
-                    >
-                      Cancel Edit
-                    </Button>
-                  )}
+            {/* Marquee Ticker Settings */}
+            <Card className="bg-card/90 border-border/85 h-fit">
+              <CardHeader className="pb-3 border-b border-border/40">
+                <CardTitle className="text-lg font-bold">Marquee Ticker Text</CardTitle>
+                <CardDescription className="text-xs">
+                  This custom notice will scroll continuously beneath the main dashboard carousel banner across all store profiles.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-5 space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Ticker Text Content</label>
+                  <textarea
+                    placeholder="Enter marquee announcement message..."
+                    value={marqueeText}
+                    onChange={(e) => setMarqueeText(e.target.value)}
+                    rows={4}
+                    className="w-full bg-secondary/35 border border-border/80 focus:border-primary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none"
+                  />
                 </div>
-              </form>
-            </CardContent>
-          </Card>
+
+                <div className="flex items-center justify-between py-1">
+                  <div>
+                    <span className="text-xs font-bold text-foreground block">Active Notice Status</span>
+                    <span className="text-[10px] text-muted-foreground">Toggle to show or hide the ticker on dashboards</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMarqueeActive(!marqueeActive)}
+                    className={`w-11 h-6 rounded-full transition-colors relative focus:outline-none ${
+                      marqueeActive ? 'bg-primary' : 'bg-muted-foreground/30'
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                        marqueeActive ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <Button
+                  onClick={() => saveMarqueeMutation.mutate({ text: marqueeText, is_active: marqueeActive })}
+                  className="w-full text-xs font-bold uppercase tracking-wider gap-1.5"
+                  disabled={saveMarqueeMutation.isPending}
+                >
+                  {saveMarqueeMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saving Notice...
+                    </>
+                  ) : (
+                    'Save Marquee Notice'
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Current Slides Panel */}
           <Card className="bg-card/90 border-border/85 md:col-span-2">
