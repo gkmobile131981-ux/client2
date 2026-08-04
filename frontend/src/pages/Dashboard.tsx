@@ -508,6 +508,7 @@ export default function Dashboard() {
           </div>
           <div className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/50 py-1">
             <div className="absolute inset-y-0 left-0 w-16 z-10 bg-gradient-to-r from-slate-950/95 via-slate-950/75 to-transparent pointer-events-none" />
+            <div className="absolute inset-y-0 right-0 w-16 z-10 bg-gradient-to-l from-slate-950/95 via-slate-950/75 to-transparent pointer-events-none" />
             <div className="overflow-hidden pl-3 pr-3">
               <div
                 className="inline-flex items-center gap-8 whitespace-nowrap"
