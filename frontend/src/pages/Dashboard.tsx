@@ -175,7 +175,9 @@ export default function Dashboard() {
     queryFn: () => apiClient.get('/carousel/marquee'),
     staleTime: 10 * 60 * 1000
   });
+  const marqueeTitle = marqueeData?.title || 'Latest Updates';
   const marqueeText = (marqueeData?.is_active && marqueeData?.text) ? marqueeData.text : '';
+  const marqueeSpeedSeconds = marqueeText ? Math.min(Math.max(marqueeText.length * 0.22, 8), 18) : 12;
 
   const defaultSlides = [
     {
@@ -496,22 +498,27 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Marquee Ticker Strip ── */}
+      {/* ── Titled Marquee Strip ── */}
       {marqueeText && (
-        <div className="relative overflow-hidden rounded-xl border border-amber-500/20 bg-gradient-to-r from-amber-500/5 via-yellow-500/5 to-amber-500/5 py-2.5 px-0 shadow-sm">
-          <div className="flex items-center gap-2 absolute left-0 top-0 bottom-0 px-3 z-10 bg-gradient-to-r from-card via-card/90 to-transparent pointer-events-none">
-            <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 whitespace-nowrap">📢 Notice</span>
+        <div className="rounded-2xl border border-amber-500/15 bg-gradient-to-r from-amber-500/5 via-yellow-500/5 to-amber-500/5 p-1.5 shadow-sm">
+          <div className="mb-1 flex items-center gap-2">
+            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.25em] text-amber-400 whitespace-nowrap">
+              {marqueeTitle}
+            </span>
           </div>
-          <div className="overflow-hidden ml-20">
-            <div
-              className="flex whitespace-nowrap"
-              style={{
-                animation: 'marquee-scroll 30s linear infinite',
-              }}
-            >
-              <span className="text-xs font-semibold text-foreground/80 pr-16">{marqueeText}</span>
-              <span className="text-xs font-semibold text-foreground/80 pr-16" aria-hidden>{marqueeText}</span>
-              <span className="text-xs font-semibold text-foreground/80 pr-16" aria-hidden>{marqueeText}</span>
+          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/50 py-1.5">
+            <div className="absolute left-0 top-0 bottom-0 w-16 z-10 bg-gradient-to-r from-slate-950/95 via-slate-950/75 to-transparent pointer-events-none" />
+            <div className="overflow-hidden pl-4 pr-4">
+              <div
+                className="inline-flex whitespace-nowrap"
+                style={{
+                  animation: `marquee-scroll ${marqueeSpeedSeconds}s linear infinite`
+                }}
+              >
+                <span className="text-xs font-medium text-foreground/85 pr-10">{marqueeText}</span>
+                <span className="text-xs font-medium text-foreground/85 pr-10" aria-hidden>{marqueeText}</span>
+                <span className="text-xs font-medium text-foreground/85 pr-10" aria-hidden>{marqueeText}</span>
+              </div>
             </div>
           </div>
         </div>

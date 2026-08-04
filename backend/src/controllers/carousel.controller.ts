@@ -190,18 +190,22 @@ export async function getMarqueeText(_req: Request, res: Response): Promise<void
   try {
     const { data, error } = await supabaseAdmin
       .from('marquee_settings')
-      .select('text, is_active')
+      .select('title, text, is_active')
       .order('id', { ascending: true })
       .limit(1)
       .maybeSingle();
 
     if (error) {
       // Table might not exist yet — return empty gracefully
-      res.json({ text: '', is_active: false });
+      res.json({ title: 'Latest Updates', text: '', is_active: false });
       return;
     }
 
-    res.json({ text: data?.text || '', is_active: data?.is_active ?? true });
+    res.json({
+      title: data?.title || 'Latest Updates',
+      text: data?.text || '',
+      is_active: data?.is_active ?? true
+    });
   } catch (err) {
     console.error('Failed to get marquee text:', err);
     res.json({ text: '', is_active: false });
@@ -214,12 +218,19 @@ export async function getMarqueeText(_req: Request, res: Response): Promise<void
  */
 export async function upsertMarqueeText(req: Request, res: Response): Promise<void> {
   try {
-    const { text, is_active } = req.body;
+    const { title, text, is_active } = req.body;
 
     if (typeof text !== 'string') {
       res.status(400).json({ error: 'text field is required' });
       return;
     }
+
+    if (typeof title !== 'string') {
+      res.status(400).json({ error: 'title field is required' });
+      return;
+    }
+
+    const marqueeTitle = title.trim() || 'Latest Updates';
 
     // Check if a row exists
     const { data: existing } = await supabaseAdmin
@@ -233,7 +244,12 @@ export async function upsertMarqueeText(req: Request, res: Response): Promise<vo
       // Update existing row
       const { data, error } = await supabaseAdmin
         .from('marquee_settings')
-        .update({ text: text.trim(), is_active: is_active ?? true, updated_at: new Date().toISOString() })
+        .update({
+          title: marqueeTitle,
+          text: text.trim(),
+          is_active: is_active ?? true,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', existing.id)
         .select()
         .single();
@@ -243,7 +259,11 @@ export async function upsertMarqueeText(req: Request, res: Response): Promise<vo
       // Insert first row
       const { data, error } = await supabaseAdmin
         .from('marquee_settings')
-        .insert({ text: text.trim(), is_active: is_active ?? true })
+        .insert({
+          title: marqueeTitle,
+          text: text.trim(),
+          is_active: is_active ?? true
+        })
         .select()
         .single();
       if (error) throw error;

@@ -106,6 +106,7 @@ export default function SuperAdminDashboard() {
   const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
 
   // Marquee settings state
+  const [marqueeTitle, setMarqueeTitle] = useState('Latest Updates');
   const [marqueeText, setMarqueeText] = useState('');
   const [marqueeActive, setMarqueeActive] = useState(true);
 
@@ -126,6 +127,7 @@ export default function SuperAdminDashboard() {
     queryKey: ['marquee-text-admin'],
     queryFn: async () => {
       const res = await apiClient.get<any>('/carousel/marquee');
+      setMarqueeTitle(res.title || 'Latest Updates');
       setMarqueeText(res.text || '');
       setMarqueeActive(res.is_active ?? true);
       return res;
@@ -134,7 +136,7 @@ export default function SuperAdminDashboard() {
 
   // Mutation to save marquee text
   const saveMarqueeMutation = useMutation({
-    mutationFn: (payload: { text: string; is_active: boolean }) =>
+    mutationFn: (payload: { title: string; text: string; is_active: boolean }) =>
       apiClient.post('/carousel/marquee', payload),
     onSuccess: (res: any) => {
       toast.success(res.message || 'Marquee text saved successfully');
@@ -635,6 +637,17 @@ export default function SuperAdminDashboard() {
               <CardContent className="p-5 space-y-4">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Ticker Text Content</label>
+                  <input
+                    type="text"
+                    placeholder="Marquee title"
+                    value={marqueeTitle}
+                    onChange={(e) => setMarqueeTitle(e.target.value)}
+                    className="w-full bg-secondary/35 border border-border/80 focus:border-primary rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Ticker Text Content</label>
                   <textarea
                     placeholder="Enter marquee announcement message..."
                     value={marqueeText}
@@ -665,7 +678,7 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 <Button
-                  onClick={() => saveMarqueeMutation.mutate({ text: marqueeText, is_active: marqueeActive })}
+                  onClick={() => saveMarqueeMutation.mutate({ title: marqueeTitle, text: marqueeText, is_active: marqueeActive })}
                   className="w-full text-xs font-bold uppercase tracking-wider gap-1.5"
                   disabled={saveMarqueeMutation.isPending}
                 >
