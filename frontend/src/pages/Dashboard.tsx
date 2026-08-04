@@ -512,11 +512,13 @@ export default function Dashboard() {
               <div
                 className="inline-flex whitespace-nowrap"
                 style={{
-                  animation: `marquee-scroll ${marqueeSpeedSeconds}s linear infinite`
+                  animation: `marquee-scroll ${marqueeSpeedSeconds}s linear infinite`,
+                  minWidth: 'max-content'
                 }}
               >
-                <span className="text-xs font-medium text-foreground/85 pr-8">{marqueeText}</span>
-                <span className="text-xs font-medium text-foreground/85 pr-8" aria-hidden>{marqueeText}</span>
+                <span className="text-xs font-medium text-foreground/85 pr-6">{marqueeText}</span>
+                <span className="text-xs font-medium text-foreground/85 pr-6" aria-hidden>{marqueeText}</span>
+                <span className="text-xs font-medium text-foreground/85 pr-6" aria-hidden>{marqueeText}</span>
               </div>
             </div>
           </div>
