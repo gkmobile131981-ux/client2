@@ -124,7 +124,7 @@ option {
     transform: translate3d(-96%, 0, 0);
   }
   100% {
-    transform: translate3d(-100%, 0, 0);
+    transform: translate3d(-120%, 0, 0);
   }
 }
 

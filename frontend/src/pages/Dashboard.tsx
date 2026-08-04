@@ -177,7 +177,7 @@ export default function Dashboard() {
   });
   const marqueeTitle = marqueeData?.title || 'Latest Updates';
   const marqueeText = (marqueeData?.is_active && marqueeData?.text) ? marqueeData.text : '';
-  const marqueeSpeedSeconds = marqueeText ? Math.min(Math.max(marqueeText.length * 0.16, 6), 12) : 8;
+  const marqueeSpeedSeconds = marqueeText ? Math.min(Math.max(marqueeText.length * 0.22 + 8, 12), 24) : 12;
 
   const defaultSlides = [
     {
