@@ -511,14 +511,19 @@ export default function Dashboard() {
             <div className="absolute inset-y-0 right-0 w-16 z-10 bg-gradient-to-l from-slate-950/95 via-slate-950/75 to-transparent pointer-events-none" />
             <div className="overflow-hidden pl-3 pr-3">
               <div
-                className="inline-flex items-center gap-8 whitespace-nowrap"
+                className="inline-flex items-center gap-10 whitespace-nowrap"
                 style={{
                   transform: 'translate3d(100%, 0, 0)',
                   animation: `marquee-scroll ${marqueeSpeedSeconds}s linear infinite`,
-                  minWidth: 'max-content'
+                  animationFillMode: 'forwards',
+                  animationTimingFunction: 'linear',
+                  willChange: 'transform',
+                  minWidth: 'max-content',
+                  paddingInlineStart: '2rem',
+                  paddingInlineEnd: '2rem'
                 }}
               >
-                {[0, 1, 2].map((idx) => (
+                {[0, 1, 2, 3].map((idx) => (
                   <span
                     key={idx}
                     className="text-xs font-medium text-foreground/85 pr-4"
