@@ -170,7 +170,7 @@ export default function Dashboard() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // Marquee text state
-  const { data: marqueeData } = useQuery<{ text: string; is_active: boolean }>({
+  const { data: marqueeData } = useQuery<{ title?: string; text: string; is_active: boolean }>({
     queryKey: ['marquee-text'],
     queryFn: () => apiClient.get('/carousel/marquee'),
     staleTime: 10 * 60 * 1000
