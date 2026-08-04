@@ -177,7 +177,7 @@ export default function Dashboard() {
   });
   const marqueeTitle = marqueeData?.title || 'Latest Updates';
   const marqueeText = (marqueeData?.is_active && marqueeData?.text) ? marqueeData.text : '';
-  const marqueeSpeedSeconds = marqueeText ? Math.min(Math.max(marqueeText.length * 0.22, 8), 18) : 12;
+  const marqueeSpeedSeconds = marqueeText ? Math.min(Math.max(marqueeText.length * 0.16, 6), 12) : 8;
 
   const defaultSlides = [
     {
@@ -500,24 +500,23 @@ export default function Dashboard() {
 
       {/* ── Titled Marquee Strip ── */}
       {marqueeText && (
-        <div className="rounded-2xl border border-amber-500/15 bg-gradient-to-r from-amber-500/5 via-yellow-500/5 to-amber-500/5 p-1.5 shadow-sm">
+        <div className="rounded-2xl border border-amber-500/15 bg-gradient-to-r from-amber-500/5 via-yellow-500/5 to-amber-500/5 p-1 shadow-sm">
           <div className="mb-1 flex items-center gap-2">
             <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.25em] text-amber-400 whitespace-nowrap">
               {marqueeTitle}
             </span>
           </div>
-          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/50 py-1.5">
+          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/50 py-1">
             <div className="absolute left-0 top-0 bottom-0 w-16 z-10 bg-gradient-to-r from-slate-950/95 via-slate-950/75 to-transparent pointer-events-none" />
-            <div className="overflow-hidden pl-4 pr-4">
+            <div className="overflow-hidden pl-3 pr-3">
               <div
                 className="inline-flex whitespace-nowrap"
                 style={{
                   animation: `marquee-scroll ${marqueeSpeedSeconds}s linear infinite`
                 }}
               >
-                <span className="text-xs font-medium text-foreground/85 pr-10">{marqueeText}</span>
-                <span className="text-xs font-medium text-foreground/85 pr-10" aria-hidden>{marqueeText}</span>
-                <span className="text-xs font-medium text-foreground/85 pr-10" aria-hidden>{marqueeText}</span>
+                <span className="text-xs font-medium text-foreground/85 pr-8">{marqueeText}</span>
+                <span className="text-xs font-medium text-foreground/85 pr-8" aria-hidden>{marqueeText}</span>
               </div>
             </div>
           </div>

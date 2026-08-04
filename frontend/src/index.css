@@ -112,10 +112,10 @@ option {
 
 @keyframes marquee-scroll {
   0% {
-    transform: translate3d(0, 0, 0);
+    transform: translate3d(100%, 0, 0);
   }
   100% {
-    transform: translate3d(-33.3333%, 0, 0);
+    transform: translate3d(-100%, 0, 0);
   }
 }
 
