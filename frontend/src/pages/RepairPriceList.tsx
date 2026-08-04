@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Smartphone, BookOpen, Loader2, RefreshCw } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { apiClient } from '../lib/api';
+import { SearchSelect } from '../components/ui/SearchSelect';
 
 interface RateCardService {
   id?: string;
@@ -219,24 +220,56 @@ export default function RepairPriceList() {
 
   const rateCards = data?.rateCards || [];
 
-  // Get unique brands list from DB rate cards
+  // Get unique brands list from DB rate cards combined with predefined brands
   const uniqueBrands = useMemo(() => {
-    const brandsSet = new Set(rateCards.map((rc) => rc.brand.toUpperCase()));
+    const brandsSet = new Set([
+      ...rateCards.map((rc) => rc.brand.toUpperCase()),
+      ...Object.keys(DEVICE_BRANDS),
+    ]);
     return Array.from(brandsSet).sort();
   }, [rateCards]);
 
-  // Filter models based on selected brand from DB rate cards
+  // Options for Brand SearchSelect
+  const brandOptions = useMemo(() => {
+    return uniqueBrands.map((b) => {
+      const count = rateCards.filter((rc) => rc.brand.toUpperCase() === b).length;
+      return {
+        value: b,
+        label: b,
+        sublabel: count > 0 ? `${count} rate card${count > 1 ? 's' : ''} saved` : undefined,
+      };
+    });
+  }, [uniqueBrands, rateCards]);
+
+  // Filter models based on selected brand from DB rate cards or predefined fallback list
   const filteredModels = useMemo(() => {
     if (!selectedBrand) return [];
-    const models = rateCards
+    
+    // DB models matching selected brand
+    const dbModels = rateCards
       .filter((rc) => rc.brand.toUpperCase() === selectedBrand.toUpperCase())
       .map((rc) => ({ id: rc.id, model: rc.model }));
-    return models.sort((a, b) => a.model.localeCompare(b.model));
+
+    if (dbModels.length > 0) {
+      return dbModels.sort((a, b) => a.model.localeCompare(b.model));
+    }
+
+    // Fallback: Show predefined models if no DB rate card exists yet for this brand
+    const fallbackModels = DEVICE_BRANDS[selectedBrand.toUpperCase()] || [];
+    return fallbackModels.map((m) => ({ id: `fallback-${m}`, model: m }));
   }, [selectedBrand, rateCards]);
+
+  // Options for Model SearchSelect
+  const modelOptions = useMemo(() => {
+    return filteredModels.map((m) => ({
+      value: m.id,
+      label: m.model.toUpperCase(),
+    }));
+  }, [filteredModels]);
 
   // Find the selected rate card details
   const selectedRateCard = useMemo(() => {
-    if (!selectedModelId) return null;
+    if (!selectedModelId || selectedModelId.startsWith('fallback-')) return null;
     return rateCards.find((rc) => rc.id === selectedModelId) || null;
   }, [selectedModelId, rateCards]);
 
@@ -247,15 +280,6 @@ export default function RepairPriceList() {
       ? selectedRateCard.services
       : DEFAULT_SERVICES;
   }, [selectedRateCard]);
-
-  const handleBrandChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedBrand(e.target.value);
-    setSelectedModelId('');
-  };
-
-  const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedModelId(e.target.value);
-  };
 
   return (
     <div className="container mx-auto p-4 lg:p-6 text-foreground max-w-7xl space-y-6">
@@ -296,39 +320,30 @@ export default function RepairPriceList() {
               </CardHeader>
               <CardContent className="pt-6 space-y-4">
                 {/* Brand Selector */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-primary uppercase tracking-wider block">Brand</label>
-                  <select
-                    value={selectedBrand}
-                    onChange={handleBrandChange}
-                    className="w-full bg-slate-950 border border-border/80 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary font-semibold text-foreground cursor-pointer transition-all animate-none"
-                  >
-                    <option value="">Select Brand</option>
-                    {uniqueBrands.map((b) => (
-                      <option key={b} value={b}>
-                        {b}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <SearchSelect
+                  label="Brand"
+                  placeholder="Search brand (e.g. type V for Vivo)..."
+                  options={brandOptions}
+                  value={selectedBrand}
+                  onChange={(val) => {
+                    setSelectedBrand(val);
+                    setSelectedModelId('');
+                  }}
+                  emptyMessage="No brand found starting with"
+                />
 
                 {/* Model Selector */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-primary uppercase tracking-wider block">Model</label>
-                  <select
-                    value={selectedModelId}
-                    onChange={handleModelChange}
-                    disabled={!selectedBrand}
-                    className="w-full bg-slate-950 border border-border/80 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary font-semibold text-foreground cursor-pointer transition-all disabled:opacity-50"
-                  >
-                    <option value="">Select Model</option>
-                    {filteredModels.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.model.toUpperCase()}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <SearchSelect
+                  label="Model"
+                  placeholder={!selectedBrand ? "Select a brand first" : "Search model (e.g. V20, iPhone 15)..."}
+                  disabled={!selectedBrand}
+                  options={modelOptions}
+                  value={selectedModelId}
+                  onChange={(val) => {
+                    setSelectedModelId(val);
+                  }}
+                  emptyMessage="No model found matching"
+                />
               </CardContent>
             </Card>
 
@@ -338,6 +353,7 @@ export default function RepairPriceList() {
                 <CardTitle className="text-sm font-bold text-white uppercase tracking-wider">Device Photo</CardTitle>
               </CardHeader>
               <CardContent className="flex items-center justify-center p-6 bg-slate-950/20 min-h-[220px]">
+
                 {selectedRateCard ? (
                   selectedRateCard.model_image_url ? (
                     <div className="relative rounded-xl overflow-hidden border border-border/60 max-h-[300px]">
