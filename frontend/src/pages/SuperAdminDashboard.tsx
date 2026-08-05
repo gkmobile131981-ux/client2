@@ -31,6 +31,9 @@ import { apiClient } from '../lib/api';
 import { formatDate, formatDateTime } from '../lib/date';
 import toast from 'react-hot-toast';
 
+const MIN_MARQUEE_SPEED = 10;
+const MAX_MARQUEE_SPEED = 600;
+
 interface StorageSummary {
   totalFiles: number;
   totalSizeBytes: number;
@@ -113,7 +116,14 @@ export default function SuperAdminDashboard() {
   const [marqueeTitle, setMarqueeTitle] = useState('Latest Updates');
   const [marqueeText, setMarqueeText] = useState('');
   const [marqueeActive, setMarqueeActive] = useState(true);
-  const [marqueeSpeedSeconds, setMarqueeSpeedSeconds] = useState(40);
+  const [marqueeSpeedSeconds, setMarqueeSpeedSeconds] = useState(120);
+  const [marqueeSpeedInput, setMarqueeSpeedInput] = useState('120');
+
+  const commitMarqueeSpeed = (value: number) => {
+    const clamped = Math.min(Math.max(Math.round(value) || 120, MIN_MARQUEE_SPEED), MAX_MARQUEE_SPEED);
+    setMarqueeSpeedSeconds(clamped);
+    setMarqueeSpeedInput(String(clamped));
+  };
 
   // Passwords are stored as one-way hashes by Supabase Auth and cannot be retrieved in plain text.
   // We generate temporary passwords on demand and reveal them here (Super Admin only).
@@ -140,7 +150,9 @@ export default function SuperAdminDashboard() {
       setMarqueeTitle(res.title || 'Latest Updates');
       setMarqueeText(res.text || '');
       setMarqueeActive(res.is_active ?? true);
-      setMarqueeSpeedSeconds(res.speed_seconds != null ? Number(res.speed_seconds) : 40);
+      const speed = Math.min(Math.max(Math.round(res.speed_seconds != null ? Number(res.speed_seconds) : 120), MIN_MARQUEE_SPEED), MAX_MARQUEE_SPEED);
+      setMarqueeSpeedSeconds(speed);
+      setMarqueeSpeedInput(String(speed));
       return res;
     }
   });
@@ -720,40 +732,66 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 {/* Marquee scroll speed control */}
-                <div className="flex items-center justify-between gap-3 py-1">
-                  <div>
-                    <span className="text-xs font-bold text-foreground block flex items-center gap-1.5">
-                      <Gauge className="h-3.5 w-3.5 text-primary" /> Scroll Speed
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">Seconds per full marquee cycle (slower = higher value)</span>
+                <div className="space-y-2 py-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-bold text-foreground block flex items-center gap-1.5">
+                        <Gauge className="h-3.5 w-3.5 text-primary" /> Scroll Speed
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">Seconds per full marquee cycle (slower = higher value)</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => commitMarqueeSpeed(Number(marqueeSpeedSeconds) - 5)}
+                        disabled={Number(marqueeSpeedSeconds) <= MIN_MARQUEE_SPEED}
+                        className="w-8 h-8 rounded-lg bg-secondary/40 border border-border/70 text-foreground hover:bg-secondary/70 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
+                        title="Slow down marquee"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <div className="flex items-center gap-1 rounded-lg bg-secondary/40 border border-border/70 px-2">
+                        <input
+                          type="number"
+                          min={MIN_MARQUEE_SPEED}
+                          max={MAX_MARQUEE_SPEED}
+                          value={marqueeSpeedInput}
+                          onChange={(e) => setMarqueeSpeedInput(e.target.value)}
+                          onBlur={() => commitMarqueeSpeed(Number(marqueeSpeedInput) || 120)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                          className="w-14 bg-transparent text-center text-xs font-black text-foreground font-mono focus:outline-none"
+                          title="Type a value directly, e.g. 120"
+                        />
+                        <span className="text-[10px] text-muted-foreground font-mono">s</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => commitMarqueeSpeed(Number(marqueeSpeedSeconds) + 5)}
+                        disabled={Number(marqueeSpeedSeconds) >= MAX_MARQUEE_SPEED}
+                        className="w-8 h-8 rounded-lg bg-secondary/40 border border-border/70 text-foreground hover:bg-secondary/70 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
+                        title="Speed up marquee"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setMarqueeSpeedSeconds((s) => Math.min(Math.max(Math.round((Number(s) || 40) - 1), 10), 120))}
-                      disabled={Number(marqueeSpeedSeconds) <= 10}
-                      className="w-8 h-8 rounded-lg bg-secondary/40 border border-border/70 text-foreground hover:bg-secondary/70 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
-                      title="Slow down marquee"
-                    >
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <span className="w-12 text-center text-xs font-black text-foreground font-mono">
-                      {Number(marqueeSpeedSeconds) || 40}s
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setMarqueeSpeedSeconds((s) => Math.min(Math.max(Math.round((Number(s) || 40) + 1), 10), 120))}
-                      disabled={Number(marqueeSpeedSeconds) >= 120}
-                      className="w-8 h-8 rounded-lg bg-secondary/40 border border-border/70 text-foreground hover:bg-secondary/70 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
-                      title="Speed up marquee"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
+                  <input
+                    type="range"
+                    min={MIN_MARQUEE_SPEED}
+                    max={MAX_MARQUEE_SPEED}
+                    step={5}
+                    value={Number(marqueeSpeedSeconds)}
+                    onChange={(e) => commitMarqueeSpeed(Number(e.target.value))}
+                    className="w-full accent-primary cursor-pointer"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground font-mono">
+                    <span>{MIN_MARQUEE_SPEED}s · Fast</span>
+                    <span>{MAX_MARQUEE_SPEED}s · Slowest</span>
                   </div>
                 </div>
 
                 <Button
-                  onClick={() => saveMarqueeMutation.mutate({ title: marqueeTitle, text: marqueeText, is_active: marqueeActive, speed_seconds: Number(marqueeSpeedSeconds) || 40 })}
+                  onClick={() => saveMarqueeMutation.mutate({ title: marqueeTitle, text: marqueeText, is_active: marqueeActive, speed_seconds: Number(marqueeSpeedSeconds) || 120 })}
                   className="w-full text-xs font-bold uppercase tracking-wider gap-1.5"
                   disabled={saveMarqueeMutation.isPending}
                 >

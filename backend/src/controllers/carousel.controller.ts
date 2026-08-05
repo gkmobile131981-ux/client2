@@ -9,9 +9,9 @@ const createSlideSchema = z.object({
 });
 
 // Marquee ticker scroll settings (seconds per full cycle)
-const DEFAULT_MARQUEE_SPEED = 40;
+const DEFAULT_MARQUEE_SPEED = 120;
 const MIN_MARQUEE_SPEED = 10;
-const MAX_MARQUEE_SPEED = 120;
+const MAX_MARQUEE_SPEED = 600;
 
 const clampMarqueeSpeed = (value: unknown): number => {
   const parsed = Number(value);

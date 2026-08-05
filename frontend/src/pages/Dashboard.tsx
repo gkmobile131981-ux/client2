@@ -178,7 +178,7 @@ export default function Dashboard() {
   });
   const marqueeTitle = marqueeData?.title || 'Latest Updates';
   const marqueeText = (marqueeData?.is_active && marqueeData?.text) ? marqueeData.text : '';
-  const marqueeSpeedSeconds = Math.min(Math.max(Number(marqueeData?.speed_seconds) || 40, 10), 120);
+  const marqueeSpeedSeconds = Math.min(Math.max(Number(marqueeData?.speed_seconds) || 120, 10), 600);
 
   const defaultSlides = [
     {
@@ -521,8 +521,6 @@ export default function Dashboard() {
           </div>
           {/* Scrolling ticker content beside the label */}
           <div className="relative flex flex-1 min-w-0 items-center overflow-hidden border-l border-amber-500/20 py-1 sm:py-1.5">
-            <div className="absolute inset-y-0 left-0 w-16 z-10 bg-gradient-to-r from-slate-950/95 via-slate-950/75 to-transparent pointer-events-none" />
-            <div className="absolute inset-y-0 right-0 w-16 z-10 bg-gradient-to-l from-slate-950/95 via-slate-950/75 to-transparent pointer-events-none" />
             <div className="overflow-hidden pl-3 pr-3">
               <div
                 className="inline-flex items-center whitespace-nowrap will-change-transform"
