@@ -16,7 +16,8 @@ import {
   CheckCircle,
   Calendar,
   Search,
-  FileText
+  FileText,
+  BookOpen
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -378,7 +379,7 @@ export default function Dashboard() {
             <Plus className="h-5 w-5" />
             <span>Create New Booking</span>
           </Button>
-          {isSuperAdmin && (
+          {isSuperAdmin ? (
             <Button
               onClick={() => navigate('/settings/create-price')}
               className="gap-2 shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] h-11 px-5 rounded-xl text-sm font-extrabold uppercase bg-amber-500/10 text-amber-400"
@@ -386,7 +387,15 @@ export default function Dashboard() {
               <FileText className="h-5 w-5" />
               <span>Create Repair Pricelist</span>
             </Button>
-          )}
+          ) : authRole === 'owner' ? (
+            <Button
+              onClick={() => navigate('/price-list')}
+              className="gap-2 shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] h-11 px-5 rounded-xl text-sm font-extrabold uppercase bg-amber-500/10 text-amber-400"
+            >
+              <BookOpen className="h-5 w-5" />
+              <span>Repair Price List</span>
+            </Button>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Search Billing Input */}

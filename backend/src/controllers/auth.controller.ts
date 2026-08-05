@@ -5,15 +5,15 @@ import { uploadPhoto } from '../utils/photoUpload';
 
 // Validation Schemas
 const registerOwnerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
+  name: z.string().trim().min(2, 'Name must be at least 2 characters'),
+  email: z.string().trim().toLowerCase().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  shopName: z.string().min(2, 'Shop name must be at least 2 characters'),
-  shopAddress: z.string().optional().nullable(),
-  shopPhone: z.string().optional().nullable(),
+  shopName: z.string().trim().min(2, 'Shop name must be at least 2 characters'),
+  shopAddress: z.string().trim().optional().nullable(),
+  shopPhone: z.string().trim().optional().nullable(),
   shopType: z.string().default('Mobile Repair'),
-  gstNumber: z.string().optional().nullable(),
-  communityUsername: z.string().optional().nullable(),
+  gstNumber: z.string().trim().optional().nullable(),
+  communityUsername: z.string().trim().optional().nullable(),
   currencyCode: z.string().default('INR'),
   currencySymbol: z.string().default('₹')
 });
@@ -52,10 +52,62 @@ function getErrorMessage(error: any, fallback: string): string {
   return error.name || fallback;
 }
 
+// Normalize text: trim and collapse internal whitespace so duplicate checks never false-positive on spacing
+function normalizeText(value: string): string {
+  return (value || '').trim().replace(/\s+/g, ' ');
+}
+
+// Normalize phone: strip all non-digit characters so formatting variants (+91 9976... vs +919976...) compare equally
+function normalizePhone(value: string): string {
+  return (value || '').replace(/[^\d]/g, '');
+}
+
+// Check whether an email is already registered in Supabase Auth (normalized to lowercase)
+async function isEmailRegistered(email: string): Promise<boolean> {
+  const target = (email || '').trim().toLowerCase();
+  if (!target) return false;
+  const { data, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+  if (error || !data) return false;
+  return data.users.some(u => u.email && u.email.trim().toLowerCase() === target);
+}
+
 // Controllers
 export async function registerOwner(req: Request, res: Response): Promise<void> {
   try {
     const data = registerOwnerSchema.parse(req.body);
+
+    // Normalize the email up front so duplicate detection and auth creation are case/whitespace consistent
+    const email = data.email.trim().toLowerCase();
+
+    // Duplicate prevention: block ONLY exact duplicates (normalized), per business rules.
+    // Email: case/whitespace-insensitive. Shop name: case-insensitive, whitespace-collapsed. Phone: digits-only.
+    if (await isEmailRegistered(email)) {
+      res.status(409).json({ error: 'This email is already registered. Please log in or use a different email address.' });
+      return;
+    }
+
+    const { data: existingShops, error: existingShopsError } = await supabaseAdmin
+      .from('shops')
+      .select('name, phone');
+
+    if (!existingShopsError && existingShops) {
+      const targetName = normalizeText(data.shopName);
+      const targetPhone = data.shopPhone ? normalizePhone(data.shopPhone) : '';
+
+      const nameTaken = existingShops.some(s => s.name && normalizeText(s.name) === targetName);
+      if (nameTaken) {
+        res.status(409).json({ error: `A shop with the name "${data.shopName}" is already registered. Please use a different shop name.` });
+        return;
+      }
+
+      if (targetPhone) {
+        const phoneTaken = existingShops.some(s => s.phone && normalizePhone(s.phone) === targetPhone);
+        if (phoneTaken) {
+          res.status(409).json({ error: 'A shop with this phone number is already registered. Please use a different phone number.' });
+          return;
+        }
+      }
+    }
 
     let logoUrl: string | null = null;
     if (req.file) {
@@ -68,7 +120,7 @@ export async function registerOwner(req: Request, res: Response): Promise<void> 
 
     // 1. Create auth user with supabaseAdmin (so we can auto-confirm their email)
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
+      email,
       password: data.password,
       email_confirm: true,
       user_metadata: { name: data.name, role: 'owner' }
@@ -135,14 +187,67 @@ export async function registerOwner(req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // 4. Log the user in to generate access/refresh tokens
-    const { data: sessionData, error: sessionError } = await supabaseClient.auth.signInWithPassword({
-      email: data.email,
+    // 4. Log the user in to generate access/refresh tokens.
+    // IMPORTANT: The account (auth user + shop) was already created above, so a failed sign-in here must NOT
+    // leave a half-registered account that blocks retries with "already registered". Mirror the login flow's
+    // Admin OTP bypass so Supabase rate limits (IP/email based 429s) cannot break signup, and clean up on failure.
+    const sessionRes = await supabaseClient.auth.signInWithPassword({
+      email,
       password: data.password
     });
 
-    if (sessionError || !sessionData.session) {
-      res.status(400).json({ error: getErrorMessage(sessionError, 'Failed to sign in after registration') });
+    let sessionData = sessionRes.data;
+    let sessionError = sessionRes.error;
+
+    if (sessionError) {
+      const errMsg = (sessionError.message || '').toLowerCase();
+      const isRateLimit = sessionError.status === 429 ||
+        errMsg.includes('rate limit') ||
+        errMsg.includes('too many') ||
+        errMsg.includes('over_email_send_rate_limit') ||
+        errMsg.includes('retryable');
+
+      if (isRateLimit) {
+        try {
+          console.log('[Auth System] Registration sign-in rate limit encountered. Executing Admin OTP session bypass...');
+          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'magiclink',
+            email
+          });
+
+          if (!linkError && linkData?.properties?.email_otp) {
+            const { data: otpData, error: otpError } = await supabaseClient.auth.verifyOtp({
+              email,
+              token: linkData.properties.email_otp,
+              type: 'magiclink'
+            });
+
+            if (!otpError && otpData.session && otpData.user) {
+              sessionData = otpData as any;
+              sessionError = null;
+            }
+          }
+        } catch (bypassErr) {
+          console.error('[Auth System] Registration rate limit bypass exception:', bypassErr);
+        }
+      }
+    }
+
+    if (sessionError || !sessionData?.session) {
+      // Clean up the fully-created account so the user can retry registration cleanly
+      if (logoUrl) {
+        try {
+          const path = logoUrl.split('/shop-logos/')[1];
+          if (path) {
+            await supabaseAdmin.storage.from('shop-logos').remove([path]);
+          }
+        } catch (e) {
+          console.error('Failed to cleanup logo after registration sign-in failure:', e);
+        }
+      }
+      await supabaseAdmin.from('shops').delete().eq('id', shop.id);
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      res.status(400).json({ error: getErrorMessage(sessionError, 'Failed to sign in after registration. Please try logging in with your new credentials.') });
       return;
     }
 
@@ -152,7 +257,7 @@ export async function registerOwner(req: Request, res: Response): Promise<void> 
       user: {
         id: user.id,
         name: user.name,
-        email: data.email,
+        email,
         role: user.role,
         staff_id: user.staff_id,
         shop_id: user.shop_id,

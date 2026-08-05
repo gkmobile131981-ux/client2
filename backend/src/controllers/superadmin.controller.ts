@@ -1,5 +1,56 @@
 import { Request, Response } from 'express';
+import { randomBytes } from 'crypto';
 import { supabaseAdmin } from '../utils/supabase';
+
+// Generate a secure temporary password (alphanumeric, guaranteed at least one digit and one uppercase letter).
+// Passwords cannot be recovered in plain text because Supabase Auth stores them as one-way bcrypt hashes,
+// so the secure alternative is generating a fresh temporary password the admin can share with the owner.
+function generateTemporaryPassword(length = 10): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = randomBytes(length);
+  let pwd = '';
+  for (let i = 0; i < length; i++) pwd += chars[bytes[i] % chars.length];
+  if (!/\d/.test(pwd)) pwd = pwd.slice(0, -1) + '2';
+  if (!/[A-Z]/.test(pwd)) pwd = pwd.slice(0, -1) + 'Z';
+  return pwd;
+}
+
+export async function resetShopOwnerPassword(req: Request, res: Response): Promise<void> {
+  const { id } = req.params; // Shop ID
+
+  try {
+    // 1. Fetch the shop to identify the owner_id
+    const { data: shop, error: shopError } = await supabaseAdmin
+      .from('shops')
+      .select('owner_id')
+      .eq('id', id)
+      .single();
+
+    if (shopError || !shop) {
+      res.status(404).json({ error: 'Shop not found' });
+      return;
+    }
+
+    // 2. Set a fresh temporary password on the owner's auth account via the Admin SDK
+    const temporaryPassword = generateTemporaryPassword();
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(shop.owner_id, {
+      password: temporaryPassword
+    });
+
+    if (updateError) {
+      res.status(400).json({ error: updateError.message || 'Failed to reset password' });
+      return;
+    }
+
+    res.json({
+      message: 'Password reset successfully. Share the temporary password with the shop owner.',
+      temporaryPassword
+    });
+  } catch (err) {
+    console.error('Reset shop owner password error:', err);
+    res.status(500).json({ error: 'Failed to reset shop owner password' });
+  }
+}
 
 export async function getSuperAdminDashboard(_req: Request, res: Response): Promise<void> {
   try {

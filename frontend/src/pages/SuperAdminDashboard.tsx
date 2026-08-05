@@ -20,7 +20,8 @@ import {
   ExternalLink,
   Database,
   Minus,
-  Gauge
+  Gauge,
+  KeyRound
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
@@ -113,6 +114,11 @@ export default function SuperAdminDashboard() {
   const [marqueeActive, setMarqueeActive] = useState(true);
   const [marqueeSpeedSeconds, setMarqueeSpeedSeconds] = useState(16);
 
+  // Passwords are stored as one-way hashes by Supabase Auth and cannot be retrieved in plain text.
+  // We generate temporary passwords on demand and reveal them here (Super Admin only).
+  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, string>>({});
+  const [resettingShopId, setResettingShopId] = useState<string | null>(null);
+
   // Fetch Super Admin data
   const { data, isLoading, refetch, isFetching } = useQuery<SuperAdminDashboardResponse>({
     queryKey: ['superadmin-dashboard'],
@@ -181,6 +187,20 @@ export default function SuperAdminDashboard() {
     onError: (err: any) => {
       toast.error(err.message || 'Failed to update shop status');
     }
+  });
+
+  // Mutation to generate a fresh temporary password for a shop owner (secure alternative to viewing hashed passwords)
+  const resetPasswordMutation = useMutation({
+    mutationFn: (shopId: string) => apiClient.post<{ temporaryPassword: string; message: string }>(`/superadmin/shops/${shopId}/reset-password`, {}),
+    onMutate: (shopId: string) => setResettingShopId(shopId),
+    onSuccess: (res: any, shopId: string) => {
+      toast.success('Temporary password generated. Share it with the shop owner.');
+      setRevealedPasswords(prev => ({ ...prev, [shopId]: res.temporaryPassword }));
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Failed to reset password');
+    },
+    onSettled: () => setResettingShopId(null)
   });
 
   // Mutation to create slide
@@ -461,6 +481,9 @@ export default function SuperAdminDashboard() {
                             <div className="space-y-0.5">
                               <span className="font-semibold text-white">{shop.owner.name}</span>
                               <p className="text-[10px] text-muted-foreground">{shop.owner.email}</p>
+                              <p className="text-[10px] text-muted-foreground font-mono">
+                                Password: {revealedPasswords[shop.owner.id] || '••••••••'}
+                              </p>
                             </div>
                           ) : (
                             <span className="text-muted-foreground italic">No owner linked</span>
@@ -500,15 +523,33 @@ export default function SuperAdminDashboard() {
 
                         {/* Action Button */}
                         <td className="p-4 text-center">
-                          <Button
-                            variant={isActive ? 'destructive' : 'default'}
-                            size="sm"
-                            onClick={() => handleToggleStatus(shop.id, shop.name, isActive)}
-                            disabled={toggleStatusMutation.isPending}
-                            className="h-8 text-[11px] font-bold uppercase tracking-wider px-3.5"
-                          >
-                            {isActive ? 'Deactivate' : 'Activate'}
-                          </Button>
+                          <div className="flex flex-col items-center gap-2">
+                            <Button
+                              variant={isActive ? 'destructive' : 'default'}
+                              size="sm"
+                              onClick={() => handleToggleStatus(shop.id, shop.name, isActive)}
+                              disabled={toggleStatusMutation.isPending}
+                              className="h-8 text-[11px] font-bold uppercase tracking-wider px-3.5"
+                            >
+                              {isActive ? 'Deactivate' : 'Activate'}
+                            </Button>
+                            {shop.owner && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => resetPasswordMutation.mutate(shop.id)}
+                                disabled={resettingShopId === shop.id}
+                                className="h-8 text-[11px] font-bold uppercase tracking-wider px-3.5"
+                              >
+                                {resettingShopId === shop.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <KeyRound className="h-3.5 w-3.5" />
+                                )}
+                                Reset Password
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

@@ -29,14 +29,14 @@ import toast from 'react-hot-toast';
 
 const registerSchema = z.object({
   shopType: z.string().min(1, 'Please select a shop type'),
-  shopName: z.string().min(2, 'Shop name must be at least 2 characters'),
-  gstNumber: z.string().optional(),
-  name: z.string().min(2, 'Owner name must be at least 2 characters'),
-  communityUsername: z.string().min(2, 'Username must be at least 2 characters'),
+  shopName: z.string().trim().min(2, 'Shop name must be at least 2 characters'),
+  gstNumber: z.string().trim().optional(),
+  name: z.string().trim().min(2, 'Owner name must be at least 2 characters'),
+  communityUsername: z.string().trim().min(2, 'Username must be at least 2 characters'),
   countryCode: z.string().default('+91'),
-  phoneNumberOnly: z.string().min(5, 'Phone number must be at least 5 characters'),
-  shopAddress: z.string().min(5, 'Address must be at least 5 characters'),
-  email: z.string().email('Please enter a valid email address'),
+  phoneNumberOnly: z.string().trim().min(5, 'Phone number must be at least 5 characters'),
+  shopAddress: z.string().trim().min(5, 'Address must be at least 5 characters'),
+  email: z.string().trim().toLowerCase().email('Please enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   currencyCode: z.string().default('INR'),
   currencySymbol: z.string().default('₹')
