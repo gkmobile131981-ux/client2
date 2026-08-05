@@ -18,7 +18,9 @@ import {
   Folder,
   FileText,
   ExternalLink,
-  Database
+  Database,
+  Minus,
+  Gauge
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
@@ -109,6 +111,7 @@ export default function SuperAdminDashboard() {
   const [marqueeTitle, setMarqueeTitle] = useState('Latest Updates');
   const [marqueeText, setMarqueeText] = useState('');
   const [marqueeActive, setMarqueeActive] = useState(true);
+  const [marqueeSpeedSeconds, setMarqueeSpeedSeconds] = useState(16);
 
   // Fetch Super Admin data
   const { data, isLoading, refetch, isFetching } = useQuery<SuperAdminDashboardResponse>({
@@ -130,13 +133,14 @@ export default function SuperAdminDashboard() {
       setMarqueeTitle(res.title || 'Latest Updates');
       setMarqueeText(res.text || '');
       setMarqueeActive(res.is_active ?? true);
+      setMarqueeSpeedSeconds(res.speed_seconds != null ? Number(res.speed_seconds) : 16);
       return res;
     }
   });
 
   // Mutation to save marquee text
   const saveMarqueeMutation = useMutation({
-    mutationFn: (payload: { title: string; text: string; is_active: boolean }) =>
+    mutationFn: (payload: { title: string; text: string; is_active: boolean; speed_seconds: number }) =>
       apiClient.post('/carousel/marquee', payload),
     onSuccess: (res: any) => {
       toast.success(res.message || 'Marquee text saved successfully');
@@ -677,8 +681,41 @@ export default function SuperAdminDashboard() {
                   </button>
                 </div>
 
+                {/* Marquee scroll speed control */}
+                <div className="flex items-center justify-between gap-3 py-1">
+                  <div>
+                    <span className="text-xs font-bold text-foreground block flex items-center gap-1.5">
+                      <Gauge className="h-3.5 w-3.5 text-primary" /> Scroll Speed
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">Seconds per full marquee cycle (slower = higher value)</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setMarqueeSpeedSeconds((s) => Math.min(Math.max(Math.round((Number(s) || 16) - 1), 6), 40))}
+                      disabled={Number(marqueeSpeedSeconds) <= 6}
+                      className="w-8 h-8 rounded-lg bg-secondary/40 border border-border/70 text-foreground hover:bg-secondary/70 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
+                      title="Slow down marquee"
+                    >
+                      <Minus className="h-4 w-4" />
+                    </button>
+                    <span className="w-12 text-center text-xs font-black text-foreground font-mono">
+                      {Number(marqueeSpeedSeconds) || 16}s
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setMarqueeSpeedSeconds((s) => Math.min(Math.max(Math.round((Number(s) || 16) + 1), 6), 40))}
+                      disabled={Number(marqueeSpeedSeconds) >= 40}
+                      className="w-8 h-8 rounded-lg bg-secondary/40 border border-border/70 text-foreground hover:bg-secondary/70 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
+                      title="Speed up marquee"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
                 <Button
-                  onClick={() => saveMarqueeMutation.mutate({ title: marqueeTitle, text: marqueeText, is_active: marqueeActive })}
+                  onClick={() => saveMarqueeMutation.mutate({ title: marqueeTitle, text: marqueeText, is_active: marqueeActive, speed_seconds: Number(marqueeSpeedSeconds) || 16 })}
                   className="w-full text-xs font-bold uppercase tracking-wider gap-1.5"
                   disabled={saveMarqueeMutation.isPending}
                 >

@@ -346,6 +346,19 @@ export default function SettingsPage({ defaultTab }: SettingsPageProps = {}) {
     }
   };
 
+  // Permanently delete a staff member
+  const handleDeleteStaff = async (staffId: string, staffName: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete staff member "${staffName}"? This cannot be undone.`)) return;
+    try {
+      await apiClient.delete(`/auth/staff/${staffId}`);
+      toast.success(`Staff member "${staffName}" deleted successfully`);
+      fetchStaff();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to delete staff member.');
+    }
+  };
+
   // Update Account Profile
   const onSaveProfile = async (values: AccountProfileFormValues) => {
     setSavingProfile(true);
@@ -806,6 +819,13 @@ export default function SettingsPage({ defaultTab }: SettingsPageProps = {}) {
                             className="p-1.5 border border-border hover:bg-secondary/40 rounded-lg text-muted-foreground hover:text-foreground"
                           >
                             <KeyRound className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteStaff(emp.id, emp.name)}
+                            title="Delete staff member"
+                            className="p-1.5 border border-red-500/30 hover:bg-red-500/10 rounded-lg text-red-400 hover:text-red-300"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                           <button
                             onClick={() => handleToggleStaff(emp.id, emp.is_active)}

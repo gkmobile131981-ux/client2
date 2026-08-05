@@ -300,7 +300,6 @@ const repairOrderSchema = z.object({
   accessoryAdapter: z.boolean().optional().default(false),
   accessoryKeyboardMouse: z.boolean().optional().default(false),
   accessoryOther: z.boolean().optional().default(false),
-  serialNumber: z.string().optional().nullable(),
   imei: z.string().optional().nullable(),
   warranty: z.string().optional().nullable(),
   estimate: z.number().positive('Estimate cost must be positive'),
@@ -374,6 +373,10 @@ export default function NewRepair() {
   const [customProblem, setCustomProblem] = useState('');
   const [deviceImages, setDeviceImages] = useState<string[]>([]);
 
+  // Warranty autocomplete-with-create state
+  const [customWarranty, setCustomWarranty] = useState('');
+  const [warrantySearchOpen, setWarrantySearchOpen] = useState(false);
+
   // Handle selecting multiple images from Gallery (with compression)
   const handleMultipleDeviceImagesUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -429,10 +432,6 @@ export default function NewRepair() {
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [brandSearchQuery, setBrandSearchQuery] = useState('');
   const [modelSearchQuery, setModelSearchQuery] = useState('');
-
-  // Date and Time Fields Displays
-  const [repairDateDisplay, setRepairDateDisplay] = useState('');
-  const [repairTimeDisplay, setRepairTimeDisplay] = useState('');
 
   // Quick Accessories Received State
   const QUICK_ACCESSORIES = [
@@ -511,7 +510,6 @@ export default function NewRepair() {
       accessoryAdapter: false,
       accessoryKeyboardMouse: false,
       accessoryOther: false,
-      serialNumber: '',
       imei: '',
       warranty: '',
       estimate: 0,
@@ -530,15 +528,10 @@ export default function NewRepair() {
 
   const { register, handleSubmit, setValue, watch, control, formState: { errors } } = form;
 
-  // Pre-load current date and time
+  // Set deliveryDate to today (DB format YYYY-MM-DD). The repair date itself is
+  // auto-recorded at creation time (created_at) and shown on the billing/receipt.
   useEffect(() => {
     const today = new Date();
-    const formattedDate = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
-    const formattedTime = `${String(today.getHours()).padStart(2, '0')}H:${String(today.getMinutes()).padStart(2, '0')}M:${String(today.getSeconds()).padStart(2, '0')}S`;
-    setRepairDateDisplay(formattedDate);
-    setRepairTimeDisplay(formattedTime);
-
-    // Set deliveryDate in DB format YYYY-MM-DD
     const deliveryString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     setValue('deliveryDate', deliveryString);
   }, [setValue]);
@@ -868,7 +861,6 @@ export default function NewRepair() {
       setValue('lockCode', r.device?.lock_code || r.lock_code || '');
       setValue('patternLock', r.device?.pattern_lock || r.pattern_lock || '');
 
-      setValue('serialNumber', r.device?.serial_number || r.serial_number || '');
       setValue('imei', r.device?.imei || '');
       setValue('warranty', r.device?.warranty || r.warranty || '');
       setValue('estimate', Number(r.estimate) || 0, { shouldValidate: true });
@@ -877,7 +869,7 @@ export default function NewRepair() {
       setValue('expense', Number(r.expense) || 0);
       setValue('deliveryDate', r.delivery_date || '');
       setValue('staffId', r.staff_id || '');
-      setValue('notes', r.notes || '');
+      setValue('notes', (r.notes || '').replace(/\[Accessories Received:.*?\]/g, '').replace(/^\s*\|\s*|\s*\|\s*$/g, '').trim());
 
       if (r.notes && r.notes.includes('[Accessories Received:')) {
         const match = r.notes.match(/\[Accessories Received:\s*(.*?)\]/);
@@ -977,6 +969,42 @@ export default function NewRepair() {
     const updated = items.filter(item => item.toLowerCase() !== probToRemove.toLowerCase());
     setValue('problem', updated.join(', '), { shouldValidate: true });
     toast.success(`Removed problem: "${probToRemove}"`);
+  };
+
+  // Existing warranty values from past repairs
+  const existingWarrantiesList = React.useMemo(() => {
+    const warrantySet = new Set<string>();
+    (pastRepairsData?.repairs || []).forEach((r: any) => {
+      const w = r.device?.warranty || r.warranty;
+      if (w && w.trim()) warrantySet.add(w.trim());
+    });
+    return Array.from(warrantySet);
+  }, [pastRepairsData]);
+
+  const filteredWarranties = React.useMemo(() => {
+    const q = customWarranty.trim().toLowerCase();
+    if (!q) return existingWarrantiesList;
+    return existingWarrantiesList.filter(w => w.toLowerCase().includes(q)).sort((a, b) => {
+      const aStarts = a.toLowerCase().startsWith(q);
+      const bStarts = b.toLowerCase().startsWith(q);
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      return a.localeCompare(b);
+    });
+  }, [customWarranty, existingWarrantiesList]);
+
+  // Set warranty value (from suggestion or custom input)
+  const handleSetWarranty = (value: string) => {
+    setValue('warranty', value.trim(), { shouldValidate: true });
+    setCustomWarranty('');
+    setWarrantySearchOpen(false);
+  };
+
+  const handleAddCustomWarranty = () => {
+    const raw = customWarranty.trim();
+    if (!raw) return;
+    handleSetWarranty(raw);
+    toast.success('Device warranty saved');
   };
 
   // File Upload Helper — converts files to compressed Base64 before storing
@@ -1275,7 +1303,6 @@ export default function NewRepair() {
     formData.append('accessoryKeyboardMouse', String(hasKeyboardSim));
     formData.append('accessoryOther', String(hasOther));
 
-    if (values.serialNumber) formData.append('serialNumber', values.serialNumber);
     if (values.imei) formData.append('imei', values.imei);
     if (values.warranty) formData.append('warranty', values.warranty);
 
@@ -2074,42 +2101,21 @@ export default function NewRepair() {
           )}
         </div>
 
-        {/* SECTION 4: SERIAL NUMBER, IMEI & TECHNICIAN */}
+        {/* SECTION 4: IMEI & TECHNICIAN */}
         <div className="space-y-4 pt-6">
           <div className="flex items-center gap-2 border-b border-border/40 pb-2">
             <span className="text-base">🏷️</span>
-            <span className="text-sm font-extrabold text-foreground uppercase tracking-wider">Device Identification & Serial Numbers</span>
+            <span className="text-sm font-extrabold text-foreground uppercase tracking-wider">Device Identification & IMEI</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-primary uppercase tracking-wider block">Serial Number (Optional)</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Enter Serial Number..."
-                  {...register('serialNumber')}
-                  className="flex-1 bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-bold min-h-[44px]"
-                />
-                <Button
-                  type="button"
-                  onClick={() => toast.success('Mock barcode scanner triggered')}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold uppercase text-xs px-4 rounded-xl cursor-pointer min-h-[44px]"
-                >
-                  SCAN
-                </Button>
-              </div>
-            </div>
-            
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-primary uppercase tracking-wider block">IMEI Number (Optional)</label>
-              <input
-                type="text"
-                placeholder="Enter 15-digit IMEI..."
-                {...register('imei')}
-                className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-bold min-h-[44px]"
-              />
-            </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-primary uppercase tracking-wider block">IMEI Number (Optional)</label>
+            <input
+              type="text"
+              placeholder="Enter 15-digit IMEI..."
+              {...register('imei')}
+              className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-bold min-h-[44px]"
+            />
           </div>
 
           {authRole === 'owner' ? (
@@ -2326,56 +2332,95 @@ export default function NewRepair() {
           />
         </div>
 
-        {/* SECTION 8: REPAIR DATE, TIME & REMINDER */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-6">
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Current repair date</span>
-            <div className="text-sm font-bold text-foreground">{repairDateDisplay || 'Loading...'}</div>
-            <Button
-              type="button"
-              onClick={() => {
-                const today = new Date();
-                setRepairDateDisplay(`${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`);
-                toast.success('Repair date initialized');
-              }}
-              className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-[10px] font-bold uppercase py-1 px-3 h-7 mt-1.5 cursor-pointer"
-            >
-              REPAIR DATE
-            </Button>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Current repair time</span>
-            <div className="text-sm font-bold text-foreground">{repairTimeDisplay || 'Loading...'}</div>
-            <Button
-              type="button"
-              onClick={() => {
-                const today = new Date();
-                setRepairTimeDisplay(`${String(today.getHours()).padStart(2, '0')}H:${String(today.getMinutes()).padStart(2, '0')}M:${String(today.getSeconds()).padStart(2, '0')}S`);
-                toast.success('Repair time timestamped');
-              }}
-              className="bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-[10px] font-bold uppercase py-1 px-3 h-7 mt-1.5 cursor-pointer"
-            >
-              REPAIR TIME
-            </Button>
-          </div>
-        </div>
-
-
         {/* SECTION 10: ADDITIONAL DETAILS & WARRANTY */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
-          <textarea
-            placeholder="Additional details (Optional)"
-            {...register('notes')}
-            rows={3}
-            className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold resize-none"
-          />
-          <textarea
-            placeholder="Device Warranty (Optional)"
-            {...register('warranty')}
-            rows={3}
-            className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold resize-none"
-          />
+        <div className="space-y-4 pt-6">
+          <div className="flex items-center gap-2 border-b border-border/40 pb-2">
+            <span className="text-base">📋</span>
+            <span className="text-sm font-extrabold text-foreground uppercase tracking-wider">Additional Details & Device Warranty</span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            {/* Device warranty autocomplete-with-create */}
+            <div className="relative space-y-2">
+              <label className="text-xs font-bold text-primary uppercase tracking-wider block">Device Warranty (Optional)</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Type or pick previous warranty..."
+                  value={customWarranty}
+                  onChange={(e) => {
+                    setCustomWarranty(e.target.value);
+                    setWarrantySearchOpen(true);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddCustomWarranty();
+                    }
+                  }}
+                  onFocus={() => setWarrantySearchOpen(true)}
+                  className="flex-1 bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-semibold transition-all shadow-sm min-h-[44px]"
+                />
+                <Button
+                  type="button"
+                  onClick={handleAddCustomWarranty}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold uppercase text-xs px-5 shrink-0 rounded-xl shadow-md cursor-pointer min-h-[44px]"
+                >
+                  ADD
+                </Button>
+              </div>
+
+              {warrantySearchOpen && customWarranty.trim().length >= 1 && (
+                <div className="absolute z-40 left-0 right-16 bg-card border border-border rounded-xl divide-y divide-border/40 overflow-hidden shadow-2xl max-h-56 overflow-y-auto mt-1">
+                  {filteredWarranties.length > 0 && (
+                    filteredWarranties.map((item) => (
+                      <button
+                        type="button"
+                        key={item}
+                        onClick={() => {
+                          handleSetWarranty(item);
+                          setWarrantySearchOpen(false);
+                        }}
+                        className="w-full p-2.5 text-left hover:bg-primary/25 hover:text-foreground cursor-pointer flex justify-between items-center text-xs font-semibold text-foreground/90 transition-colors"
+                      >
+                        <span>🛡️ {item}</span>
+                        <span className="text-[10px] text-primary uppercase font-bold bg-primary/20 px-2 py-0.5 rounded-md">SELECT +</span>
+                      </button>
+                    ))
+                  )}
+                  {customWarranty.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleAddCustomWarranty();
+                      }}
+                      className="w-full p-2.5 text-left bg-primary/10 hover:bg-primary/25 cursor-pointer flex justify-between items-center text-xs font-extrabold text-primary border-t border-primary/30"
+                    >
+                      <span>➕ Create new warranty: "{customWarranty}"</span>
+                      <span className="text-[10px] uppercase tracking-wider font-black">ADD</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {watch('warranty') && (watch('warranty') || '').trim().length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-extrabold bg-primary/15 text-primary border border-primary/35 shadow-sm">
+                    <span>🛡️ {watch('warranty')}</span>
+                    <button
+                      type="button"
+                      onClick={() => setValue('warranty', '', { shouldValidate: true })}
+                      className="text-red-400 hover:text-red-500 font-black ml-1 text-xs cursor-pointer p-0.5 rounded hover:bg-red-500/20"
+                      title="Remove warranty"
+                    >
+                      ✕
+                    </button>
+                  </span>
+                </div>
+              )}
+              <input type="hidden" {...register('warranty')} />
+            </div>
+          </div>
         </div>
 
         {/* SECTION 11: VIBRANT GRADIENT SUBMIT BUTTON BAR — CREATE BOOKING */}

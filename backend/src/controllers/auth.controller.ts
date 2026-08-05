@@ -614,6 +614,63 @@ export async function toggleStaffStatus(req: Request, res: Response): Promise<vo
   }
 }
 
+// Owner Exclusive: Permanently delete a staff member (auth user + profile)
+export async function deleteStaff(req: Request, res: Response): Promise<void> {
+  const owner = req.user;
+  const { id } = req.params;
+
+  if (!owner || !owner.shop_id) {
+    res.status(400).json({ error: 'Owner must be linked to a shop' });
+    return;
+  }
+
+  try {
+    // 1. Verify the target is a staff member of this owner's shop
+    const { data: staff, error: fetchError } = await supabaseAdmin
+      .from('users')
+      .select('*')
+      .eq('id', id)
+      .eq('shop_id', owner.shop_id)
+      .eq('role', 'staff')
+      .single();
+
+    if (fetchError || !staff) {
+      res.status(404).json({ error: 'Staff member not found in your shop' });
+      return;
+    }
+
+    // 2. Block deletion while the staff member has active (unfinished) repairs
+    const { data: activeRepairs, error: activeError } = await supabaseAdmin
+      .from('repairs')
+      .select('id')
+      .eq('staff_id', id)
+      .not('status', 'in', '(delivered,cancelled)')
+      .limit(1);
+
+    if (activeError) throw activeError;
+
+    if (activeRepairs && activeRepairs.length > 0) {
+      res.status(400).json({
+        error: 'Cannot delete staff with active repair orders. Reassign or complete their pending repairs first.'
+      });
+      return;
+    }
+
+    // 3. Delete the auth user. The public.users row is removed via ON DELETE CASCADE,
+    //    and repairs/history staff_id references are set to NULL by their foreign keys.
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id);
+    if (authError) {
+      res.status(400).json({ error: getErrorMessage(authError, 'Failed to delete staff credentials') });
+      return;
+    }
+
+    res.json({ message: 'Staff member deleted successfully', deletedId: id });
+  } catch (err) {
+    console.error('Failed to delete staff:', err);
+    res.status(500).json({ error: 'Failed to delete staff member' });
+  }
+}
+
 export async function updateProfile(req: Request, res: Response): Promise<void> {
   const userId = req.user?.id;
   if (!userId) {

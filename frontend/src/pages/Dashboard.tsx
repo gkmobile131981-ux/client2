@@ -15,7 +15,8 @@ import {
   Smartphone,
   CheckCircle,
   Calendar,
-  Search
+  Search,
+  FileText
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -170,14 +171,16 @@ export default function Dashboard() {
   const [currentSlide, setCurrentSlide] = useState(0);
 
   // Marquee text state
-  const { data: marqueeData } = useQuery<{ title?: string; text: string; is_active: boolean }>({
+  const { data: marqueeData } = useQuery<{ title?: string; text: string; is_active: boolean; speed_seconds?: number | null }>({
     queryKey: ['marquee-text'],
     queryFn: () => apiClient.get('/carousel/marquee'),
     staleTime: 10 * 60 * 1000
   });
   const marqueeTitle = marqueeData?.title || 'Latest Updates';
   const marqueeText = (marqueeData?.is_active && marqueeData?.text) ? marqueeData.text : '';
-  const marqueeSpeedSeconds = marqueeText ? Math.min(Math.max(marqueeText.length * 0.22 + 8, 12), 24) : 12;
+  const marqueeSpeedSeconds = marqueeData?.speed_seconds
+    ? Math.min(Math.max(Number(marqueeData.speed_seconds) || 16, 6), 40)
+    : (marqueeText ? Math.min(Math.max(marqueeText.length * 0.22 + 8, 12), 24) : 12);
 
   const defaultSlides = [
     {
@@ -375,6 +378,15 @@ export default function Dashboard() {
             <Plus className="h-5 w-5" />
             <span>Create New Booking</span>
           </Button>
+          {isSuperAdmin && (
+            <Button
+              onClick={() => navigate('/settings/create-price')}
+              className="gap-2 shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:shadow-[0_0_20px_rgba(245,158,11,0.4)] h-11 px-5 rounded-xl text-sm font-extrabold uppercase bg-amber-500/10 text-amber-400"
+            >
+              <FileText className="h-5 w-5" />
+              <span>Create Repair Pricelist</span>
+            </Button>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {/* Search Billing Input */}
@@ -498,39 +510,33 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Titled Marquee Strip ── */}
+      {/* ── Marquee Strip: Static Label Chip + Scrolling Ticker ── */}
       {marqueeText && (
-        <div className="rounded-2xl border border-amber-500/15 bg-gradient-to-r from-amber-500/5 via-yellow-500/5 to-amber-500/5 p-1 shadow-sm">
-          <div className="mb-1 flex items-center gap-2">
-            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.25em] text-amber-400 whitespace-nowrap">
-              {marqueeTitle}
-            </span>
+        <div className="flex items-stretch overflow-hidden rounded-2xl border border-amber-500/15 bg-gradient-to-r from-amber-500/5 via-yellow-500/5 to-amber-500/5 shadow-sm">
+          {/* Static label chip (fixed, does not scroll) */}
+          <div className="flex shrink-0 items-center gap-2 px-4 sm:px-5 bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 text-slate-950 font-black uppercase tracking-[0.2em] text-xs sm:text-sm whitespace-nowrap">
+            <span className="hidden sm:inline-block h-1.5 w-1.5 rounded-full bg-slate-950/70 animate-pulse" />
+            {marqueeTitle}
           </div>
-          <div className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/50 py-1">
+          {/* Scrolling ticker content beside the label */}
+          <div className="relative flex-1 min-w-0 overflow-hidden border-l border-amber-500/20 py-1">
             <div className="absolute inset-y-0 left-0 w-16 z-10 bg-gradient-to-r from-slate-950/95 via-slate-950/75 to-transparent pointer-events-none" />
             <div className="absolute inset-y-0 right-0 w-16 z-10 bg-gradient-to-l from-slate-950/95 via-slate-950/75 to-transparent pointer-events-none" />
             <div className="overflow-hidden pl-3 pr-3">
               <div
-                className="inline-flex items-center gap-10 whitespace-nowrap"
+                className="inline-flex items-center whitespace-nowrap will-change-transform"
                 style={{
-                  transform: 'translate3d(100%, 0, 0)',
-                  animation: `marquee-scroll ${marqueeSpeedSeconds}s linear infinite`,
-                  animationFillMode: 'forwards',
-                  animationTimingFunction: 'linear',
-                  willChange: 'transform',
-                  minWidth: 'max-content',
-                  paddingInlineStart: '2rem',
-                  paddingInlineEnd: '2rem'
+                  animation: `marquee-scroll ${marqueeSpeedSeconds}s linear infinite`
                 }}
               >
-                {[0, 1, 2, 3].map((idx) => (
-                  <span
-                    key={idx}
-                    className="text-xs font-medium text-foreground/85 pr-4"
-                    aria-hidden={idx > 0}
-                  >
-                    {marqueeText}
-                  </span>
+                {[0, 1].map((half) => (
+                  <div key={half} className="inline-flex items-center gap-10 pr-10 shrink-0" aria-hidden={half > 0}>
+                    {[0, 1].map((idx) => (
+                      <span key={idx} className="text-xs font-medium text-foreground/85 pr-4">
+                        {marqueeText}
+                      </span>
+                    ))}
+                  </div>
                 ))}
               </div>
             </div>

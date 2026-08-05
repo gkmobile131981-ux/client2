@@ -12,7 +12,8 @@ import {
   ToggleRight, 
   Mail,
   User,
-  Lock
+  Lock,
+  Trash2
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -116,6 +117,19 @@ export default function StaffSettings() {
     }
   };
 
+  // Permanently delete a staff member
+  const handleDeleteStaff = async (staffId: string, staffName: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete staff member "${staffName}"? This cannot be undone.`)) return;
+    try {
+      await apiClient.delete(`/auth/staff/${staffId}`);
+      toast.success(`Staff member "${staffName}" deleted successfully`);
+      setStaff((prev) => prev.filter((s) => s.id !== staffId));
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to delete staff member.');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -175,25 +189,34 @@ export default function StaffSettings() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <button
-                        onClick={() => handleToggleStatus(emp.id, emp.is_active)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                          emp.is_active
-                            ? 'border-red-500/30 text-red-400 hover:bg-red-500/10'
-                            : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
-                        }`}
-                        title={emp.is_active ? 'Deactivate Staff' : 'Activate Staff'}
-                      >
-                        {emp.is_active ? (
-                          <>
-                            <ToggleRight className="h-4 w-4" /> Deactivate
-                          </>
-                        ) : (
-                          <>
-                            <ToggleLeft className="h-4 w-4" /> Activate
-                          </>
-                        )}
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleDeleteStaff(emp.id, emp.name)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
+                          title="Delete Staff"
+                        >
+                          <Trash2 className="h-4 w-4" /> Delete
+                        </button>
+                        <button
+                          onClick={() => handleToggleStatus(emp.id, emp.is_active)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                            emp.is_active
+                              ? 'border-red-500/30 text-red-400 hover:bg-red-500/10'
+                              : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
+                          }`}
+                          title={emp.is_active ? 'Deactivate Staff' : 'Activate Staff'}
+                        >
+                          {emp.is_active ? (
+                            <>
+                              <ToggleRight className="h-4 w-4" /> Deactivate
+                            </>
+                          ) : (
+                            <>
+                              <ToggleLeft className="h-4 w-4" /> Activate
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

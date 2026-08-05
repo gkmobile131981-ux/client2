@@ -29,7 +29,7 @@ interface RepairListItem {
   estimate: number;
   advance: number;
   balance: number;
-  status: 'pending' | 'repairing' | 'ready' | 'delivered' | 'delivered_pending_balance' | 'cancelled';
+  status: 'booking' | 'pending' | 'repairing' | 'ready' | 'delivered' | 'delivered_pending_balance' | 'cancelled';
   delivery_date: string | null;
   created_at: string;
   device?: {
@@ -176,6 +176,7 @@ export default function Repairs() {
   };
 
   const statusColors: Record<string, string> = {
+    booking: 'bg-purple-500/10 text-purple-500 border-purple-500/20',
     pending: 'bg-amber-500/10 text-amber-500 border-amber-500/20',
     repairing: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
     ready: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20',
@@ -185,12 +186,33 @@ export default function Repairs() {
   };
 
   const statusLabels: Record<string, string> = {
+    booking: 'BOOKING',
     pending: 'ORDERED',
     repairing: 'REPAIRING',
     ready: 'REPAIRED',
     delivered: 'DELIVERED',
     delivered_pending_balance: 'DELIVERED (UNPAID)',
     cancelled: 'CANCELLED'
+  };
+
+  // Inline status change via the existing status endpoint
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      apiClient.put(`/repairs/${id}/status`, { status }),
+    onSuccess: () => {
+      toast.success('Repair status updated!');
+      queryClient.invalidateQueries({ queryKey: ['repairs-list'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-data'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Failed to update repair status');
+    }
+  });
+
+  const handleStatusChange = (e: React.MouseEvent | React.ChangeEvent, id: string, currentStatus: string, newStatus: string) => {
+    e.stopPropagation();
+    if (!newStatus || newStatus === currentStatus) return;
+    updateStatusMutation.mutate({ id, status: newStatus });
   };
 
   return (
@@ -325,10 +347,37 @@ export default function Repairs() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm text-foreground truncate">{r.device?.customer?.name || 'Walk-In'}</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${statusColors[r.status] || 'bg-secondary/20 text-muted-foreground border-border'}`}>
-                            {statusLabels[r.status] || r.status}
-                          </span>
+                          <span className={`font-semibold text-sm text-foreground truncate`}>{r.device?.customer?.name || 'Walk-In'}</span>
+                          {/* Inline status dropdown — change status directly without opening the ticket.
+                              Delivery statuses are handled in the repair workflow after the REPAIRED stage,
+                              so they are no longer selectable here; existing records still render as badges. */}
+                          {['delivered', 'delivered_pending_balance'].includes(r.status) ? (
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border ${
+                                statusColors[r.status] || 'bg-secondary/20 text-muted-foreground border-border'
+                              }`}
+                            >
+                              {statusLabels[r.status] || r.status}
+                            </span>
+                          ) : (
+                            <select
+                              value={r.status}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => handleStatusChange(e, r.id, r.status, e.target.value)}
+                              title="Change repair status inline"
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border cursor-pointer outline-none focus:ring-2 focus:ring-primary/40 appearance-none pr-6 ${
+                                statusColors[r.status] || 'bg-secondary/20 text-muted-foreground border-border'
+                              }`}
+                            >
+                              {Object.keys(statusLabels)
+                                .filter((s) => s !== 'delivered' && s !== 'delivered_pending_balance')
+                                .map((s) => (
+                                  <option key={s} value={s} className="bg-card text-foreground normal-case tracking-normal">
+                                    {statusLabels[s]}
+                                  </option>
+                                ))}
+                            </select>
+                          )}
                           {isOutflowBalance && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-orange-500/20 text-orange-400 border border-orange-500/40">
                               Outflow Balance ⚠️

@@ -10,6 +10,7 @@ import {
   getMe,
   getStaff,
   toggleStaffStatus,
+  deleteStaff,
   updateProfile,
   updateOwnerIdCard,
   changePassword,
@@ -45,6 +46,7 @@ router.get('/me', authenticateToken, getMe);
 router.post('/create-staff', authenticateToken, requireOwner, createStaff);
 router.get('/staff', authenticateToken, requireOwner, getStaff);
 router.put('/staff/:id', authenticateToken, requireOwner, toggleStaffStatus);
+router.delete('/staff/:id', authenticateToken, requireOwner, deleteStaff);
 
 router.put('/update-profile', authenticateToken, updateProfile);
 router.put('/profile/id-card', authenticateToken, uploadPhotoCard.single('photo'), updateOwnerIdCard);
