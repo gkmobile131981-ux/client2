@@ -10,6 +10,7 @@ import {
   Plus,
   X,
   Camera,
+  ScanLine,
   Upload,
   Image as ImageIcon,
   Video,
@@ -34,6 +35,7 @@ import { apiClient } from '../lib/api';
 import toast from 'react-hot-toast';
 import SignatureCanvas from 'react-signature-canvas';
 import { compressBase64Image } from '../utils/imageCompressor';
+import { ImeiScannerModal } from '../components/imei/ImeiScannerModal';
 const ReactSignatureCanvas = (SignatureCanvas as any).default || SignatureCanvas;
 
 const DEVICE_BRANDS: Record<string, string[]> = {
@@ -348,6 +350,7 @@ export default function NewRepair() {
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const [patternLockOpen, setPatternLockOpen] = useState(false);
   const [signatureOpen, setSignatureOpen] = useState(false);
+  const [imeiScannerOpen, setImeiScannerOpen] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
   const [showLockCode, setShowLockCode] = useState(false);
   const [showPattern, setShowPattern] = useState(true);
@@ -2110,12 +2113,30 @@ export default function NewRepair() {
 
           <div className="space-y-1">
             <label className="text-xs font-bold text-primary uppercase tracking-wider block">IMEI Number (Optional)</label>
-            <input
-              type="text"
-              placeholder="Enter 15-digit IMEI..."
-              {...register('imei')}
-              className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:outline-none focus:border-primary font-bold min-h-[44px]"
-            />
+            <div className="relative">
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Enter 15-digit IMEI..."
+                {...register('imei')}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
+                name="imei_number_input"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                data-form-type="other"
+                className="w-full bg-secondary/35 border border-border rounded-xl px-4 py-3 pr-20 text-sm text-foreground focus:outline-none focus:border-primary font-bold min-h-[44px]"
+              />
+              <button
+                type="button"
+                onClick={() => setImeiScannerOpen(true)}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex items-center gap-1.5 bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider"
+              >
+                <ScanLine className="h-3.5 w-3.5" />
+                Scan
+              </button>
+            </div>
           </div>
 
           {authRole === 'owner' ? (
@@ -2446,6 +2467,15 @@ export default function NewRepair() {
 
       </form>
 
+
+      <ImeiScannerModal
+        isOpen={imeiScannerOpen}
+        onClose={() => setImeiScannerOpen(false)}
+        onScan={(imei) => {
+          setValue('imei', imei);
+          setImeiScannerOpen(false);
+        }}
+      />
 
       {signatureOpen && (
         <div className="fixed inset-0 z-50 bg-transparent flex items-center justify-center p-3 light text-foreground">

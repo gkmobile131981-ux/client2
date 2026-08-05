@@ -151,6 +151,12 @@ export default function Register() {
         refresh_token: data.refreshToken
       });
 
+      // Persist the profile cache synchronously so a page reload right after
+      // registration never bounces the user back to the login screen.
+      localStorage.setItem('gk_cached_user', JSON.stringify(data.user));
+      localStorage.setItem('gk_cached_shop', JSON.stringify(data.shop));
+      localStorage.setItem('gk_cached_role', data.user?.role || 'owner');
+
       toast.success('Shop registered and logged in!');
       setTimeout(() => {
         navigate('/');

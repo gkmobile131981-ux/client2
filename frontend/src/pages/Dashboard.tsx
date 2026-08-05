@@ -528,7 +528,7 @@ export default function Dashboard() {
             {marqueeTitle}
           </div>
           {/* Scrolling ticker content beside the label */}
-          <div className="relative flex-1 min-w-0 overflow-hidden border-l border-amber-500/20 py-1">
+          <div className="relative flex flex-1 min-w-0 items-center overflow-hidden border-l border-amber-500/20 py-1 sm:py-1.5">
             <div className="absolute inset-y-0 left-0 w-16 z-10 bg-gradient-to-r from-slate-950/95 via-slate-950/75 to-transparent pointer-events-none" />
             <div className="absolute inset-y-0 right-0 w-16 z-10 bg-gradient-to-l from-slate-950/95 via-slate-950/75 to-transparent pointer-events-none" />
             <div className="overflow-hidden pl-3 pr-3">
@@ -541,7 +541,7 @@ export default function Dashboard() {
                 {[0, 1].map((half) => (
                   <div key={half} className="inline-flex items-center gap-10 pr-10 shrink-0" aria-hidden={half > 0}>
                     {[0, 1].map((idx) => (
-                      <span key={idx} className="text-xs font-medium text-foreground/85 pr-4">
+                      <span key={idx} className="text-[clamp(0.8125rem,0.75rem+0.4vw,0.9375rem)] font-semibold leading-snug tracking-wide text-foreground/90 pr-4">
                         {marqueeText}
                       </span>
                     ))}

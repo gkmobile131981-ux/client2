@@ -65,8 +65,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [isLoading, setIsLoading] = useState<boolean>(() => {
-    // If cached user exists, don't block render with loading spinner
-    return !localStorage.getItem('gk_cached_user') && !localStorage.getItem('gk_access_token');
+    // Loading only if there is a token to restore but no cached profile yet.
+    // When a cached profile exists we render instantly; when a token exists we
+    // must NOT render the unauthenticated state (which redirects to /login)
+    // while the profile is being restored.
+    const hasCachedUser = !!localStorage.getItem('gk_cached_user');
+    const hasToken = !!localStorage.getItem('gk_access_token') || !!localStorage.getItem('gk_refresh_token');
+    return !hasCachedUser && hasToken;
   });
 
   const profileLoadingPromiseRef = React.useRef<Promise<void> | null>(null);
@@ -185,24 +190,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (storedAccessToken) {
         try {
+          // Re-establish the in-memory Supabase session (the client uses
+          // persistSession:false) so realtime channels and auth listeners work
+          // after a full page reload, not just login.
+          const storedRefreshTokenForSupabase = localStorage.getItem('gk_refresh_token');
+          if (storedRefreshTokenForSupabase) {
+            await supabase.auth.setSession({
+              access_token: storedAccessToken,
+              refresh_token: storedRefreshTokenForSupabase
+            }).catch(() => {});
+          }
           await loadProfile(storedAccessToken);
         } catch (error) {
           console.warn('Silent profile refresh fallback:', error);
         }
       } else if (storedRefreshToken) {
         try {
-          await supabase.auth.setSession({
+          const { data: newSession } = await supabase.auth.refreshSession({
             refresh_token: storedRefreshToken
-          } as any);
-          const { data: { session: newSession } } = await supabase.auth.getSession();
-          if (newSession?.access_token) {
-            localStorage.setItem('gk_refresh_token', newSession.refresh_token);
-            localStorage.setItem('gk_access_token', newSession.access_token);
-            await loadProfile(newSession.access_token);
+          });
+          if (newSession?.session?.access_token) {
+            localStorage.setItem('gk_refresh_token', newSession.session.refresh_token);
+            localStorage.setItem('gk_access_token', newSession.session.access_token);
+            await loadProfile(newSession.session.access_token);
           }
         } catch (error) {
           console.warn('Failed to restore session using stored refresh token:', error);
         }
+      }
+
+      // If the profile could not be restored and there is no cached fallback,
+      // the stored tokens are stale — drop them so the app lands on /login
+      // instead of being stuck in the loading state or bouncing repeatedly.
+      if (!localStorage.getItem('gk_cached_user') && !localStorage.getItem('gk_cached_shop')) {
+        localStorage.removeItem('gk_access_token');
+        localStorage.removeItem('gk_refresh_token');
       }
       setIsLoading(false);
     };
@@ -255,6 +277,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(data.user);
       setRole(data.user.role);
       setShop(data.shop);
+
+      // Persist the profile cache synchronously so a page reload right after
+      // login (or a transient profile-refresh failure) never falls back to the
+      // login screen. Previously the cache was only written by the async
+      // onAuthStateChange -> loadProfile listener, leaving a race window.
+      localStorage.setItem('gk_cached_user', JSON.stringify(data.user));
+      localStorage.setItem('gk_cached_shop', JSON.stringify(data.shop));
+      localStorage.setItem('gk_cached_role', data.user.role);
     } catch (err) {
       clearAuth();
       throw err;

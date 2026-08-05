@@ -11,7 +11,6 @@ import superadminRoutes from './routes/superadmin.routes';
 import carouselRoutes from './routes/carousel.routes';
 import subscriptionRoutes from './routes/subscriptions.routes';
 import { sanitizeMiddleware } from './middleware/sanitize';
-import { supabaseAdmin } from './utils/supabase';
 
 dotenv.config();
 
@@ -97,34 +96,6 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
-
-const runStartupSync = async () => {
-  try {
-    const { data: repairs, error } = await supabaseAdmin
-      .from('repairs')
-      .select('id, estimate')
-      .eq('status', 'delivered');
-
-    if (!error && repairs && repairs.length > 0) {
-      let count = 0;
-      for (const r of repairs) {
-        const { error: updateErr } = await supabaseAdmin
-          .from('repairs')
-          .update({ advance: r.estimate })
-          .eq('id', r.id);
-        if (!updateErr) count++;
-      }
-      if (count > 0) {
-        console.log(`[Startup Database Sync] Synced ${count} historical delivered orders to balance ₹0.00.`);
-      }
-    }
-  } catch (err) {
-    console.error('[Startup Database Sync] Sync failed:', err);
-  }
-};
-
-// Run database sync immediately on module initialization (runs on server spin-up / Vercel serverless cold-start)
-runStartupSync();
 
 if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   const portNum = Number(process.env.PORT) || 5000;
