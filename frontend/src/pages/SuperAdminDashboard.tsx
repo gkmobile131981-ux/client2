@@ -28,6 +28,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { apiClient } from '../lib/api';
+import { formatDate, formatDateTime } from '../lib/date';
 import toast from 'react-hot-toast';
 
 interface StorageSummary {
@@ -112,7 +113,7 @@ export default function SuperAdminDashboard() {
   const [marqueeTitle, setMarqueeTitle] = useState('Latest Updates');
   const [marqueeText, setMarqueeText] = useState('');
   const [marqueeActive, setMarqueeActive] = useState(true);
-  const [marqueeSpeedSeconds, setMarqueeSpeedSeconds] = useState(16);
+  const [marqueeSpeedSeconds, setMarqueeSpeedSeconds] = useState(40);
 
   // Passwords are stored as one-way hashes by Supabase Auth and cannot be retrieved in plain text.
   // We generate temporary passwords on demand and reveal them here (Super Admin only).
@@ -139,7 +140,7 @@ export default function SuperAdminDashboard() {
       setMarqueeTitle(res.title || 'Latest Updates');
       setMarqueeText(res.text || '');
       setMarqueeActive(res.is_active ?? true);
-      setMarqueeSpeedSeconds(res.speed_seconds != null ? Number(res.speed_seconds) : 16);
+      setMarqueeSpeedSeconds(res.speed_seconds != null ? Number(res.speed_seconds) : 40);
       return res;
     }
   });
@@ -493,11 +494,7 @@ export default function SuperAdminDashboard() {
                         {/* Registered Column */}
                         <td className="p-4 text-muted-foreground">
                           {shop.owner?.created_at ? (
-                            new Date(shop.owner.created_at).toLocaleDateString(undefined, {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric'
-                            })
+                            formatDate(shop.owner.created_at)
                           ) : (
                             'N/A'
                           )}
@@ -733,20 +730,20 @@ export default function SuperAdminDashboard() {
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
-                      onClick={() => setMarqueeSpeedSeconds((s) => Math.min(Math.max(Math.round((Number(s) || 16) - 1), 6), 40))}
-                      disabled={Number(marqueeSpeedSeconds) <= 6}
+                      onClick={() => setMarqueeSpeedSeconds((s) => Math.min(Math.max(Math.round((Number(s) || 40) - 1), 10), 120))}
+                      disabled={Number(marqueeSpeedSeconds) <= 10}
                       className="w-8 h-8 rounded-lg bg-secondary/40 border border-border/70 text-foreground hover:bg-secondary/70 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
                       title="Slow down marquee"
                     >
                       <Minus className="h-4 w-4" />
                     </button>
                     <span className="w-12 text-center text-xs font-black text-foreground font-mono">
-                      {Number(marqueeSpeedSeconds) || 16}s
+                      {Number(marqueeSpeedSeconds) || 40}s
                     </span>
                     <button
                       type="button"
-                      onClick={() => setMarqueeSpeedSeconds((s) => Math.min(Math.max(Math.round((Number(s) || 16) + 1), 6), 40))}
-                      disabled={Number(marqueeSpeedSeconds) >= 40}
+                      onClick={() => setMarqueeSpeedSeconds((s) => Math.min(Math.max(Math.round((Number(s) || 40) + 1), 10), 120))}
+                      disabled={Number(marqueeSpeedSeconds) >= 120}
                       className="w-8 h-8 rounded-lg bg-secondary/40 border border-border/70 text-foreground hover:bg-secondary/70 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
                       title="Speed up marquee"
                     >
@@ -756,7 +753,7 @@ export default function SuperAdminDashboard() {
                 </div>
 
                 <Button
-                  onClick={() => saveMarqueeMutation.mutate({ title: marqueeTitle, text: marqueeText, is_active: marqueeActive, speed_seconds: Number(marqueeSpeedSeconds) || 16 })}
+                  onClick={() => saveMarqueeMutation.mutate({ title: marqueeTitle, text: marqueeText, is_active: marqueeActive, speed_seconds: Number(marqueeSpeedSeconds) || 40 })}
                   className="w-full text-xs font-bold uppercase tracking-wider gap-1.5"
                   disabled={saveMarqueeMutation.isPending}
                 >
@@ -839,10 +836,7 @@ export default function SuperAdminDashboard() {
                         <div className="mt-3 pt-3 border-t border-border/20 text-[10px] text-muted-foreground flex justify-between">
                           <span>ID: {slide.id.substring(0, 8)}...</span>
                           <span>
-                            {new Date(slide.created_at).toLocaleDateString(undefined, {
-                              month: 'short',
-                              day: 'numeric'
-                            })}
+                            {formatDate(slide.created_at)}
                           </span>
                         </div>
                       </div>
@@ -1052,7 +1046,7 @@ export default function SuperAdminDashboard() {
                                     {(file.size / 1024).toFixed(1)} KB
                                   </td>
                                   <td className="py-2.5 px-4 text-muted-foreground">
-                                    {new Date(file.created_at).toLocaleString()}
+                                    {formatDateTime(file.created_at)}
                                   </td>
                                   <td className="py-2.5 px-4 text-right">
                                     <div className="flex items-center justify-end gap-2">

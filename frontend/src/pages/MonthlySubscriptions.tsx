@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { apiClient } from '../lib/api';
+import { formatDate } from '../lib/date';
 import { useAuth } from '../context/AuthContext';
 
 // ─── Interfaces ────────────────────────────────────────────────────────────
@@ -111,15 +112,7 @@ function todayISO() {
 
 function formatDisplayDate(isoDate?: string | null) {
   if (!isoDate) return '—';
-  try {
-    const parts = isoDate.slice(0, 10).split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-    return isoDate;
-  } catch {
-    return isoDate;
-  }
+  return formatDate(isoDate);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────

@@ -21,6 +21,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Dialog } from '../components/ui/Dialog';
 import { apiClient } from '../lib/api';
+import { formatDate } from '../lib/date';
 import toast from 'react-hot-toast';
 
 const customerFormSchema = z.object({
@@ -186,7 +187,7 @@ export default function CustomerList() {
                         {cust.lastRepairDate && (
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3 text-primary/75" />
-                            <span>Last Ticket: {new Date(cust.lastRepairDate).toLocaleDateString()}</span>
+                            <span>Last Ticket: {formatDate(cust.lastRepairDate)}</span>
                           </span>
                         )}
                       </div>

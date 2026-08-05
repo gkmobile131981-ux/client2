@@ -8,6 +8,17 @@ const createSlideSchema = z.object({
   description: z.string().optional().default('')
 });
 
+// Marquee ticker scroll settings (seconds per full cycle)
+const DEFAULT_MARQUEE_SPEED = 40;
+const MIN_MARQUEE_SPEED = 10;
+const MAX_MARQUEE_SPEED = 120;
+
+const clampMarqueeSpeed = (value: unknown): number => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return DEFAULT_MARQUEE_SPEED;
+  return Math.min(Math.max(Math.round(parsed), MIN_MARQUEE_SPEED), MAX_MARQUEE_SPEED);
+};
+
 export async function getSlides(_req: Request, res: Response): Promise<void> {
   try {
     const { data: slides, error } = await supabaseAdmin
@@ -197,7 +208,7 @@ export async function getMarqueeText(_req: Request, res: Response): Promise<void
 
     if (error) {
       // Table might not exist yet — return empty gracefully
-      res.json({ title: 'Latest Updates', text: '', is_active: false, speed_seconds: 16 });
+      res.json({ title: 'Latest Updates', text: '', is_active: false, speed_seconds: DEFAULT_MARQUEE_SPEED });
       return;
     }
 
@@ -205,7 +216,7 @@ export async function getMarqueeText(_req: Request, res: Response): Promise<void
       title: data?.title || 'Latest Updates',
       text: data?.text || '',
       is_active: data?.is_active ?? true,
-      speed_seconds: data?.speed_seconds ?? 16
+      speed_seconds: clampMarqueeSpeed(data?.speed_seconds)
     });
   } catch (err) {
     console.error('Failed to get marquee text:', err);
@@ -232,11 +243,7 @@ export async function upsertMarqueeText(req: Request, res: Response): Promise<vo
     }
 
     const marqueeTitle = title.trim() || 'Latest Updates';
-    const marqueeSpeed = (() => {
-      const parsed = Number(speed_seconds);
-      if (!Number.isFinite(parsed)) return 16;
-      return Math.min(Math.max(parsed, 6), 40);
-    })();
+    const marqueeSpeed = clampMarqueeSpeed(speed_seconds);
 
     // Check if a row exists
     const { data: existing } = await supabaseAdmin

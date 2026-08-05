@@ -21,6 +21,7 @@ import { Input } from '../components/ui/Input';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../components/ui/Table';
 import { Dialog } from '../components/ui/Dialog';
 import { apiClient } from '../lib/api';
+import { formatDate } from '../lib/date';
 import toast from 'react-hot-toast';
 
 // Zod validation for Add Staff form
@@ -175,7 +176,7 @@ export default function StaffSettings() {
                     </TableCell>
                     <TableCell>
                       <div className="font-semibold text-white">{emp.name}</div>
-                      <div className="text-xs text-muted-foreground">Joined: {new Date(emp.created_at).toLocaleDateString()}</div>
+                      <div className="text-xs text-muted-foreground">Joined: {formatDate(emp.created_at)}</div>
                     </TableCell>
                     <TableCell className="capitalize text-xs font-semibold text-muted-foreground">
                       {emp.role}

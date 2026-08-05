@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, LogOut, User, Bell, Sun, Moon, X, Smartphone, Home, Shield, Mail } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { formatDate } from '../../lib/date';
 
 interface TopbarProps {
   onToggleSidebar: () => void;
@@ -34,12 +35,7 @@ export default function Topbar({
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      const dateStr = now.toLocaleDateString('en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
+      const dateStr = `${now.toLocaleDateString('en-US', { weekday: 'short' })} ${formatDate(now)}`;
       const timeStr = now.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',

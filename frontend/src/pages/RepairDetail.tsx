@@ -24,6 +24,8 @@ import { Button } from '../components/ui/Button';
 import { Dialog } from '../components/ui/Dialog';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../lib/api';
+import { formatDate, formatDateTime } from '../lib/date';
+import { downloadRepairReceipt } from '../lib/download';
 import toast from 'react-hot-toast';
 import ReceiptPreviewModal from '../components/repairs/ReceiptPreviewModal';
 
@@ -109,26 +111,9 @@ export default function RepairDetail() {
   });
 
   const handleDownloadReceipt = async () => {
-    if (!data?.repair) return;
+    if (!id || !data?.repair) return;
     try {
-      const token = localStorage.getItem('gk_access_token');
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/repairs/${id}/receipt?download=true`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-      if (!response.ok) throw new Error('Receipt generation failed');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${data.repair.job_number}-receipt.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      await downloadRepairReceipt(id, data.repair.job_number);
       toast.success('Receipt download started');
     } catch (err: any) {
       toast.error(err.message || 'Could not download receipt');
@@ -297,7 +282,7 @@ export default function RepairDetail() {
             )}
           </h2>
           <p className="text-muted-foreground text-xs mt-0.5">
-            Opened on {new Date(repair.created_at).toLocaleString()}
+            Opened on {formatDateTime(repair.created_at)}
           </p>
         </div>
       </div>
@@ -485,7 +470,7 @@ export default function RepairDetail() {
                   <div>
                     <span className="text-xs text-muted-foreground block">Delivered On</span>
                     <span className="font-semibold text-emerald-400 mt-0.5 block">
-                      {repair.delivered_at ? new Date(repair.delivered_at).toLocaleString() : 'N/A'}
+                      {repair.delivered_at ? formatDateTime(repair.delivered_at) : 'N/A'}
                     </span>
                   </div>
                 </div>
@@ -549,7 +534,7 @@ export default function RepairDetail() {
                             {log.new_status}
                           </span>
                           <span className="text-[10px] text-muted-foreground">
-                            {new Date(log.created_at).toLocaleString()}
+                            {formatDateTime(log.created_at)}
                           </span>
                         </div>
                         {log.note && (
@@ -745,7 +730,7 @@ export default function RepairDetail() {
               <div className="flex flex-col text-xs text-muted-foreground gap-1 border-t border-border/50 pt-3">
                 <span className="flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> 
-                  Target Date: {repair.delivery_date ? new Date(repair.delivery_date).toLocaleDateString() : 'Unscheduled'}
+                  Target Date: {repair.delivery_date ? formatDate(repair.delivery_date) : 'Unscheduled'}
                 </span>
               </div>
             </CardContent>

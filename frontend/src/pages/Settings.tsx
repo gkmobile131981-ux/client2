@@ -46,6 +46,7 @@ import { Dialog } from '../components/ui/Dialog';
 import { SkeletonList, Skeleton } from '../components/ui/Skeleton';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../lib/api';
+import { formatDateTime } from '../lib/date';
 import toast from 'react-hot-toast';
 
 // Validation Schemas
@@ -1015,8 +1016,7 @@ export default function SettingsPage({ defaultTab }: SettingsPageProps = {}) {
                           {log.message.split('\n')[2] || log.message}
                         </TableCell>
                         <TableCell className="text-right text-[10px] text-muted-foreground font-mono">
-                          {new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                          <div className="text-[8px] opacity-75">{new Date(log.timestamp).toLocaleDateString()}</div>
+                          {formatDateTime(log.timestamp)}
                         </TableCell>
                       </TableRow>
                     ))}

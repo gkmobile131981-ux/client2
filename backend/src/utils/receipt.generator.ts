@@ -1,4 +1,5 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { formatDateOnly, formatDateTime } from './date';
 
 // Custom helper to draw a beautiful, pixel-perfect Indian Rupee (₹) symbol using vector lines
 function drawRupee(page: any, x: number, y: number, size: number = 10, color = rgb(0.12, 0.16, 0.23)) {
@@ -239,17 +240,6 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
   cursorY -= 20;
 
   // 2. Dates section (Created, Expected Delivery, Delivered At)
-  const formatDateTime = (dateStr: string | null) => {
-    if (!dateStr) return 'N/A';
-    const d = new Date(dateStr);
-    return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
-  };
-  const formatDateOnly = (dateStr: string | null) => {
-    if (!dateStr) return 'N/A';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium' });
-  };
-
   page.drawText('Receipt Dates:', { x: marginX, y: cursorY, size: 9, font: fontBold, color: secondaryColor });
   
   const datesRowY = cursorY - 14;

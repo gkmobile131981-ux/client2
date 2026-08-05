@@ -38,6 +38,7 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '.
 import { Dialog } from '../components/ui/Dialog';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../lib/api';
+import { formatDate } from '../lib/date';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabase';
 
@@ -110,11 +111,9 @@ export default function Dashboard() {
         hour12: false
       });
       const weekdayStr = now.toLocaleDateString('en-US', { weekday: 'short' });
-      const monthStr = now.toLocaleDateString('en-US', { month: 'short' });
-      const dayStr = now.toLocaleDateString('en-US', { day: 'numeric' });
-      
+
       setLiveTimeOnly(timeStr);
-      setLiveDateOnly(`${weekdayStr}, ${monthStr} ${dayStr}`.toUpperCase());
+      setLiveDateOnly(`${weekdayStr}, ${formatDate(now)}`.toUpperCase());
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
@@ -179,9 +178,7 @@ export default function Dashboard() {
   });
   const marqueeTitle = marqueeData?.title || 'Latest Updates';
   const marqueeText = (marqueeData?.is_active && marqueeData?.text) ? marqueeData.text : '';
-  const marqueeSpeedSeconds = marqueeData?.speed_seconds
-    ? Math.min(Math.max(Number(marqueeData.speed_seconds) || 16, 6), 40)
-    : (marqueeText ? Math.min(Math.max(marqueeText.length * 0.22 + 8, 12), 24) : 12);
+  const marqueeSpeedSeconds = Math.min(Math.max(Number(marqueeData?.speed_seconds) || 40, 10), 120);
 
   const defaultSlides = [
     {
@@ -359,12 +356,7 @@ export default function Dashboard() {
 
   const totalActiveRepairs = pieData.reduce((acc, curr) => acc + curr.value, 0);
 
-  const todayDate = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  const todayDate = formatDate(new Date());
 
   return (
     <div className="space-y-6">

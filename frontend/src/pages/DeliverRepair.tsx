@@ -19,6 +19,7 @@ import {
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { apiClient } from '../lib/api';
+import { downloadRepairReceipt, fetchRepairReceiptBlob } from '../lib/download';
 import toast from 'react-hot-toast';
 import { compressBase64Image } from '../utils/imageCompressor';
 
@@ -226,18 +227,9 @@ export default function DeliverRepair() {
 
   // Preview PDF file securely with token headers
   const previewReceipt = async () => {
+    if (!id) return;
     try {
-      const token = localStorage.getItem('gk_access_token');
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/repairs/${id}/receipt`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-      if (!response.ok) throw new Error('Receipt load failed');
-      const blob = await response.blob();
+      const blob = await fetchRepairReceiptBlob(id);
       const fileURL = URL.createObjectURL(blob);
       window.open(fileURL, '_blank');
       toast.success('Receipt preview opened');
@@ -248,25 +240,9 @@ export default function DeliverRepair() {
 
   // Download PDF file securely with token headers
   const downloadReceipt = async () => {
+    if (!id) return;
     try {
-      const token = localStorage.getItem('gk_access_token');
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/repairs/${id}/receipt?download=true`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-      if (!response.ok) throw new Error('Receipt generation failed');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${repair.job_number}-receipt.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      await downloadRepairReceipt(id, repair.job_number);
       toast.success('PDF Downloaded successfully!');
     } catch (err: any) {
       toast.error(err.message || 'Could not download receipt');
@@ -275,18 +251,9 @@ export default function DeliverRepair() {
 
   // Open PDF in a new tab for printing
   const printReceipt = async () => {
+    if (!id) return;
     try {
-      const token = localStorage.getItem('gk_access_token');
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/repairs/${id}/receipt`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-      if (!response.ok) throw new Error('Receipt load failed');
-      const blob = await response.blob();
+      const blob = await fetchRepairReceiptBlob(id);
       const fileURL = URL.createObjectURL(blob);
       window.open(fileURL, '_blank');
     } catch (err: any) {

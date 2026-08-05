@@ -24,6 +24,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '../components/ui/Table';
 import { apiClient } from '../lib/api';
+import { formatDate } from '../lib/date';
 import toast from 'react-hot-toast';
 
 const customerUpdateSchema = z.object({
@@ -347,7 +348,7 @@ export default function CustomerProfile() {
                       <TableCell className="text-muted-foreground text-xs">
                         <span className="flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5" />
-                          {new Date(r.created_at).toLocaleDateString()}
+                          {formatDate(r.created_at)}
                         </span>
                       </TableCell>
                       <TableCell>

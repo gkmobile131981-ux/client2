@@ -61,7 +61,8 @@ async function refreshAccessToken(): Promise<string> {
 async function request<T>(
   endpoint: string,
   options: RequestInit = {},
-  isRetry: boolean = false
+  isRetry: boolean = false,
+  asBlob: boolean = false
 ): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
   
@@ -98,7 +99,7 @@ async function request<T>(
         }).then((newToken) => {
           const retryHeaders = new Headers(options.headers || {});
           retryHeaders.set('Authorization', `Bearer ${newToken}`);
-          return request<T>(endpoint, { ...options, headers: retryHeaders }, true);
+          return request<T>(endpoint, { ...options, headers: retryHeaders }, true, asBlob);
         });
       }
 
@@ -111,7 +112,7 @@ async function request<T>(
 
         const retryHeaders = new Headers(options.headers || {});
         retryHeaders.set('Authorization', `Bearer ${newToken}`);
-        return request<T>(endpoint, { ...options, headers: retryHeaders }, true);
+        return request<T>(endpoint, { ...options, headers: retryHeaders }, true, asBlob);
       } catch (refreshErr) {
         isRefreshing = false;
         processQueue(refreshErr, null);
@@ -160,12 +161,19 @@ async function request<T>(
     return {} as T;
   }
 
+  if (asBlob) {
+    return response.blob() as Promise<T>;
+  }
+
   return response.json() as Promise<T>;
 }
 
 export const apiClient = {
   get: <T>(endpoint: string, options?: RequestInit) =>
     request<T>(endpoint, { ...options, method: 'GET' }),
+
+  getBlob: <T = Blob>(endpoint: string, options?: RequestInit) =>
+    request<T>(endpoint, { ...options, method: 'GET' }, false, true),
     
   post: <T>(endpoint: string, body?: any, options?: RequestInit) =>
     request<T>(endpoint, {

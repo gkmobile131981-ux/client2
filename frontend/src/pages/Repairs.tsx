@@ -21,6 +21,8 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { apiClient } from '../lib/api';
+import { formatDate } from '../lib/date';
+import { downloadRepairReceipt } from '../lib/download';
 import { useRealtimeRepairs } from '../hooks/useRealtimeRepairs';
 
 interface RepairListItem {
@@ -118,24 +120,7 @@ export default function Repairs() {
   const handleDownloadInvoice = async (e: React.MouseEvent, id: string, jobNumber: string) => {
     e.stopPropagation();
     try {
-      const token = localStorage.getItem('gk_access_token');
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/repairs/${id}/receipt?download=true`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
-      if (!response.ok) throw new Error('Receipt generation failed');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `${jobNumber}-receipt.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      await downloadRepairReceipt(id, jobNumber);
       toast.success('Invoice download started');
     } catch (err: any) {
       toast.error(err.message || 'Could not download invoice');
@@ -404,7 +389,7 @@ export default function Repairs() {
                     <div className="flex items-center gap-2 shrink-0">
                       <div className="text-right">
                         <div className="text-xs font-semibold text-foreground">₹{Number(r.estimate).toFixed(2)}</div>
-                        <div className="text-[10px] text-muted-foreground">{new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</div>
+                        <div className="text-[10px] text-muted-foreground">{formatDate(r.created_at)}</div>
                       </div>
                       <button
                         type="button"

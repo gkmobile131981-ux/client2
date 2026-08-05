@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { formatDateOnly } from './date';
 
 // Define the file path for local mock/sandbox logs
 const logsPath = path.join(__dirname, '../../whatsapp_logs.json');
@@ -360,7 +361,7 @@ export async function sendSubscriptionWhatsAppBill(
 ): Promise<{ success: boolean; messageId?: string; error?: string; isSandbox?: boolean; whatsappUrl?: string }> {
   const customerName = payload.customer_name;
   const customerPhone = payload.phone_number.replace(/\D/g, ''); // standard digits only
-  const paymentDate = new Date().toLocaleDateString('en-IN');
+  const paymentDate = formatDateOnly(new Date());
   
   let formattedText = `Hello *${customerName}*,\n\n`;
   formattedText += `Your subscription payment of *₹${payload.amount}* for the month of *${payload.month_name} ${payload.year}* has been successfully recorded.\n\n`;

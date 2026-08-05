@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../lib/api';
+import { formatDate } from '../lib/date';
 import html2canvas from 'html2canvas';
 import cardFrontTemplate from '../card-front-template.png';
 import cardBackTemplate from '../card-back-template.png';
@@ -212,8 +213,7 @@ export default function OwnerIdCard() {
 
   const formatDob = (s: string) => {
     if (!s) return '';
-    try { const d = new Date(s); return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`; }
-    catch { return s; }
+    return formatDate(s);
   };
   const formatAadhar = (v?: string) => !v ? '' : v.replace(/\D/g, '').slice(0, 12).replace(/(\d{4})(?=\d)/g, '$1 ');
 

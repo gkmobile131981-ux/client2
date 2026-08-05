@@ -3,6 +3,7 @@ import { Dialog } from '../ui/Dialog';
 import { Button } from '../ui/Button';
 import { Loader2, Download, Printer } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { fetchRepairReceiptBlob } from '../../lib/download';
 
 interface ReceiptPreviewModalProps {
   id: string;
@@ -27,21 +28,7 @@ export default function ReceiptPreviewModal({
       if (!isOpen || !id) return;
       setIsLoading(true);
       try {
-        const token = localStorage.getItem('gk_access_token');
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/repairs/${id}/receipt`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch PDF receipt');
-        }
-        
-        const blob = await response.blob();
+        const blob = await fetchRepairReceiptBlob(id);
         const objectUrl = URL.createObjectURL(blob);
         activeUrl = objectUrl;
         setPdfUrl(objectUrl);
