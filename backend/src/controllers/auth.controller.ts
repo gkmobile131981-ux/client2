@@ -1063,3 +1063,246 @@ export async function updateShop(req: Request, res: Response): Promise<void> {
     res.status(500).json({ error: 'Failed to update shop profile' });
   }
 }
+
+// -------------------------------------------------------------------
+// SMS OTP FORGOT PASSWORD & DIRECT AUTO-LOGIN SYSTEM
+// -------------------------------------------------------------------
+
+interface ResetOtpEntry {
+  phone: string;
+  email: string;
+  userId: string;
+  otp: string;
+  expiresAt: number;
+}
+
+const resetOtpStore = new Map<string, ResetOtpEntry>();
+
+// Helper to look up a user by phone or email
+async function findUserByPhoneOrEmail(identifier: string) {
+  const cleanInput = (identifier || '').trim().toLowerCase();
+  const digitsOnly = (identifier || '').replace(/\D/g, '');
+
+  // 1. Check in shops table by phone
+  if (digitsOnly.length >= 7) {
+    const { data: shops } = await supabaseAdmin
+      .from('shops')
+      .select('owner_id, phone, name')
+      .not('owner_id', 'is', null);
+
+    if (shops && shops.length > 0) {
+      const matchedShop = shops.find(s => s.phone && normalizePhone(s.phone).endsWith(digitsOnly.slice(-10)));
+      if (matchedShop && matchedShop.owner_id) {
+        const { data: userData } = await supabaseAdmin.auth.admin.getUserById(matchedShop.owner_id);
+        if (userData?.user && userData.user.email) {
+          return {
+            userId: userData.user.id,
+            email: userData.user.email,
+            phone: matchedShop.phone || digitsOnly,
+            name: userData.user.user_metadata?.name || matchedShop.name
+          };
+        }
+      }
+    }
+  }
+
+  // 2. Search in Supabase Auth users list by email or phone metadata
+  const { data: usersData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+  if (usersData?.users) {
+    const matchedUser = usersData.users.find(u => {
+      const emailMatch = u.email && u.email.trim().toLowerCase() === cleanInput;
+      const userPhone = u.phone || u.user_metadata?.phone;
+      const phoneMatch = digitsOnly.length >= 7 && userPhone && normalizePhone(userPhone).endsWith(digitsOnly.slice(-10));
+      return emailMatch || phoneMatch;
+    });
+
+    if (matchedUser && matchedUser.email) {
+      return {
+        userId: matchedUser.id,
+        email: matchedUser.email,
+        phone: matchedUser.phone || matchedUser.user_metadata?.phone || digitsOnly,
+        name: matchedUser.user_metadata?.name || matchedUser.email.split('@')[0]
+      };
+    }
+  }
+
+  return null;
+}
+
+export async function sendResetOtp(req: Request, res: Response): Promise<void> {
+  try {
+    const { phone } = req.body;
+    if (!phone || typeof phone !== 'string' || !phone.trim()) {
+      res.status(400).json({ error: 'Please enter a valid mobile number or email address.' });
+      return;
+    }
+
+    const userInfo = await findUserByPhoneOrEmail(phone);
+    if (!userInfo) {
+      res.status(404).json({ error: 'No user account found matching this mobile number or email address.' });
+      return;
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    const key = (normalizePhone(phone) || userInfo.email).toLowerCase();
+    resetOtpStore.set(key, {
+      phone: userInfo.phone,
+      email: userInfo.email,
+      userId: userInfo.userId,
+      otp,
+      expiresAt
+    });
+
+    // Also store by email key
+    resetOtpStore.set(userInfo.email.toLowerCase(), {
+      phone: userInfo.phone,
+      email: userInfo.email,
+      userId: userInfo.userId,
+      otp,
+      expiresAt
+    });
+
+    // Dispatch SMS via Twilio if configured
+    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
+    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioFromPhone = process.env.TWILIO_PHONE_NUMBER || process.env.TWILIO_SMS_FROM;
+
+    let smsSent = false;
+    if (twilioAccountSid && twilioAuthToken && twilioFromPhone) {
+      try {
+        const client = require('twilio')(twilioAccountSid, twilioAuthToken);
+        const recipientNumber = userInfo.phone.startsWith('+') ? userInfo.phone : `+${userInfo.phone}`;
+        await client.messages.create({
+          body: `Your GK Repair System password reset OTP is: ${otp}. Valid for 10 minutes. Do not share this code.`,
+          from: twilioFromPhone,
+          to: recipientNumber
+        });
+        smsSent = true;
+      } catch (twilioErr: any) {
+        console.error('[SMS Service] Error sending SMS via Twilio:', twilioErr.message);
+      }
+    }
+
+    console.log(`\n========== [SMS RESET OTP DISPATCH] ==========`);
+    console.log(`User: ${userInfo.name} (${userInfo.email})`);
+    console.log(`Phone: ${userInfo.phone}`);
+    console.log(`OTP Code: ${otp}`);
+    console.log(`Expires: ${new Date(expiresAt).toLocaleTimeString()}`);
+    console.log(`===============================================\n`);
+
+    const rawDigits = userInfo.phone.replace(/\D/g, '');
+    const maskedPhone = rawDigits.length >= 10 
+      ? `${rawDigits.slice(0, 3)}****${rawDigits.slice(-4)}`
+      : rawDigits || userInfo.email;
+
+    res.json({
+      message: `OTP sent successfully via SMS to mobile number ending in ${maskedPhone}`,
+      maskedPhone,
+      // Pass sandboxOtp in dev mode if SMS provider not configured
+      sandboxOtp: (!smsSent && process.env.NODE_ENV !== 'production') ? otp : undefined
+    });
+  } catch (err: any) {
+    console.error('Error sending reset OTP:', err);
+    res.status(500).json({ error: err.message || 'Failed to send OTP' });
+  }
+}
+
+export async function verifyResetOtp(req: Request, res: Response): Promise<void> {
+  try {
+    const { phone, otp, newPassword } = req.body;
+    if (!phone || !otp || !newPassword) {
+      res.status(400).json({ error: 'Mobile number, OTP code, and new password are required.' });
+      return;
+    }
+
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
+      res.status(400).json({ error: 'New password must be at least 6 characters long.' });
+      return;
+    }
+
+    const userInfo = await findUserByPhoneOrEmail(phone);
+    if (!userInfo) {
+      res.status(404).json({ error: 'User account not found.' });
+      return;
+    }
+
+    const key = (normalizePhone(phone) || userInfo.email).toLowerCase();
+    const entry = resetOtpStore.get(key) || resetOtpStore.get(userInfo.email.toLowerCase());
+
+    if (!entry || entry.otp !== String(otp).trim()) {
+      res.status(400).json({ error: 'Invalid OTP code. Please check the code sent to your mobile phone.' });
+      return;
+    }
+
+    if (Date.now() > entry.expiresAt) {
+      resetOtpStore.delete(key);
+      resetOtpStore.delete(userInfo.email.toLowerCase());
+      res.status(400).json({ error: 'OTP code has expired. Please request a new OTP.' });
+      return;
+    }
+
+    // 1. Update password in Supabase Auth via admin API
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(entry.userId, {
+      password: newPassword
+    });
+
+    if (updateError) {
+      res.status(400).json({ error: getErrorMessage(updateError, 'Failed to update password') });
+      return;
+    }
+
+    // Clean up OTP entries
+    resetOtpStore.delete(key);
+    resetOtpStore.delete(userInfo.email.toLowerCase());
+
+    // 2. Sign in user to authenticate them automatically
+    const { data: authData, error: loginError } = await supabaseClient.auth.signInWithPassword({
+      email: entry.email,
+      password: newPassword
+    });
+
+    if (loginError || !authData.session || !authData.user) {
+      res.json({
+        message: 'Password reset successfully! Please log in with your new password.',
+        autoLoggedIn: false
+      });
+      return;
+    }
+
+    // Fetch shop profile
+    const { data: shop } = await supabaseAdmin
+      .from('shops')
+      .select('*')
+      .eq('owner_id', authData.user.id)
+      .maybeSingle();
+
+    const role = (authData.user.user_metadata?.role as string) || (shop ? 'owner' : 'staff');
+
+    const userProfile = {
+      id: authData.user.id,
+      name: authData.user.user_metadata?.name || shop?.name || 'User',
+      email: authData.user.email!,
+      role: role as 'owner' | 'staff',
+      staff_id: authData.user.user_metadata?.staff_id || null,
+      shop_id: shop?.id || null,
+      is_active: true,
+      created_at: authData.user.created_at
+    };
+
+    res.json({
+      message: 'Password updated successfully! Authenticating into system...',
+      autoLoggedIn: true,
+      accessToken: authData.session.access_token,
+      refreshToken: authData.session.refresh_token,
+      user: userProfile,
+      shop: shop || null
+    });
+  } catch (err: any) {
+    console.error('Error in verifyResetOtp:', err);
+    res.status(500).json({ error: err.message || 'Failed to verify OTP and reset password' });
+  }
+}
+
