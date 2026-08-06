@@ -214,14 +214,14 @@ export default function RateCards() {
   const isDBRecorded = matchedCard && !matchedCard.id.startsWith('virtual-');
 
   return (
-    <div className="w-full space-y-4 text-foreground">
+    <div className="w-full space-y-3 sm:space-y-4 text-foreground">
       {/* Brand & Model Selector Header */}
       <Card className="border-border/60 bg-card/90">
-        <CardContent className="p-4 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {/* Brand Input / Selection */}
             <div className="space-y-1 relative" id="brand-select-container-rc">
-              <label className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+              <label className="text-[11px] sm:text-xs text-muted-foreground font-bold uppercase tracking-wider">
                 Brand Name
               </label>
               <div className="relative">
@@ -237,18 +237,18 @@ export default function RateCards() {
                     setBrandDropdownOpen(true);
                     setModelDropdownOpen(false);
                   }}
-                  className="w-full bg-secondary/35 border border-border rounded-xl pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:border-primary font-bold text-foreground"
+                  className="w-full bg-secondary/35 border border-border rounded-xl pl-3.5 pr-10 py-2.5 text-sm focus:outline-none focus:border-primary font-bold text-foreground"
                 />
                 <button
                   type="button"
                   onClick={() => setBrandDropdownOpen(!brandDropdownOpen)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
                 >
                   <ChevronDown className="h-4 w-4" />
                 </button>
               </div>
               {brandDropdownOpen && (
-                <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-neutral-900 border border-border rounded-xl shadow-xl scrollbar-thin">
+                <div className="absolute z-50 w-full mt-1 max-h-56 sm:max-h-60 overflow-y-auto bg-neutral-900 border border-border rounded-xl shadow-xl scrollbar-thin">
                   {filteredBrands.length > 0 ? (
                     filteredBrands.map((b) => (
                       <div
@@ -259,7 +259,7 @@ export default function RateCards() {
                           if (firstModel) setModel(firstModel);
                           setBrandDropdownOpen(false);
                         }}
-                        className={`px-4 py-2.5 hover:bg-primary/25 cursor-pointer text-sm font-semibold transition-colors flex items-center justify-between ${
+                        className={`px-3.5 py-3 sm:py-2.5 hover:bg-primary/25 cursor-pointer text-sm font-semibold transition-colors flex items-center justify-between ${
                           brand.toUpperCase() === b ? 'bg-primary/20 text-primary font-bold' : 'text-white/90'
                         }`}
                       >
@@ -268,7 +268,7 @@ export default function RateCards() {
                       </div>
                     ))
                   ) : (
-                    <div className="px-4 py-3 text-xs text-muted-foreground">Type custom brand: "{brand.toUpperCase()}"</div>
+                    <div className="px-3.5 py-3 text-xs text-muted-foreground">Type custom brand: "{brand.toUpperCase()}"</div>
                   )}
                 </div>
               )}
@@ -276,7 +276,7 @@ export default function RateCards() {
 
             {/* Model Input / Selection */}
             <div className="space-y-1 relative" id="model-select-container-rc">
-              <label className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
+              <label className="text-[11px] sm:text-xs text-muted-foreground font-bold uppercase tracking-wider">
                 Mobile Model
               </label>
               <div className="relative">
@@ -292,18 +292,18 @@ export default function RateCards() {
                     setModelDropdownOpen(true);
                     setBrandDropdownOpen(false);
                   }}
-                  className="w-full bg-secondary/35 border border-border rounded-xl pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:border-primary font-bold text-foreground"
+                  className="w-full bg-secondary/35 border border-border rounded-xl pl-3.5 pr-10 py-2.5 text-sm focus:outline-none focus:border-primary font-bold text-foreground"
                 />
                 <button
                   type="button"
                   onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
                 >
                   <ChevronDown className="h-4 w-4" />
                 </button>
               </div>
               {modelDropdownOpen && (
-                <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-neutral-900 border border-border rounded-xl shadow-xl scrollbar-thin">
+                <div className="absolute z-50 w-full mt-1 max-h-56 sm:max-h-60 overflow-y-auto bg-neutral-900 border border-border rounded-xl shadow-xl scrollbar-thin">
                   {filteredModels.length > 0 ? (
                     filteredModels.map((m) => (
                       <div
@@ -312,7 +312,7 @@ export default function RateCards() {
                           setModel(m);
                           setModelDropdownOpen(false);
                         }}
-                        className={`px-4 py-2.5 hover:bg-primary/25 cursor-pointer text-sm font-semibold transition-colors ${
+                        className={`px-3.5 py-3 sm:py-2.5 hover:bg-primary/25 cursor-pointer text-sm font-semibold transition-colors ${
                           model.toUpperCase() === m ? 'bg-primary/20 text-primary font-bold' : 'text-white/90'
                         }`}
                       >
@@ -320,7 +320,7 @@ export default function RateCards() {
                       </div>
                     ))
                   ) : (
-                    <div className="px-4 py-3 text-xs text-muted-foreground">Type custom model: "{model.toUpperCase()}"</div>
+                    <div className="px-3.5 py-3 text-xs text-muted-foreground">Type custom model: "{model.toUpperCase()}"</div>
                   )}
                 </div>
               )}
@@ -328,10 +328,10 @@ export default function RateCards() {
           </div>
 
           {/* Device Card Info Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-border/40">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-border/40">
+            <div className="flex items-center gap-3 sm:gap-4">
               {/* Brand Logo */}
-              <div className="h-12 w-12 rounded-xl bg-secondary/40 border border-border flex items-center justify-center p-2.5 shrink-0 shadow-inner">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-secondary/40 border border-border flex items-center justify-center p-2 shrink-0 shadow-inner">
                 {getBrandLogoUrl(brand) ? (
                   <img
                     src={getBrandLogoUrl(brand)!}
@@ -348,13 +348,13 @@ export default function RateCards() {
 
               {/* Model Image Preview / Upload */}
               <div className="relative group shrink-0">
-                <div className="h-12 w-16 rounded-xl overflow-hidden bg-secondary/50 border border-border flex items-center justify-center">
+                <div className="h-10 w-14 sm:h-12 sm:w-16 rounded-xl overflow-hidden bg-secondary/50 border border-border flex items-center justify-center">
                   {editImageFile ? (
                     <img src={URL.createObjectURL(editImageFile)} alt="Preview" className="h-full w-full object-cover" />
                   ) : matchedCard?.model_image_url ? (
                     <img src={matchedCard.model_image_url} alt={model} className="h-full w-full object-cover" />
                   ) : (
-                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                    <ImageIcon className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                   )}
                 </div>
                 <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl cursor-pointer">
@@ -363,20 +363,22 @@ export default function RateCards() {
                 </label>
               </div>
 
-              <div>
-                <h4 className="text-sm font-extrabold text-foreground tracking-tight flex items-center gap-2">
-                  {brand.toUpperCase() || 'BRAND'} {model.toUpperCase() || 'MODEL'}
+              <div className="min-w-0 flex-1">
+                <h4 className="text-xs sm:text-sm font-extrabold text-foreground tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <span className="truncate">{brand.toUpperCase() || 'BRAND'} {model.toUpperCase() || 'MODEL'}</span>
                   {isDBRecorded ? (
-                    <span className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">
+                    <span className="text-[9px] sm:text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold shrink-0">
                       Saved Rate Card
                     </span>
                   ) : (
-                    <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold">
-                      New Rate Specification
+                    <span className="text-[9px] sm:text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold shrink-0">
+                      New Specification
                     </span>
                   )}
                 </h4>
-                <p className="text-xs text-muted-foreground">Price specifications auto-loaded. Edit labor costs and save below.</p>
+                <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight mt-0.5">
+                  Price specifications auto-loaded. Edit costs below.
+                </p>
               </div>
             </div>
 
@@ -384,7 +386,7 @@ export default function RateCards() {
               <Button
                 variant="outline"
                 size="sm"
-                className="text-red-400 border-red-500/30 hover:bg-red-500/10 h-8"
+                className="w-full sm:w-auto text-red-400 border-red-500/30 hover:bg-red-500/10 h-8 text-xs shrink-0"
                 onClick={() => {
                   if (confirm(`Delete saved rate card for ${brand} ${model}?`)) {
                     deleteMutation.mutate(matchedCard.id);
@@ -399,106 +401,184 @@ export default function RateCards() {
         </CardContent>
       </Card>
 
-      {/* PRICE SPECIFICATIONS TABLE */}
+      {/* PRICE SPECIFICATIONS LIST / TABLE */}
       <Card>
-        <CardContent className="p-4 space-y-4">
-          <div className="overflow-x-auto -mx-2 px-2 pb-2 scrollbar-thin">
-            <div className="min-w-[600px] space-y-3">
-              {/* Table Header */}
-              <div className="grid grid-cols-[1fr_110px_110px_110px_40px] gap-2.5 px-1">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Service Name</span>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">OG Cost (₹)</span>
-                <span translate="no" className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider notranslate">Copy Cost (₹)</span>
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ditto Cost (₹)</span>
-                <span />
-              </div>
-
-              {/* Service Rows */}
-              <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
-                {isLoading ? (
-                  <div className="flex justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  </div>
-                ) : editServices.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">No services added yet. Click "Add Service Row" below.</p>
-                ) : (
-                  editServices.map((svc, idx) => (
-                    <div key={idx} className="grid grid-cols-[1fr_110px_110px_110px_40px] gap-2.5 items-center">
+        <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          ) : editServices.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">No services added yet. Click "Add Service Row" below.</p>
+          ) : (
+            <>
+              {/* MOBILE VIEW CARD LIST (< sm) */}
+              <div className="block sm:hidden space-y-3 max-h-[52vh] overflow-y-auto pr-0.5 scrollbar-thin">
+                {editServices.map((svc, idx) => (
+                  <div key={idx} className="bg-secondary/20 border border-border/60 rounded-xl p-3 space-y-2.5 relative">
+                    <div className="flex items-center justify-between gap-2">
                       <Input
-                        placeholder={`Service ${idx + 1}`}
+                        placeholder={`Service Name ${idx + 1}`}
                         value={svc.service_name}
                         onChange={(e) => updateServiceRow(idx, 'service_name', e.target.value)}
-                        className="h-10 text-xs font-medium"
+                        className="h-9 text-xs font-semibold bg-background/60 flex-1"
                       />
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">₹</span>
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={svc.og_cost || ''}
-                          onChange={(e) => updateServiceRow(idx, 'og_cost', parseFloat(e.target.value) || 0)}
-                          className="pl-7 h-10 text-xs font-bold text-foreground"
-                        />
-                      </div>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">₹</span>
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={svc.copy_cost || ''}
-                          onChange={(e) => updateServiceRow(idx, 'copy_cost', parseFloat(e.target.value) || 0)}
-                          className="pl-7 h-10 text-xs font-bold text-foreground"
-                        />
-                      </div>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">₹</span>
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={svc.ditto_cost || ''}
-                          onChange={(e) => updateServiceRow(idx, 'ditto_cost', parseFloat(e.target.value) || 0)}
-                          className="pl-7 h-10 text-xs font-bold text-foreground"
-                        />
-                      </div>
                       <button
                         onClick={() => removeServiceRow(idx)}
-                        className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-red-400 bg-red-500/10 border border-red-500/20 active:scale-95 transition-all"
                         title="Remove Service"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
-                  ))
-                )}
+
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-[9px] font-bold text-muted-foreground uppercase block mb-1">OG Cost</label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">₹</span>
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="0"
+                            value={svc.og_cost || ''}
+                            onChange={(e) => updateServiceRow(idx, 'og_cost', parseFloat(e.target.value) || 0)}
+                            className="pl-6 h-9 text-xs font-bold text-foreground bg-background/60"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label translate="no" className="text-[9px] font-bold text-muted-foreground uppercase block mb-1 notranslate">Copy Cost</label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">₹</span>
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="0"
+                            value={svc.copy_cost || ''}
+                            onChange={(e) => updateServiceRow(idx, 'copy_cost', parseFloat(e.target.value) || 0)}
+                            className="pl-6 h-9 text-xs font-bold text-foreground bg-background/60"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[9px] font-bold text-muted-foreground uppercase block mb-1">Ditto Cost</label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">₹</span>
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="0"
+                            value={svc.ditto_cost || ''}
+                            onChange={(e) => updateServiceRow(idx, 'ditto_cost', parseFloat(e.target.value) || 0)}
+                            className="pl-6 h-9 text-xs font-bold text-foreground bg-background/60"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          </div>
+
+              {/* TABLE VIEW FOR TABLET & DESKTOP (>= sm) */}
+              <div className="hidden sm:block overflow-x-auto -mx-2 px-2 pb-2 scrollbar-thin">
+                <div className="min-w-[600px] space-y-3">
+                  {/* Table Header */}
+                  <div className="grid grid-cols-[1fr_110px_110px_110px_40px] gap-2.5 px-1">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Service Name</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">OG Cost (₹)</span>
+                    <span translate="no" className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider notranslate">Copy Cost (₹)</span>
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ditto Cost (₹)</span>
+                    <span />
+                  </div>
+
+                  {/* Service Rows */}
+                  <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
+                    {editServices.map((svc, idx) => (
+                      <div key={idx} className="grid grid-cols-[1fr_110px_110px_110px_40px] gap-2.5 items-center">
+                        <Input
+                          placeholder={`Service ${idx + 1}`}
+                          value={svc.service_name}
+                          onChange={(e) => updateServiceRow(idx, 'service_name', e.target.value)}
+                          className="h-10 text-xs font-medium"
+                        />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">₹</span>
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="0"
+                            value={svc.og_cost || ''}
+                            onChange={(e) => updateServiceRow(idx, 'og_cost', parseFloat(e.target.value) || 0)}
+                            className="pl-7 h-10 text-xs font-bold text-foreground"
+                          />
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">₹</span>
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="0"
+                            value={svc.copy_cost || ''}
+                            onChange={(e) => updateServiceRow(idx, 'copy_cost', parseFloat(e.target.value) || 0)}
+                            className="pl-7 h-10 text-xs font-bold text-foreground"
+                          />
+                        </div>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs font-bold">₹</span>
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            placeholder="0"
+                            value={svc.ditto_cost || ''}
+                            onChange={(e) => updateServiceRow(idx, 'ditto_cost', parseFloat(e.target.value) || 0)}
+                            className="pl-7 h-10 text-xs font-bold text-foreground"
+                          />
+                        </div>
+                        <button
+                          onClick={() => removeServiceRow(idx)}
+                          className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                          title="Remove Service"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Footer Controls: Add Row + Totals Summary + Save Button */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-            <Button variant="outline" size="sm" onClick={addServiceRow} className="gap-1.5 h-9">
-              <Plus className="h-3.5 w-3.5" /> Add Service Row
-            </Button>
-
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="text-right flex items-center gap-4 border-r border-border/40 pr-4 flex-wrap">
-                <div>
-                  <p className="text-[9px] text-muted-foreground uppercase font-bold">Total OG</p>
-                  <p className="text-sm font-black text-primary">₹{totalOgLabor.toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-[9px] text-muted-foreground uppercase font-bold">Total Copy</p>
-                  <p className="text-sm font-black text-rose-500">₹{totalCopyLabor.toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-[9px] text-muted-foreground uppercase font-bold">Total Ditto</p>
-                  <p className="text-sm font-black text-amber-500">₹{totalDittoLabor.toFixed(2)}</p>
-                </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-border pt-3 sm:pt-4">
+            {/* Totals Grid on Mobile / Flex on Desktop */}
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-4 bg-secondary/15 sm:bg-transparent p-2.5 sm:p-0 rounded-xl border sm:border-0 border-border/40">
+              <div className="text-center sm:text-left">
+                <p className="text-[8px] sm:text-[9px] text-muted-foreground uppercase font-bold">Total OG</p>
+                <p className="text-xs sm:text-sm font-black text-primary">₹{totalOgLabor.toFixed(2)}</p>
               </div>
+              <div className="text-center sm:text-left border-x border-border/40 sm:border-x-0 px-1 sm:px-0">
+                <p className="text-[8px] sm:text-[9px] text-muted-foreground uppercase font-bold">Total Copy</p>
+                <p className="text-xs sm:text-sm font-black text-rose-500">₹{totalCopyLabor.toFixed(2)}</p>
+              </div>
+              <div className="text-center sm:text-left">
+                <p className="text-[8px] sm:text-[9px] text-muted-foreground uppercase font-bold">Total Ditto</p>
+                <p className="text-xs sm:text-sm font-black text-amber-500">₹{totalDittoLabor.toFixed(2)}</p>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+              <Button variant="outline" size="sm" onClick={addServiceRow} className="gap-1.5 h-9 w-full sm:w-auto text-xs">
+                <Plus className="h-3.5 w-3.5" /> Add Service Row
+              </Button>
               <Button
                 onClick={handleSaveServices}
                 disabled={saveServicesMutation.isPending || updateImageMutation.isPending || createMutation.isPending}
-                className="gap-1.5 h-9"
+                className="gap-1.5 h-9 w-full sm:w-auto text-xs"
               >
                 {saveServicesMutation.isPending || updateImageMutation.isPending || createMutation.isPending ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
