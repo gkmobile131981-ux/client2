@@ -1073,6 +1073,31 @@ export async function getRepairReceipt(req: Request, res: Response): Promise<voi
       return;
     }
 
+    // Resolve who delivered the device: prefer the staff that closed the delivery
+    // (repair_history.changed_by where status became "delivered"), else the assigned technician
+    let deliveredByName: string | null = null;
+    const { data: deliverHistory } = await supabaseAdmin
+      .from('repair_history')
+      .select('changed_by_user:users(id, name)')
+      .eq('repair_id', id)
+      .eq('new_status', 'delivered')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const delivererHistory = deliverHistory?.changed_by_user;
+    const delivererFromHistory = Array.isArray(delivererHistory)
+      ? delivererHistory[0]?.id
+      : (delivererHistory as { id?: string } | undefined)?.id;
+    const delivererId = delivererFromHistory || repair.staff_id;
+    if (delivererId) {
+      const { data: deliverer } = await supabaseAdmin
+        .from('users')
+        .select('name')
+        .eq('id', delivererId)
+        .single();
+      deliveredByName = deliverer?.name || null;
+    }
+
     // 3. Construct receipt data payload
     const receiptData = {
       repair: {
@@ -1090,7 +1115,7 @@ export async function getRepairReceipt(req: Request, res: Response): Promise<voi
         receiver_phone: repair.receiver_phone,
         receiver_photo_url: repair.receiver_photo_url,
         signature_url: repair.signature_url,
-        staff_id: repair.staff_id,
+        delivered_by: deliveredByName,
         device: {
           brand: repair.device.brand,
           model: repair.device.model,
@@ -1107,7 +1132,9 @@ export async function getRepairReceipt(req: Request, res: Response): Promise<voi
         name: shop.name,
         logo_url: shop.logo_url,
         address: shop.address,
-        phone: shop.phone
+        phone: shop.phone,
+        currency_symbol: shop.currency_symbol,
+        currency_code: shop.currency_code
       }
     };
 

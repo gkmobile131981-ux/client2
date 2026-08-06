@@ -1,4 +1,4 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, PDFImage, rgb, StandardFonts } from 'pdf-lib';
 import { formatDateOnly, formatDateTime } from './date';
 
 // Custom helper to draw a beautiful, pixel-perfect Indian Rupee (₹) symbol using vector lines
@@ -73,7 +73,7 @@ interface ReceiptData {
     receiver_phone: string | null;
     receiver_photo_url: string | null;
     signature_url: string | null;
-    staff_id: string | null;
+    delivered_by: string | null;
     device: {
       brand: string;
       model: string;
@@ -91,7 +91,71 @@ interface ReceiptData {
     logo_url: string | null;
     address: string | null;
     phone: string | null;
+    currency_symbol?: string | null;
+    currency_code?: string | null;
   };
+}
+
+// Embed PNG/JPG images safely (gracefully skips unsupported formats like webp)
+async function embedFlexibleImage(
+  pdfDoc: PDFDocument,
+  buffer: ArrayBuffer,
+  contentType: string
+): Promise<PDFImage | null> {
+  const attempts: Array<'png' | 'jpg'> = [];
+  if (contentType.includes('png')) {
+    attempts.push('png');
+  } else if (contentType.includes('jpeg') || contentType.includes('jpg')) {
+    attempts.push('jpg');
+  } else {
+    // Unknown type: try png first, then jpg as a fallback
+    attempts.push('png', 'jpg');
+  }
+
+  for (const kind of attempts) {
+    try {
+      return kind === 'png' ? await pdfDoc.embedPng(buffer) : await pdfDoc.embedJpg(buffer);
+    } catch (err) {
+      // Continue to the next attempt
+    }
+  }
+  console.error('Failed to embed image (unsupported format):', contentType);
+  return null;
+}
+
+// Compute draw dimensions that preserve the image aspect ratio inside a max box
+function fitImageInBox(image: PDFImage, maxWidth: number, maxHeight: number) {
+  const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
+  return { width: image.width * scale, height: image.height * scale };
+}
+
+// Truncate a string with an ellipsis so it never exceeds maxWidth
+function truncateText(text: string, font: any, size: number, maxWidth: number): string {
+  if (font.widthOfTextAtSize(text, size) <= maxWidth) return text;
+  let result = text;
+  while (result.length > 0 && font.widthOfTextAtSize(`${result}…`, size) > maxWidth) {
+    result = result.slice(0, -1);
+  }
+  return `${result}…`;
+}
+
+// Wrap text into lines that fit within maxWidth
+function wrapText(text: string, font: any, size: number, maxWidth: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [];
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+      current = candidate;
+    } else {
+      if (current) lines.push(current);
+      current = word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
 }
 
 export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array> {
@@ -111,39 +175,58 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
   const secondaryColor = rgb(0.28, 0.33, 0.43); // slate-600
   const lightBgColor = rgb(0.96, 0.97, 0.98); // slate-50
   const accentGreen = rgb(0.09, 0.64, 0.29); // green-600
+  const accentAmber = rgb(0.82, 0.5, 0.02); // amber-600
+  const accentBlue = rgb(0.1, 0.46, 0.87); // blue-600
+  const accentRed = rgb(0.83, 0.2, 0.2); // red-600
   const borderLight = rgb(0.89, 0.91, 0.94); // slate-200
 
   // Margins & Dimensions
   const marginX = 40;
   let cursorY = height - 40;
 
-  // 1. Fetch and Embed Logo if available
-  let logoImage: any = null;
+  // Currency handling with graceful fallback to INR / ₹
+  const isValidCurrencySymbol = (s: string | null | undefined): boolean => {
+    if (!s) return false;
+    const normalized = s.trim();
+    if (!normalized) return false;
+    // Reject the corrupted mojibake default stored by an old migration (e.g. "\uFFFD,1")
+    if (normalized.includes('\uFFFD')) return false;
+    if (/[0-9]/.test(normalized)) return false;
+    return true;
+  };
+  const currencySymbol = isValidCurrencySymbol(shop.currency_symbol) ? shop.currency_symbol!.trim() : '₹';
+  const currencyCode = /^[A-Z]{3}$/.test(shop.currency_code || '') ? shop.currency_code! : 'INR';
+  const useVectorRupee = currencySymbol === '₹';
+
+  // 1. Fetch and Embed Logo if available (aspect-ratio safe)
+  let logoImage: PDFImage | null = null;
   if (shop.logo_url) {
     try {
       const response = await fetch(shop.logo_url);
       if (response && response.ok) {
         const logoBuffer = await response.arrayBuffer();
         const contentType = response.headers.get('content-type') || '';
-        if (contentType.includes('image/png')) {
-          logoImage = await pdfDoc.embedPng(logoBuffer);
-        } else {
-          logoImage = await pdfDoc.embedJpg(logoBuffer);
-        }
+        logoImage = await embedFlexibleImage(pdfDoc, logoBuffer, contentType);
       }
     } catch (err) {
       console.error('Failed to embed logo image:', err);
     }
   }
 
-  // Draw Logo or Shop Initials Block
+  // Header layout: right side block reserves space for the title / job no / status badge
   const logoSize = 64;
+  const rightBlockX = width - marginX - 150;
+  const infoX = marginX + logoSize + 15;
+  const infoMaxWidth = rightBlockX - infoX - 8;
+
+  // Draw Logo or Shop Initials Block (no distortion)
   if (logoImage) {
+    const fitted = fitImageInBox(logoImage, logoSize, logoSize);
     page.drawImage(logoImage, {
-      x: marginX,
-      y: cursorY - logoSize,
-      width: logoSize,
-      height: logoSize,
+      x: marginX + (logoSize - fitted.width) / 2,
+      y: cursorY - logoSize + (logoSize - fitted.height) / 2,
+      width: fitted.width,
+      height: fitted.height,
     });
   } else {
     // Draw placeholder shop icon
@@ -166,9 +249,8 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
     });
   }
 
-  // Draw Shop Info next to logo
-  const infoX = marginX + logoSize + 15;
-  page.drawText(shop.name, {
+  // Draw Shop Info next to logo (truncated so it never overlaps the right block)
+  page.drawText(truncateText(shop.name, fontBold, 16, infoMaxWidth), {
     x: infoX,
     y: cursorY - 20,
     size: 16,
@@ -176,17 +258,26 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
     color: primaryColor,
   });
 
-  page.drawText(shop.address || 'Address not specified', {
-    x: infoX,
-    y: cursorY - 36,
-    size: 9,
-    font,
-    color: secondaryColor,
+  const addressLines = (shop.address || 'Address not specified')
+    .split('\n')
+    .filter((line) => line.trim().length > 0)
+    .slice(0, 3);
+  const addressStartY = cursorY - 36;
+  addressLines.forEach((line, i) => {
+    page.drawText(line, {
+      x: infoX,
+      y: addressStartY - i * 11,
+      size: 9,
+      font,
+      color: secondaryColor,
+      maxWidth: infoMaxWidth,
+      lineHeight: 11,
+    });
   });
-
+  const phoneY = addressStartY - Math.max(addressLines.length - 1, 0) * 11 - 14;
   page.drawText(`Phone: ${shop.phone || 'N/A'}`, {
     x: infoX,
-    y: cursorY - 50,
+    y: phoneY,
     size: 9,
     font,
     color: secondaryColor,
@@ -209,22 +300,35 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
     color: secondaryColor,
   });
 
-  // DELIVERED status badge
+  // Status badge reflecting the actual repair status
+  const STATUS_META: Record<string, { label: string; color: any }> = {
+    delivered: { label: 'DELIVERED', color: accentGreen },
+    delivered_pending_balance: { label: 'DELIVERED · BALANCE DUE', color: accentAmber },
+    ready: { label: 'READY FOR DELIVERY', color: accentBlue },
+    repairing: { label: 'IN REPAIR', color: secondaryColor },
+    pending: { label: 'PENDING', color: accentAmber },
+    booking: { label: 'BOOKED', color: secondaryColor },
+    cancelled: { label: 'CANCELLED', color: accentRed },
+  };
+  const statusMeta = STATUS_META[repair.status] || STATUS_META.booking;
+  const badgeFontSize = 10;
+  const badgeTextWidth = fontBold.widthOfTextAtSize(statusMeta.label, badgeFontSize);
+  const badgeWidth = badgeTextWidth + 20;
+  const badgeX = width - marginX - badgeWidth;
   page.drawRectangle({
-    x: width - marginX - 140,
+    x: badgeX,
     y: cursorY - 60,
-    width: 110,
+    width: badgeWidth,
     height: 18,
-    color: accentGreen,
-    opacity: 0.1,
+    color: statusMeta.color,
+    opacity: 0.12,
   });
-
-  page.drawText('DELIVERED [OK]', {
-    x: width - marginX - 125,
+  page.drawText(statusMeta.label, {
+    x: badgeX + 10,
     y: cursorY - 54,
-    size: 10,
+    size: badgeFontSize,
     font: fontBold,
-    color: accentGreen,
+    color: statusMeta.color,
   });
 
   cursorY -= (logoSize + 25);
@@ -239,7 +343,7 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
 
   cursorY -= 20;
 
-  // 2. Dates section (Created, Expected Delivery, Delivered At)
+  // 2. Dates section (Booked, Expected Delivery, Delivered)
   page.drawText('Receipt Dates:', { x: marginX, y: cursorY, size: 9, font: fontBold, color: secondaryColor });
   
   const datesRowY = cursorY - 14;
@@ -251,12 +355,8 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
     color: primaryColor,
   });
 
-  const deliveryDateLabel = repair.delivered_at ? 'Delivery Date' : 'Expected Delivery';
-  const deliveryDateValue = repair.delivered_at
-    ? formatDateTime(repair.delivered_at)
-    : formatDateOnly(repair.delivery_date);
-
-  page.drawText(`${deliveryDateLabel}: ${deliveryDateValue}`, {
+  const expectedDelivery = repair.delivery_date ? formatDateOnly(repair.delivery_date) : 'N/A';
+  page.drawText(`Expected Delivery: ${expectedDelivery}`, {
     x: marginX + 170,
     y: datesRowY,
     size: 9,
@@ -264,12 +364,13 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
     color: primaryColor,
   });
 
-  page.drawText(`Delivered: ${formatDateTime(repair.delivered_at)}`, {
+  const deliveredValue = repair.delivered_at ? formatDateTime(repair.delivered_at) : '—';
+  page.drawText(`Delivered: ${deliveredValue}`, {
     x: marginX + 340,
     y: datesRowY,
     size: 9,
-    font: fontBold,
-    color: accentGreen,
+    font: repair.delivered_at ? fontBold : font,
+    color: repair.delivered_at ? accentGreen : secondaryColor,
   });
 
   cursorY -= 35;
@@ -409,8 +510,11 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
     color: rgb(1, 1, 1),
   });
 
-  page.drawText('Amount (INR)', {
-    x: width - marginX - 100,
+  const amountRightX = width - marginX - 12;
+  const amountHeaderText = `Amount (${currencyCode})`;
+  const amountHeaderWidth = fontBold.widthOfTextAtSize(amountHeaderText, 9);
+  page.drawText(amountHeaderText, {
+    x: amountRightX - amountHeaderWidth,
     y: tableHeaderY + 5,
     size: 9,
     font: fontBold,
@@ -465,44 +569,62 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
       size: 9,
       font: fontToUse,
       color: isTotal ? primaryColor : secondaryColor,
+      maxWidth: amountRightX - (marginX + 12) - 90,
     });
 
-    // Sign/Signifier
-    const signStr = row.isNegative ? '-' : '';
-    const numStr = `${signStr} ${row.amount.toFixed(2)}`;
+    // Right-aligned amount value under the Amount header
+    const signStr = row.isNegative ? '- ' : '';
+    const numStr = `${signStr}${row.amount.toFixed(2)}`;
+    const numWidth = fontToUse.widthOfTextAtSize(numStr, 9);
+    const numX = amountRightX - numWidth;
 
-    // Draw Rupee symbol manually
-    const rupeeX = width - marginX - 100;
-    
-    drawRupee(page, rupeeX, rowY + 5, 9, colorToUse);
-    
-    // Draw amount text
-    page.drawText(numStr, {
-      x: rupeeX + 12,
-      y: rowY + 6,
-      size: 9,
-      font: fontToUse,
-      color: colorToUse,
-    });
+    if (useVectorRupee) {
+      drawRupee(page, numX - 13, rowY + 5, 9, colorToUse);
+      page.drawText(numStr, {
+        x: numX,
+        y: rowY + 6,
+        size: 9,
+        font: fontToUse,
+        color: colorToUse,
+      });
+    } else {
+      const symWidth = fontToUse.widthOfTextAtSize(currencySymbol, 9);
+      page.drawText(currencySymbol, {
+        x: numX - symWidth - 4,
+        y: rowY + 6,
+        size: 9,
+        font: fontToUse,
+        color: colorToUse,
+      });
+      page.drawText(numStr, {
+        x: numX,
+        y: rowY + 6,
+        size: 9,
+        font: fontToUse,
+        color: colorToUse,
+      });
+    }
 
     rowY -= 20;
   });
 
   cursorY = rowY - 15;
 
-  // 5. Notes / Terms (if any)
-  if (repair.notes) {
+  // 5. Notes / Terms (if any) — internal [PROMISED_DUE:...] marker is stripped before display
+  const cleanNotes = (repair.notes || '').replace(/\[PROMISED_DUE:\d{4}-\d{2}-\d{2}\]/g, '').trim();
+  if (cleanNotes) {
+    const notesLines = wrapText(cleanNotes, font, 9, width - marginX * 2);
     page.drawText('Notes / Remarks:', { x: marginX, y: cursorY, size: 9, font: fontBold, color: secondaryColor });
-    page.drawText(repair.notes, {
-      x: marginX,
-      y: cursorY - 14,
-      size: 9,
-      font,
-      color: primaryColor,
-      maxWidth: width - marginX * 2,
-      lineHeight: 12,
+    notesLines.forEach((line, i) => {
+      page.drawText(line, {
+        x: marginX,
+        y: cursorY - 14 - i * 12,
+        size: 9,
+        font,
+        color: primaryColor,
+      });
     });
-    cursorY -= 40;
+    cursorY -= (14 + notesLines.length * 12 + 10);
   }
 
   // 6. Signature and Receiver info panel
@@ -534,7 +656,7 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
     font,
     color: primaryColor,
   });
-  page.drawText(`Delivered By Staff ID: ${repair.staff_id ? 'GK Registered Staff' : 'System Admin'}`, {
+  page.drawText(`Delivered By: ${repair.delivered_by || 'System Admin'}`, {
     x: marginX,
     y: detailsY - 28,
     size: 9,
@@ -542,14 +664,15 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
     color: secondaryColor,
   });
 
-  // Embed signature image if it exists
-  let signatureImage: any = null;
+  // Embed signature image if it exists (PNG/JPG, aspect-ratio safe)
+  let signatureImage: PDFImage | null = null;
   if (repair.signature_url) {
     try {
       const response = await fetch(repair.signature_url);
       if (response && response.ok) {
         const sigBuffer = await response.arrayBuffer();
-        signatureImage = await pdfDoc.embedPng(sigBuffer);
+        const contentType = response.headers.get('content-type') || '';
+        signatureImage = await embedFlexibleImage(pdfDoc, sigBuffer, contentType);
       }
     } catch (err) {
       console.error('Failed to embed signature image:', err);
@@ -572,12 +695,13 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
   });
 
   if (signatureImage) {
-    // Draw signature centered inside the signature frame
+    // Draw signature centered inside the frame preserving its aspect ratio
+    const fitted = fitImageInBox(signatureImage, sigBoxWidth - 10, sigBoxHeight - 10);
     page.drawImage(signatureImage, {
-      x: sigBoxX + 5,
-      y: sigBoxY + 5,
-      width: sigBoxWidth - 10,
-      height: sigBoxHeight - 10,
+      x: sigBoxX + (sigBoxWidth - fitted.width) / 2,
+      y: sigBoxY + (sigBoxHeight - fitted.height) / 2,
+      width: fitted.width,
+      height: fitted.height,
     });
   } else {
     // Draw sign-here line indicator

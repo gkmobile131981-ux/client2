@@ -70,7 +70,8 @@ export async function getRateCards(req: Request, res: Response): Promise<void> {
       `)
       .eq('shop_id', targetShopId)
       .order('brand', { ascending: true })
-      .order('model', { ascending: true });
+      .order('model', { ascending: true })
+      .order('sort_order', { ascending: true, referencedTable: 'rate_card_services' });
 
     if (error) {
       res.status(400).json({ error: error.message });
@@ -100,6 +101,7 @@ export async function getRateCardById(req: Request, res: Response): Promise<void
       .select(`*, services:rate_card_services(*)`)
       .eq('id', id)
       .eq('shop_id', targetShopId)
+      .order('sort_order', { ascending: true, referencedTable: 'rate_card_services' })
       .single();
 
     if (error || !data) {
@@ -137,6 +139,7 @@ export async function lookupRateCard(req: Request, res: Response): Promise<void>
       .eq('shop_id', targetShopId)
       .ilike('brand', brand)
       .ilike('model', model)
+      .order('sort_order', { ascending: true, referencedTable: 'rate_card_services' })
       .maybeSingle();
 
     if (error) {
@@ -343,6 +346,7 @@ export async function upsertRateCardServices(req: Request, res: Response): Promi
       .from('rate_cards')
       .select(`*, services:rate_card_services(*)`)
       .eq('id', id)
+      .order('sort_order', { ascending: true, referencedTable: 'rate_card_services' })
       .single();
 
     res.json({ message: 'Services saved successfully', rateCard: updated });
