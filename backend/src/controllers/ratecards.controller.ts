@@ -9,26 +9,15 @@ const SUPER_ADMIN_EMAILS = [
   'test@gkrepair.com'
 ];
 
-async function getShopIdToUse(user: any): Promise<string> {
-  const isSuperAdmin = !!(user && (user.role === 'superadmin' || (user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase().trim()))));
-  if (isSuperAdmin) {
-    return user.shop_id || 'bafff8e0-53cc-45cc-afa3-1c5862e8da21';
-  }
-  
-  try {
-    const { data: adminProfile } = await supabaseAdmin
-      .from('users')
-      .select('shop_id')
-      .eq('id', '5aba93bc-6abf-4b99-8600-dff366a3a99d')
-      .single();
-    if (adminProfile?.shop_id) {
-      return adminProfile.shop_id;
-    }
-  } catch (err) {
-    // Ignore error
-  }
-  
-  return 'bafff8e0-53cc-45cc-afa3-1c5862e8da21';
+const DEFAULT_SHOP_ID = 'bafff8e0-53cc-45cc-afa3-1c5862e8da21';
+
+// Every rate-card operation must resolve to the SAME shop or data written on
+// create/save can never be read back on list/get (the original implementation
+// pointed non-super-admin reads at a hardcoded admin shop, causing "saved but
+// not displayed" mismatches). Authenticated users always operate within their
+// own shop; the default is only a fallback for users without an assigned shop.
+function getShopIdToUse(user: any): string {
+  return user?.shop_id || DEFAULT_SHOP_ID;
 }
 
 function checkSuperAdmin(user: any): boolean {
@@ -61,7 +50,7 @@ export async function getRateCards(req: Request, res: Response): Promise<void> {
   }
 
   try {
-    const targetShopId = await getShopIdToUse(user);
+    const targetShopId = getShopIdToUse(user);
     const { data, error } = await supabaseAdmin
       .from('rate_cards')
       .select(`
@@ -95,7 +84,7 @@ export async function getRateCardById(req: Request, res: Response): Promise<void
   }
 
   try {
-    const targetShopId = await getShopIdToUse(user);
+    const targetShopId = getShopIdToUse(user);
     const { data, error } = await supabaseAdmin
       .from('rate_cards')
       .select(`*, services:rate_card_services(*)`)
@@ -132,7 +121,7 @@ export async function lookupRateCard(req: Request, res: Response): Promise<void>
   }
 
   try {
-    const targetShopId = await getShopIdToUse(user);
+    const targetShopId = getShopIdToUse(user);
     const { data, error } = await supabaseAdmin
       .from('rate_cards')
       .select(`*, services:rate_card_services(*)`)
@@ -177,7 +166,7 @@ export async function createRateCard(req: Request, res: Response): Promise<void>
     const { data, error } = await supabaseAdmin
       .from('rate_cards')
       .insert({
-        shop_id: user.shop_id,
+        shop_id: getShopIdToUse(user),
         brand: validated.brand,
         model: validated.model,
         model_image_url: modelImageUrl,
@@ -236,7 +225,7 @@ export async function updateRateCard(req: Request, res: Response): Promise<void>
       .from('rate_cards')
       .update(updatePayload)
       .eq('id', id)
-      .eq('shop_id', user.shop_id)
+      .eq('shop_id', getShopIdToUse(user))
       .select()
       .single();
 
@@ -274,7 +263,7 @@ export async function deleteRateCard(req: Request, res: Response): Promise<void>
       .from('rate_cards')
       .delete()
       .eq('id', id)
-      .eq('shop_id', user.shop_id);
+      .eq('shop_id', getShopIdToUse(user));
 
     if (error) {
       res.status(400).json({ error: error.message });
@@ -305,7 +294,7 @@ export async function upsertRateCardServices(req: Request, res: Response): Promi
     const { services } = upsertServicesSchema.parse(req.body);
 
     // Verify rate card belongs to Super Admin's shop
-    const targetShopId = await getShopIdToUse(user);
+    const targetShopId = getShopIdToUse(user);
     const { data: existing, error: verifyError } = await supabaseAdmin
       .from('rate_cards')
       .select('id')

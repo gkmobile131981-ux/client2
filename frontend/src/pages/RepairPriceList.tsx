@@ -39,22 +39,31 @@ export default function RepairPriceList() {
     });
   }, [uniqueBrands, rateCards]);
 
-  // Filter models based on selected brand from DB rate cards or predefined fallback list
+  // Filter models based on selected brand — DB rate cards take precedence, and any
+  // catalog models without a saved card are still shown as selectable fallbacks
   const filteredModels = useMemo(() => {
     if (!selectedBrand) return [];
-    
-    // DB models matching selected brand
-    const dbModels = rateCards
-      .filter((rc) => rc.brand.toUpperCase() === selectedBrand.toUpperCase())
-      .map((rc) => ({ id: rc.id, model: rc.model }));
 
-    if (dbModels.length > 0) {
-      return dbModels.sort((a, b) => a.model.localeCompare(b.model));
-    }
+    const brandUpper = selectedBrand.toUpperCase();
+    const dbByModel = new Map<string, string>();
+    rateCards
+      .filter((rc) => rc.brand.toUpperCase() === brandUpper)
+      .forEach((rc) => dbByModel.set(rc.model.toUpperCase(), rc.id));
 
-    // Fallback: Show predefined models if no DB rate card exists yet for this brand
-    const fallbackModels = DEVICE_BRANDS[selectedBrand.toUpperCase()] || [];
-    return fallbackModels.map((m) => ({ id: `fallback-${m}`, model: m }));
+    const models: { id: string; model: string }[] = [];
+
+    // 1. Models that already have a saved rate card (real DB id)
+    Array.from(dbByModel.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .forEach(([model]) => models.push({ id: dbByModel.get(model)!, model }));
+
+    // 2. Catalog models without a saved rate card (fallback template)
+    (DEVICE_BRANDS[brandUpper] || [])
+      .filter((m) => !dbByModel.has(m.toUpperCase()))
+      .sort((a, b) => a.localeCompare(b))
+      .forEach((m) => models.push({ id: `fallback-${m}`, model: m }));
+
+    return models;
   }, [selectedBrand, rateCards]);
 
   // Options for Model SearchSelect

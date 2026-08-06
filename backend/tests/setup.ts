@@ -345,6 +345,20 @@ jest.mock('../src/utils/supabase', () => {
         }
       };
     }
+
+    maybeSingle() {
+      return {
+        then: (onfulfilled?: (value: any) => any, onrejected?: (reason: any) => any) => {
+          const data = this.execute();
+          const item = data[0] || null;
+          const payload = {
+            data: item,
+            error: null
+          };
+          return Promise.resolve(payload).then(onfulfilled, onrejected);
+        }
+      };
+    }
   }
 
   const mockAuth = {

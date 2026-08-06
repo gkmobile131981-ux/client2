@@ -198,6 +198,28 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
   const currencyCode = /^[A-Z]{3}$/.test(shop.currency_code || '') ? shop.currency_code! : 'INR';
   const useVectorRupee = currencySymbol === '₹';
 
+  // Status badge meta (computed early so the header info column reserves enough room)
+  const STATUS_META: Record<string, { label: string; color: any }> = {
+    delivered: { label: 'DELIVERED', color: accentGreen },
+    delivered_pending_balance: { label: 'DELIVERED · BALANCE DUE', color: accentAmber },
+    ready: { label: 'READY FOR DELIVERY', color: accentBlue },
+    repairing: { label: 'IN REPAIR', color: secondaryColor },
+    pending: { label: 'PENDING', color: accentAmber },
+    booking: { label: 'BOOKED', color: secondaryColor },
+    cancelled: { label: 'CANCELLED', color: accentRed },
+  };
+  const statusMeta = STATUS_META[repair.status] || STATUS_META.booking;
+  const badgeFontSize = 10;
+  const badgeTextWidth = fontBold.widthOfTextAtSize(statusMeta.label, badgeFontSize);
+  const badgeWidth = badgeTextWidth + 20;
+
+  // Header layout: right side block reserves space for the title / job no / status badge
+  const logoSize = 64;
+  const rightBlockWidth = Math.max(150, badgeWidth + 16);
+  const rightBlockX = width - marginX - rightBlockWidth;
+  const infoX = marginX + logoSize + 15;
+  const infoMaxWidth = rightBlockX - infoX - 8;
+
   // 1. Fetch and Embed Logo if available (aspect-ratio safe)
   let logoImage: PDFImage | null = null;
   if (shop.logo_url) {
@@ -212,12 +234,6 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
       console.error('Failed to embed logo image:', err);
     }
   }
-
-  // Header layout: right side block reserves space for the title / job no / status badge
-  const logoSize = 64;
-  const rightBlockX = width - marginX - 150;
-  const infoX = marginX + logoSize + 15;
-  const infoMaxWidth = rightBlockX - infoX - 8;
 
   // Draw Logo or Shop Initials Block (no distortion)
   if (logoImage) {
@@ -258,23 +274,33 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
     color: primaryColor,
   });
 
-  const addressLines = (shop.address || 'Address not specified')
-    .split('\n')
-    .filter((line) => line.trim().length > 0)
-    .slice(0, 3);
-  const addressStartY = cursorY - 36;
-  addressLines.forEach((line, i) => {
+  // Address — wrapped automatically into multiple lines (up to MAX_ADDRESS_LINES),
+  // preserving explicit newlines, so any length/format fits cleanly
+  const MAX_ADDRESS_LINES = 3;
+  const addressLines: string[] = [];
+  const addressSegments = (shop.address || '')
+    .split(/\r?\n/)
+    .map((seg) => seg.trim())
+    .filter(Boolean);
+  for (const segment of addressSegments) {
+    if (addressLines.length >= MAX_ADDRESS_LINES) break;
+    for (const wrapped of wrapText(segment, font, 9, infoMaxWidth)) {
+      if (addressLines.length >= MAX_ADDRESS_LINES) break;
+      addressLines.push(wrapped);
+    }
+  }
+  const addressDisplayLines = addressLines.length > 0 ? addressLines : ['Address not specified'];
+  const addressStartY = cursorY - 38;
+  addressDisplayLines.forEach((line, i) => {
     page.drawText(line, {
       x: infoX,
       y: addressStartY - i * 11,
       size: 9,
       font,
       color: secondaryColor,
-      maxWidth: infoMaxWidth,
-      lineHeight: 11,
     });
   });
-  const phoneY = addressStartY - Math.max(addressLines.length - 1, 0) * 11 - 14;
+  const phoneY = addressStartY - Math.max(addressDisplayLines.length - 1, 0) * 11 - 14;
   page.drawText(`Phone: ${shop.phone || 'N/A'}`, {
     x: infoX,
     y: phoneY,
@@ -283,9 +309,9 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
     color: secondaryColor,
   });
 
-  // Draw Document Title on the right side
+  // Draw Document Title + Job No + Status Badge in the reserved right block
   page.drawText('REPAIR RECEIPT', {
-    x: width - marginX - 140,
+    x: rightBlockX,
     y: cursorY - 20,
     size: 14,
     font: fontBold,
@@ -293,27 +319,13 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
   });
 
   page.drawText(`Job No: ${repair.job_number}`, {
-    x: width - marginX - 140,
+    x: rightBlockX,
     y: cursorY - 36,
     size: 10,
     font: fontBold,
     color: secondaryColor,
   });
 
-  // Status badge reflecting the actual repair status
-  const STATUS_META: Record<string, { label: string; color: any }> = {
-    delivered: { label: 'DELIVERED', color: accentGreen },
-    delivered_pending_balance: { label: 'DELIVERED · BALANCE DUE', color: accentAmber },
-    ready: { label: 'READY FOR DELIVERY', color: accentBlue },
-    repairing: { label: 'IN REPAIR', color: secondaryColor },
-    pending: { label: 'PENDING', color: accentAmber },
-    booking: { label: 'BOOKED', color: secondaryColor },
-    cancelled: { label: 'CANCELLED', color: accentRed },
-  };
-  const statusMeta = STATUS_META[repair.status] || STATUS_META.booking;
-  const badgeFontSize = 10;
-  const badgeTextWidth = fontBold.widthOfTextAtSize(statusMeta.label, badgeFontSize);
-  const badgeWidth = badgeTextWidth + 20;
   const badgeX = width - marginX - badgeWidth;
   page.drawRectangle({
     x: badgeX,
@@ -343,37 +355,39 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
 
   cursorY -= 20;
 
-  // 2. Dates section (Booked, Expected Delivery, Delivered)
+  // 2. Dates section — three aligned columns (labels + values straight from the DB)
   page.drawText('Receipt Dates:', { x: marginX, y: cursorY, size: 9, font: fontBold, color: secondaryColor });
-  
-  const datesRowY = cursorY - 14;
-  page.drawText(`Booked: ${formatDateOnly(repair.created_at)}`, {
-    x: marginX,
-    y: datesRowY,
-    size: 9,
-    font,
-    color: primaryColor,
-  });
 
   const expectedDelivery = repair.delivery_date ? formatDateOnly(repair.delivery_date) : 'N/A';
-  page.drawText(`Expected Delivery: ${expectedDelivery}`, {
-    x: marginX + 170,
-    y: datesRowY,
-    size: 9,
-    font,
-    color: primaryColor,
-  });
-
   const deliveredValue = repair.delivered_at ? formatDateTime(repair.delivered_at) : '—';
-  page.drawText(`Delivered: ${deliveredValue}`, {
-    x: marginX + 340,
-    y: datesRowY,
-    size: 9,
-    font: repair.delivered_at ? fontBold : font,
-    color: repair.delivered_at ? accentGreen : secondaryColor,
+
+  const dateColWidth = (width - marginX * 2) / 3;
+  const dateLabelY = cursorY - 14;
+  const dateValueY = cursorY - 28;
+  const dateColumns = [
+    { label: 'BOOKED', value: formatDateOnly(repair.created_at), emphasized: false },
+    { label: 'EXPECTED DELIVERY', value: expectedDelivery, emphasized: false },
+    { label: 'DELIVERED', value: deliveredValue, emphasized: !!repair.delivered_at },
+  ];
+  dateColumns.forEach((col, i) => {
+    const x = marginX + i * dateColWidth;
+    page.drawText(col.label, {
+      x,
+      y: dateLabelY,
+      size: 7,
+      font: fontBold,
+      color: secondaryColor,
+    });
+    page.drawText(col.value, {
+      x,
+      y: dateValueY,
+      size: 9,
+      font: col.emphasized ? fontBold : font,
+      color: col.emphasized ? accentGreen : primaryColor,
+    });
   });
 
-  cursorY -= 35;
+  cursorY -= 42;
 
   // 3. Customer and Device details boxes side-by-side
   const colWidth = (width - marginX * 2 - 16) / 2;
