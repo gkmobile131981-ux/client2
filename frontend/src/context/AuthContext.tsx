@@ -39,6 +39,7 @@ interface AuthContextType {
   shop: ShopProfile | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
+  setAuthTokens: (accessToken: string, refreshToken: string, userData?: any, shopData?: any) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
   reloadProfile: () => Promise<void>;
@@ -332,6 +333,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const setAuthTokens = async (accessToken: string, refreshToken: string, userData?: any, shopData?: any) => {
+    setIsLoading(true);
+    try {
+      localStorage.setItem('gk_access_token', accessToken);
+      localStorage.setItem('gk_refresh_token', refreshToken);
+
+      await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken
+      }).catch(() => {});
+
+      if (userData) {
+        setUser(userData);
+        setRole(userData.role);
+        localStorage.setItem('gk_cached_user', JSON.stringify(userData));
+        localStorage.setItem('gk_cached_role', userData.role);
+      }
+      if (shopData) {
+        setShop(shopData);
+        localStorage.setItem('gk_cached_shop', JSON.stringify(shopData));
+      }
+
+      if (!userData || !shopData) {
+        await loadProfile(accessToken);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -340,6 +371,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         shop,
         isLoading,
         login,
+        setAuthTokens,
         logout,
         refreshSession,
         reloadProfile

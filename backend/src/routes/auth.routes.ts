@@ -17,7 +17,9 @@ import {
   resetStaffPassword,
   updateShop,
   getAdminSessions,
-  revokeAdminSession
+  revokeAdminSession,
+  sendResetOtp,
+  verifyResetOtp
 } from '../controllers/auth.controller';
 
 const router = Router();
@@ -38,6 +40,8 @@ const uploadPhotoCard = multer({
 // Public routes
 router.post('/register-owner', upload.single('logo'), registerOwner);
 router.post('/login', login);
+router.post('/send-reset-otp', sendResetOtp);
+router.post('/verify-reset-otp', verifyResetOtp);
 router.post('/refresh', refresh);
 router.post('/logout', logout);
 
