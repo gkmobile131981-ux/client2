@@ -83,7 +83,7 @@ async function resolveFormats(constructor: DetectorCtor): Promise<string[]> {
   try {
     const supported = await constructor.getSupportedFormats();
     const filtered = PREFERRED_FORMATS.filter((format) => supported.includes(format));
-    return filtered.length > 0 ? filtered : [...PREFERRED_FORMATS];
+    return filtered.length > 0 ? filtered : [...supported];
   } catch {
     return [...PREFERRED_FORMATS];
   }
@@ -160,6 +160,7 @@ export class ImeiBarcodeScanner {
   private canvasContext: CanvasRenderingContext2D | null = null;
   private rafId = 0;
   private lastDecodeAt = 0;
+  private decodeInFlight = false;
   private stopped = true;
   private successFired = false;
   private consecutiveFailures = 0;
@@ -364,6 +365,7 @@ export class ImeiBarcodeScanner {
   private tick = (): void => {
     if (this.stopped) return;
     this.rafId = requestAnimationFrame(this.tick);
+    if (this.decodeInFlight) return;
     const now = performance.now();
     if (now - this.lastDecodeAt < DECODE_INTERVAL_MS) return;
     this.lastDecodeAt = now;
@@ -380,6 +382,16 @@ export class ImeiBarcodeScanner {
   }
 
   private async runDecodePass(): Promise<void> {
+    if (this.stopped || this.successFired || this.decodeInFlight) return;
+    this.decodeInFlight = true;
+    try {
+      await this.decodeFrame();
+    } finally {
+      this.decodeInFlight = false;
+    }
+  }
+
+  private async decodeFrame(): Promise<void> {
     if (this.stopped || this.successFired) return;
     const video = this.video;
     if (video.readyState < 2 || video.videoWidth === 0) return;
