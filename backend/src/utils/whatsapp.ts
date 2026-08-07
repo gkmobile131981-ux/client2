@@ -343,6 +343,156 @@ export async function sendWhatsAppUpdate(
 }
 
 /**
+ * Normalize a phone number into E.164-ish form for a WhatsApp deep link.
+ * 10-digit local numbers are assumed to be Indian (+91) to match the app's
+ * currency/region convention.
+ */
+function toE164Local(raw: string): string {
+  const digits = (raw || '').replace(/\D/g, '');
+  if (digits.length === 10) return '91' + digits;
+  return digits.replace(/^00/, '');
+}
+
+/**
+ * Dispatch an OTP message for password reset / verification.
+ *
+ * Reuses the same provider configuration the rest of the app uses for
+ * WhatsApp notifications (WHATSAPP_PROVIDER = 'meta' | 'twilio' | 'mock'),
+ * so once the app can deliver repair status updates, the OTP can be delivered too.
+ *
+ * - 'meta': real WhatsApp Cloud API send (free-form text; template required only
+ *   outside the 24h window). On API rejection it degrades to a deep link.
+ * - 'twilio': real SMS via the Twilio REST API (fetch based, no SDK dependency).
+ * - 'mock' (default): logs to console + whatsapp_logs.json and returns a
+ *   wa.me deep link the user can tap to receive the code over WhatsApp.
+ */
+export async function sendOtpMessage(payload: {
+  phone: string;
+  otp: string;
+  name?: string;
+  purpose?: string;
+}): Promise<{
+  success: boolean;
+  messageId?: string;
+  error?: string;
+  isSandbox?: boolean;
+  whatsappUrl?: string;
+  provider: string;
+}> {
+  const headline = payload.purpose || 'password reset';
+  const recipientName = payload.name || 'there';
+  const digits = (payload.phone || '').replace(/\D/g, '');
+  const mobile = toE164Local(payload.phone);
+
+  const text = [
+    `Hello ${recipientName},`,
+    ``,
+    `Your GK Repair System OTP for ${headline} is: ${payload.otp}`,
+    ``,
+    `This code is valid for 10 minutes. Do not share it with anyone.`,
+    ``,
+    `Regards,\nGK Repair System`
+  ].join('\n');
+
+  const provider = (process.env.WHATSAPP_PROVIDER || 'mock').toLowerCase();
+
+  // Bypass any network in tests.
+  if (process.env.NODE_ENV === 'test') {
+    return { success: true, messageId: 'test-stub-id', provider };
+  }
+
+  // Universal deep link fallback so the code can always be received.
+  const whatsappUrl = `https://wa.me/${mobile}?text=${encodeURIComponent(text)}`;
+
+  try {
+    if (provider === 'meta') {
+      const accessToken = process.env.WHATSAPP_META_ACCESS_TOKEN;
+      const phoneNumberId = process.env.WHATSAPP_META_PHONE_NUMBER_ID;
+      if (!accessToken || !phoneNumberId) {
+        throw new Error('Meta credentials (WHATSAPP_META_ACCESS_TOKEN / WHATSAPP_META_PHONE_NUMBER_ID) not configured.');
+      }
+      const response = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          recipient_type: 'individual',
+          to: mobile,
+          type: 'text',
+          text: { body: text }
+        })
+      });
+      const responseData: any = await response.json();
+      if (!response.ok) {
+        // Out-of-window messages require an approved template; degrade to deep link.
+        return {
+          success: false,
+          error: responseData.error?.message || 'Meta API request failed',
+          whatsappUrl,
+          isSandbox: true,
+          provider
+        };
+      }
+      return { success: true, messageId: responseData.messages?.[0]?.id, provider };
+    } else if (provider === 'twilio') {
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const from = process.env.TWILIO_PHONE_NUMBER || process.env.TWILIO_SMS_FROM;
+      if (!accountSid || !authToken || !from) {
+        throw new Error('Twilio credentials (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_PHONE_NUMBER) not configured.');
+      }
+      const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+      const params = new URLSearchParams();
+      params.append('To', mobile.startsWith('+') ? mobile : `+${mobile}`);
+      params.append('From', from.startsWith('+') ? from : `+${from}`);
+      params.append('Body', text);
+
+      const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Authorization: authHeader
+        },
+        body: params
+      });
+      const data: any = await response.json();
+      if (!response.ok) {
+        return { success: false, error: data.message || 'Twilio API error', whatsappUrl, isSandbox: true, provider };
+      }
+      return { success: true, messageId: data.sid, provider };
+    }
+
+    // Mock / sandbox mode — log locally and expose a WhatsApp deep link.
+    const baseLog: WhatsAppLogEntry = {
+      id: `otp-${digits}-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      recipientName,
+      recipientPhone: payload.phone,
+      jobNumber: 'OTP',
+      deviceInfo: headline,
+      shopName: 'GK Repair System',
+      stage: 'OTP Request',
+      message: text,
+      notes: null,
+      provider: 'mock',
+      status: 'sandbox'
+    };
+    saveWhatsAppLog(baseLog);
+    console.log('--- [OTP MOCK Sandbox Dispatch] ---');
+    console.log(`To: ${recipientName} (${mobile})`);
+    console.log(`OTP: ${payload.otp}`);
+    console.log('-----------------------------------');
+    return { success: false, error: 'SMS provider not configured.', whatsappUrl, isSandbox: true, provider };
+  } catch (err: any) {
+    console.error('[OTP Dispatch] Dispatch error:', err.message);
+    return { success: false, error: err.message, whatsappUrl, isSandbox: true, provider };
+  }
+}
+
+/**
  * Dispatches a WhatsApp notification bill to a monthly subscription customer
  */
 export async function sendSubscriptionWhatsAppBill(

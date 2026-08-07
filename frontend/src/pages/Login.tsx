@@ -8,7 +8,7 @@ import logo from '../logo.png';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { Smartphone, Mail, Lock, Loader2, ArrowLeft, KeyRound, CheckCircle2 } from 'lucide-react';
+import { Smartphone, Mail, Lock, Loader2, ArrowLeft, KeyRound, CheckCircle2, MessageCircle } from 'lucide-react';
 import { apiClient } from '../lib/api';
 import toast from 'react-hot-toast';
 
@@ -32,6 +32,8 @@ export default function Login() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [maskedPhoneInfo, setMaskedPhoneInfo] = useState('');
   const [sandboxOtpMsg, setSandboxOtpMsg] = useState<string | null>(null);
+  const [otpWhatsappUrl, setOtpWhatsappUrl] = useState<string | null>(null);
+  const [otpDelivered, setOtpDelivered] = useState<boolean | null>(null);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
 
@@ -78,8 +80,10 @@ export default function Login() {
 
     setSendingOtp(true);
     setSandboxOtpMsg(null);
+    setOtpWhatsappUrl(null);
+    setOtpDelivered(null);
     try {
-      const res = await apiClient.post<{ message: string; maskedPhone: string; sandboxOtp?: string }>('/auth/send-reset-otp', {
+      const res = await apiClient.post<{ message: string; maskedPhone: string; sandboxOtp?: string; whatsappUrl?: string; delivered?: boolean }>('/auth/send-reset-otp', {
         phone: resetPhone.trim()
       });
 
@@ -87,6 +91,8 @@ export default function Login() {
       if (res.sandboxOtp) {
         setSandboxOtpMsg(res.sandboxOtp);
       }
+      setOtpWhatsappUrl(res.whatsappUrl || null);
+      setOtpDelivered(res.delivered ?? null);
       setViewMode('verify-otp');
       toast.success(res.message);
     } catch (err: any) {
@@ -286,11 +292,28 @@ export default function Login() {
               {sandboxOtpMsg && (
                 <div className="bg-primary/10 border border-primary/30 rounded-xl p-3 text-center space-y-1">
                   <span className="text-[10px] uppercase tracking-wider font-extrabold text-primary block">
-                    SMS Sandbox Test Mode
+                    Development / Fallback Code
                   </span>
                   <p className="text-xs text-foreground font-mono font-bold">
                     Your OTP Code is: <span className="text-primary text-base font-black tracking-widest">{sandboxOtpMsg}</span>
                   </p>
+                </div>
+              )}
+
+              {otpDelivered === false && otpWhatsappUrl && (
+                <a
+                  href={otpWhatsappUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full text-center bg-green-600/15 border border-green-500/40 text-green-500 rounded-xl p-3 text-sm font-semibold hover:bg-green-600/25 transition-colors"
+                >
+                  <MessageCircle className="h-4 w-4" /> Receive OTP via WhatsApp
+                </a>
+              )}
+
+              {otpDelivered === true && (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-center text-xs text-emerald-500 font-semibold">
+                  OTP sent — check your SMS/WhatsApp inbox.
                 </div>
               )}
 

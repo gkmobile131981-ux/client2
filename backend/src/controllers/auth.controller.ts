@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { supabaseClient, supabaseAdmin } from '../utils/supabase';
 import { uploadPhoto } from '../utils/photoUpload';
+import { sendOtpMessage } from '../utils/whatsapp';
 
 // Validation Schemas
 const registerOwnerSchema = z.object({
@@ -1165,44 +1166,41 @@ export async function sendResetOtp(req: Request, res: Response): Promise<void> {
       expiresAt
     });
 
-    // Dispatch SMS via Twilio if configured
-    const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
-    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
-    const twilioFromPhone = process.env.TWILIO_PHONE_NUMBER || process.env.TWILIO_SMS_FROM;
-
-    let smsSent = false;
-    if (twilioAccountSid && twilioAuthToken && twilioFromPhone) {
-      try {
-        const client = require('twilio')(twilioAccountSid, twilioAuthToken);
-        const recipientNumber = userInfo.phone.startsWith('+') ? userInfo.phone : `+${userInfo.phone}`;
-        await client.messages.create({
-          body: `Your GK Repair System password reset OTP is: ${otp}. Valid for 10 minutes. Do not share this code.`,
-          from: twilioFromPhone,
-          to: recipientNumber
-        });
-        smsSent = true;
-      } catch (twilioErr: any) {
-        console.error('[SMS Service] Error sending SMS via Twilio:', twilioErr.message);
-      }
-    }
-
-    console.log(`\n========== [SMS RESET OTP DISPATCH] ==========`);
+    console.log(`\n========== [RESET OTP GENERATED] ==========`);
     console.log(`User: ${userInfo.name} (${userInfo.email})`);
     console.log(`Phone: ${userInfo.phone}`);
-    console.log(`OTP Code: ${otp}`);
     console.log(`Expires: ${new Date(expiresAt).toLocaleTimeString()}`);
-    console.log(`===============================================\n`);
+    console.log(`============================================\n`);
+
+    // Dispatch the OTP through the app's configured messaging provider
+    // (meta / twilio / mock). Falls back to a WhatsApp deep link + returning the
+    // code to the UI whenever a real provider is not available, so the password
+    // reset flow never dead-ends silently.
+    const dispatch = await sendOtpMessage({
+      phone: userInfo.phone,
+      otp,
+      name: userInfo.name,
+      purpose: 'password reset'
+    });
 
     const rawDigits = userInfo.phone.replace(/\D/g, '');
     const maskedPhone = rawDigits.length >= 10 
       ? `${rawDigits.slice(0, 3)}****${rawDigits.slice(-4)}`
       : rawDigits || userInfo.email;
 
+    const message = dispatch.success
+      ? `OTP sent successfully via ${dispatch.provider} to mobile number ending in ${maskedPhone}`
+      : 'OTP could not be delivered automatically. Use the option below to receive it, or use the displayed code.';
+
     res.json({
-      message: `OTP sent successfully via SMS to mobile number ending in ${maskedPhone}`,
+      message,
       maskedPhone,
-      // Pass sandboxOtp in dev mode if SMS provider not configured
-      sandboxOtp: (!smsSent && process.env.NODE_ENV !== 'production') ? otp : undefined
+      delivered: dispatch.success,
+      provider: dispatch.provider,
+      whatsappUrl: dispatch.whatsappUrl,
+      // Expose the code to the UI ONLY when a real provider could not deliver it,
+      // so the reset flow remains usable (dev + unconfigured production).
+      sandboxOtp: dispatch.success ? undefined : otp
     });
   } catch (err: any) {
     console.error('Error sending reset OTP:', err);
