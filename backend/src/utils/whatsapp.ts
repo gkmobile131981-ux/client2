@@ -411,30 +411,74 @@ export async function sendOtpMessage(payload: {
       if (!accessToken || !phoneNumberId) {
         throw new Error('Meta credentials (WHATSAPP_META_ACCESS_TOKEN / WHATSAPP_META_PHONE_NUMBER_ID) not configured.');
       }
-      const response = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
+
+      const headers = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`
+      };
+
+      // 1) Preferred: send an approved OTP template. Templates work OUTSIDE the
+      //    24h customer window, so the code actually reaches the end user's
+      //    WhatsApp instead of being shown on the web. Create a template named
+      //    per WHATSAPP_OTP_TEMPLATE (default "gk_otp") whose body is something
+      //    like "Your OTP is {{1}}. Valid for 10 minutes. Do not share it."
+      const templateName = process.env.WHATSAPP_OTP_TEMPLATE || 'gk_otp';
+      const templateLang = process.env.WHATSAPP_OTP_TEMPLATE_LANG || 'en';
+      const templatePayload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: mobile,
+        type: 'template',
+        template: {
+          name: templateName,
+          language: { code: templateLang },
+          components: [{ type: 'body', parameters: [{ type: 'text', text: payload.otp }] }]
+        }
+      };
+
+      let response = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          recipient_type: 'individual',
-          to: mobile,
-          type: 'text',
-          text: { body: text }
-        })
+        headers,
+        body: JSON.stringify(templatePayload)
       });
-      const responseData: any = await response.json();
+      let responseData: any = await response.json();
+
+      // 2) Fallback: template missing/not yet approved? Try a free-form text
+      //    message (only delivered within an active 24h customer session).
       if (!response.ok) {
-        // Out-of-window messages require an approved template; degrade to deep link.
-        return {
-          success: false,
-          error: responseData.error?.message || 'Meta API request failed',
-          whatsappUrl,
-          isSandbox: true,
-          provider
-        };
+        response = await fetch(`https://graph.facebook.com/v19.0/${phoneNumberId}/messages`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to: mobile,
+            type: 'text',
+            text: { body: text }
+          })
+        });
+        responseData = await response.json();
+      }
+
+      if (!response.ok) {
+        // Real provider could not deliver — do NOT leak the code to the web UI.
+        // Log it server-side so support can read it.
+        console.error('[OTP Meta] Delivery failed:', responseData?.error?.message || 'Meta API request failed');
+        saveWhatsAppLog({
+          id: `otp-${digits}-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          recipientName,
+          recipientPhone: payload.phone,
+          jobNumber: 'OTP',
+          deviceInfo: headline,
+          shopName: 'GK Repair System',
+          stage: 'OTP Request',
+          message: text,
+          notes: responseData?.error?.message || 'Meta delivery failed',
+          provider: 'meta',
+          status: 'failed'
+        });
+        return { success: false, error: responseData?.error?.message || 'Meta API request failed', provider };
       }
       return { success: true, messageId: responseData.messages?.[0]?.id, provider };
     } else if (provider === 'twilio') {

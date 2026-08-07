@@ -1188,19 +1188,26 @@ export async function sendResetOtp(req: Request, res: Response): Promise<void> {
       ? `${rawDigits.slice(0, 3)}****${rawDigits.slice(-4)}`
       : rawDigits || userInfo.email;
 
+    const isProduction = process.env.NODE_ENV === 'production';
+
     const message = dispatch.success
-      ? `OTP sent successfully via ${dispatch.provider} to mobile number ending in ${maskedPhone}`
-      : 'OTP could not be delivered automatically. Use the option below to receive it, or use the displayed code.';
+      ? `OTP sent via ${dispatch.provider} to mobile number ending in ${maskedPhone}`
+      : isProduction
+        ? 'OTP delivery failed. Please try again, or use the WhatsApp button to receive it on your device.'
+        : 'OTP could not be delivered automatically. Use the button below, or the code shown (development only).';
 
     res.json({
       message,
       maskedPhone,
       delivered: dispatch.success,
       provider: dispatch.provider,
-      whatsappUrl: dispatch.whatsappUrl,
-      // Expose the code to the UI ONLY when a real provider could not deliver it,
-      // so the reset flow remains usable (dev + unconfigured production).
-      sandboxOtp: dispatch.success ? undefined : otp
+      // WhatsApp fallback button (delivers to the end user's own WhatsApp device;
+      // never prints the code on the page).
+      whatsappUrl: dispatch.success ? undefined : dispatch.whatsappUrl,
+      // Expose the raw code to the UI ONLY in non-production environments when a
+      // real provider could not deliver it (local testing convenience). In
+      // production the OTP is never returned to the browser.
+      sandboxOtp: !dispatch.success && !isProduction ? otp : undefined
     });
   } catch (err: any) {
     console.error('Error sending reset OTP:', err);
