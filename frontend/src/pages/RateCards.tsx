@@ -27,8 +27,8 @@ const getBrandLogoUrl = (brand: string) => {
 
 export default function RateCards() {
   const queryClient = useQueryClient();
-  const [brand, setBrand] = useState('APPLE');
-  const [model, setModel] = useState('IPAD AIR');
+  const [brand, setBrand] = useState('');
+  const [model, setModel] = useState('');
   const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [editServices, setEditServices] = useState<RateCardService[]>([]);
@@ -76,8 +76,14 @@ export default function RateCards() {
     return allRateCards.find(rc => `${rc.brand.toUpperCase()}:${rc.model.toUpperCase()}` === key) || null;
   }, [allRateCards, brand, model]);
 
-  // Load services when brand, model, or matchedCard changes
+  // Load services when brand, model, or matchedCard changes.
+  // Never preload a rate card: services only populate once a Brand AND Model are chosen.
   useEffect(() => {
+    if (!brand.trim() || !model.trim()) {
+      setEditServices([]);
+      setEditImageFile(null);
+      return;
+    }
     if (matchedCard && matchedCard.services && matchedCard.services.length > 0) {
       setEditServices(matchedCard.services.map((s, i) => ({ 
         ...s, 
@@ -227,10 +233,11 @@ export default function RateCards() {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Select or type Brand (e.g. APPLE)..."
+                  placeholder="Select Brand..."
                   value={brand}
                   onChange={(e) => {
                     setBrand(e.target.value);
+                    setModel('');
                     setBrandDropdownOpen(true);
                   }}
                   onFocus={() => {
@@ -255,8 +262,7 @@ export default function RateCards() {
                         key={b}
                         onClick={() => {
                           setBrand(b);
-                          const firstModel = DEVICE_BRANDS[b]?.[0] || '';
-                          if (firstModel) setModel(firstModel);
+                          setModel('');
                           setBrandDropdownOpen(false);
                         }}
                         className={`px-3.5 py-3 sm:py-2.5 hover:bg-primary/25 cursor-pointer text-sm font-semibold transition-colors flex items-center justify-between ${
@@ -282,22 +288,26 @@ export default function RateCards() {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Select or type Model (e.g. IPAD AIR)..."
+                  placeholder="Select Model..."
                   value={model}
+                  disabled={!brand.trim()}
                   onChange={(e) => {
                     setModel(e.target.value);
                     setModelDropdownOpen(true);
                   }}
                   onFocus={() => {
-                    setModelDropdownOpen(true);
-                    setBrandDropdownOpen(false);
+                    if (brand.trim()) {
+                      setModelDropdownOpen(true);
+                      setBrandDropdownOpen(false);
+                    }
                   }}
-                  className="w-full bg-secondary/35 border border-border rounded-xl pl-3.5 pr-10 py-2.5 text-sm focus:outline-none focus:border-primary font-bold text-foreground"
+                  className="w-full bg-secondary/35 border border-border rounded-xl pl-3.5 pr-10 py-2.5 text-sm focus:outline-none focus:border-primary font-bold text-foreground disabled:opacity-45 disabled:cursor-not-allowed"
                 />
                 <button
                   type="button"
                   onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
+                  disabled={!brand.trim()}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 disabled:opacity-40 disabled:cursor-default disabled:hover:text-muted-foreground"
                 >
                   <ChevronDown className="h-4 w-4" />
                 </button>
@@ -366,18 +376,22 @@ export default function RateCards() {
               <div className="min-w-0 flex-1">
                 <h4 className="text-xs sm:text-sm font-extrabold text-foreground tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
                   <span className="truncate">{brand.toUpperCase() || 'BRAND'} {model.toUpperCase() || 'MODEL'}</span>
-                  {isDBRecorded ? (
-                    <span className="text-[9px] sm:text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold shrink-0">
-                      Saved Rate Card
-                    </span>
-                  ) : (
-                    <span className="text-[9px] sm:text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold shrink-0">
-                      New Specification
-                    </span>
+                  {brand.trim() && model.trim() && (
+                    isDBRecorded ? (
+                      <span className="text-[9px] sm:text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold shrink-0">
+                        Saved Rate Card
+                      </span>
+                    ) : (
+                      <span className="text-[9px] sm:text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full font-bold shrink-0">
+                        New Specification
+                      </span>
+                    )
                   )}
                 </h4>
                 <p className="text-[11px] sm:text-xs text-muted-foreground leading-tight mt-0.5">
-                  Price specifications auto-loaded. Edit costs below.
+                  {brand.trim() && model.trim()
+                    ? 'Price specifications auto-loaded. Edit costs below.'
+                    : 'Select a Brand and Model to view saved rates or create a new specification.'}
                 </p>
               </div>
             </div>
