@@ -1086,6 +1086,11 @@ export default function NewRepair() {
     setBrandSearchQuery(brandName);
     setValue('brand', brandName, { shouldValidate: true });
     setBrandDropdownOpen(false);
+    setTimeout(() => {
+      const modelEl = document.querySelector('#model-select-container input') as HTMLInputElement;
+      modelEl?.focus();
+      setModelDropdownOpen(true);
+    }, 50);
   };
 
   const handleSelectModel = (modelName: string) => {
@@ -1819,17 +1824,25 @@ export default function NewRepair() {
 
           {/* Brand & Model Selectors */}
           {(() => {
-            const filteredBrands = brandOptions.filter(b => 
-              b.toLowerCase().includes(brandSearchQuery.toLowerCase())
-            );
+            const filteredBrands = (() => {
+              if (!brandSearchQuery.trim()) return brandOptions;
+              const q = brandSearchQuery.trim().toLowerCase();
+              const startsWith = brandOptions.filter((b) => b.toLowerCase().startsWith(q));
+              if (startsWith.length > 0) return startsWith;
+              return brandOptions.filter((b) => b.toLowerCase().includes(q));
+            })();
 
             const availableModels = selectedBrand && selectedBrand !== 'Other' 
               ? (modelsByBrand[selectedBrand.toUpperCase()] || []) 
               : [];
 
-            const filteredModels = availableModels.filter(m => 
-              m.toLowerCase().includes(modelSearchQuery.toLowerCase())
-            );
+            const filteredModels = (() => {
+              if (!modelSearchQuery.trim()) return availableModels;
+              const q = modelSearchQuery.trim().toLowerCase();
+              const startsWith = availableModels.filter((m) => m.toLowerCase().startsWith(q));
+              if (startsWith.length > 0) return startsWith;
+              return availableModels.filter((m) => m.toLowerCase().includes(q));
+            })();
 
             return (
               <div className="space-y-3">
@@ -1848,6 +1861,23 @@ export default function NewRepair() {
                           setValue('brand', val, { shouldValidate: true });
                           setSelectedBrand(val);
                           setBrandDropdownOpen(true);
+
+                          // Auto-complete if typed string matches an exact brand option
+                          const q = val.trim().toLowerCase();
+                          if (q.length >= 2) {
+                            const exact = brandOptions.find((b) => b.toLowerCase() === q);
+                            if (exact) {
+                              handleSelectBrand(exact);
+                            }
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if ((e.key === 'Enter' || e.key === 'Tab') && brandDropdownOpen && filteredBrands.length > 0) {
+                            e.preventDefault();
+                            handleSelectBrand(filteredBrands[0]);
+                          } else if (e.key === 'Escape') {
+                            setBrandDropdownOpen(false);
+                          }
                         }}
                         onFocus={() => {
                           setBrandDropdownOpen(true);
@@ -1904,6 +1934,23 @@ export default function NewRepair() {
                           setValue('model', val, { shouldValidate: true });
                           setSelectedModel(val);
                           setModelDropdownOpen(true);
+
+                          // Auto-complete if typed string matches an exact model option
+                          const q = val.trim().toLowerCase();
+                          if (q.length >= 2) {
+                            const exact = availableModels.find((m) => m.toLowerCase() === q);
+                            if (exact) {
+                              handleSelectModel(exact);
+                            }
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if ((e.key === 'Enter' || e.key === 'Tab') && modelDropdownOpen && filteredModels.length > 0) {
+                            e.preventDefault();
+                            handleSelectModel(filteredModels[0]);
+                          } else if (e.key === 'Escape') {
+                            setModelDropdownOpen(false);
+                          }
                         }}
                         onFocus={() => {
                           setModelDropdownOpen(true);

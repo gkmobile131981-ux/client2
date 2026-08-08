@@ -136,6 +136,81 @@ export async function getRateCardById(req: Request, res: Response): Promise<void
   }
 }
 
+function normalizeSubModels(modelStr: string, brandStr?: string): string[] {
+  if (!modelStr) return [];
+  let m = modelStr.trim().toUpperCase();
+  if (brandStr) {
+    const b = brandStr.trim().toUpperCase();
+    if (m.startsWith(b + ' ')) {
+      m = m.substring(b.length + 1).trim();
+    }
+  }
+  return m
+    .split('/')
+    .map((s) => {
+      let sub = s.trim();
+      if (brandStr) {
+        const b = brandStr.trim().toUpperCase();
+        if (sub.startsWith(b + ' ')) {
+          sub = sub.substring(b.length + 1).trim();
+        }
+      }
+      return sub;
+    })
+    .filter(Boolean);
+}
+
+function findBestMatchingRateCard<T extends { brand: string; model: string }>(
+  cards: T[],
+  brand: string,
+  model: string
+): T | null {
+  if (!brand.trim() || !model.trim()) return null;
+  const brandUpper = brand.trim().toUpperCase();
+  const modelUpper = model.trim().toUpperCase();
+
+  const brandCards = cards.filter((rc) => rc.brand.trim().toUpperCase() === brandUpper);
+  if (brandCards.length === 0) return null;
+
+  const exactCard = brandCards.find((rc) => rc.model.trim().toUpperCase() === modelUpper);
+  if (exactCard) return exactCard;
+
+  const inputTokens = normalizeSubModels(model, brand);
+  let bestCard: T | null = null;
+  let maxScore = 0;
+
+  for (const card of brandCards) {
+    const cardTokens = normalizeSubModels(card.model, brand);
+    let matchCount = 0;
+
+    for (const it of inputTokens) {
+      if (cardTokens.includes(it)) {
+        matchCount++;
+      }
+    }
+
+    if (matchCount > maxScore) {
+      maxScore = matchCount;
+      bestCard = card;
+    }
+  }
+
+  if (bestCard && maxScore > 0) {
+    return bestCard;
+  }
+
+  for (const card of brandCards) {
+    const cardNorm = normalizeSubModels(card.model, brand).join(' ');
+    for (const it of inputTokens) {
+      if (it.length >= 2 && cardNorm.includes(it)) {
+        return card;
+      }
+    }
+  }
+
+  return null;
+}
+
 // GET /api/ratecards/lookup?brand=Apple&model=iPhone+16 — find by brand+model (for NewRepair step 3)
 export async function lookupRateCard(req: Request, res: Response): Promise<void> {
   const user = req.user;
@@ -154,21 +229,20 @@ export async function lookupRateCard(req: Request, res: Response): Promise<void>
 
   try {
     const targetShopId = await resolveShopIdToUse(user);
-    const { data, error } = await supabaseAdmin
+    const { data: cards, error } = await supabaseAdmin
       .from('rate_cards')
       .select(`*, services:rate_card_services(*)`)
       .eq('shop_id', targetShopId)
       .ilike('brand', brand)
-      .ilike('model', model)
-      .order('sort_order', { ascending: true, referencedTable: 'rate_card_services' })
-      .maybeSingle();
+      .order('sort_order', { ascending: true, referencedTable: 'rate_card_services' });
 
     if (error) {
       res.status(400).json({ error: error.message });
       return;
     }
 
-    res.json({ rateCard: data || null });
+    const matchedCard = findBestMatchingRateCard(cards || [], brand, model);
+    res.json({ rateCard: matchedCard || null });
   } catch {
     res.status(500).json({ error: 'Failed to lookup rate card' });
   }

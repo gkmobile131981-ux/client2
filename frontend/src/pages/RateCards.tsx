@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Trash2, Save, Loader2, Upload, ImageIcon, ChevronDown
@@ -9,6 +9,7 @@ import { Input } from '../components/ui/Input';
 import { apiClient } from '../lib/api';
 import toast from 'react-hot-toast';
 import { DEVICE_BRANDS, DEFAULT_SERVICES, RateCard, RateCardService } from '../data/deviceCatalog';
+import { findBestMatchingRateCard } from '../utils/modelMatching';
 
 const getBrandLogoUrl = (brand: string) => {
   const name = brand.toLowerCase().trim();
@@ -33,6 +34,9 @@ export default function RateCards() {
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [editServices, setEditServices] = useState<RateCardService[]>([]);
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
+
+  const brandInputRef = useRef<HTMLInputElement>(null);
+  const modelInputRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading } = useQuery<{ rateCards: RateCard[] }>({
     queryKey: ['rate-cards'],
@@ -69,11 +73,10 @@ export default function RateCards() {
     return Array.from(cardsMap.values());
   }, [data?.rateCards]);
 
-  // Find rate card matching current brand and model
+  // Find rate card matching current brand and model (including slash-separated sub-models)
   const matchedCard = useMemo(() => {
     if (!brand.trim() || !model.trim()) return null;
-    const key = `${brand.trim().toUpperCase()}:${model.trim().toUpperCase()}`;
-    return allRateCards.find(rc => `${rc.brand.toUpperCase()}:${rc.model.toUpperCase()}` === key) || null;
+    return findBestMatchingRateCard(allRateCards, brand, model);
   }, [allRateCards, brand, model]);
 
   // Load services when brand, model, or matchedCard changes.
@@ -216,7 +219,15 @@ export default function RateCards() {
     allRateCards.forEach((rc) => set.add(rc.brand.toUpperCase()));
     return Array.from(set).sort();
   }, [allRateCards]);
-  const filteredBrands = brandList.filter(b => b.toLowerCase().includes(brand.toLowerCase()));
+
+  // Filter brands: prioritize starts-with matches (e.g. typing 'V' lists VERTU, VIVO first instead of LAVA, LENOVO)
+  const filteredBrands = useMemo(() => {
+    if (!brand.trim()) return brandList;
+    const q = brand.trim().toUpperCase();
+    const startsWith = brandList.filter((b) => b.toUpperCase().startsWith(q));
+    if (startsWith.length > 0) return startsWith;
+    return brandList.filter((b) => b.toUpperCase().includes(q));
+  }, [brandList, brand]);
 
   // Available models list for selected brand — catalog models plus any model
   // already saved for this brand in the DB.
@@ -228,12 +239,30 @@ export default function RateCards() {
     });
     return Array.from(set).sort();
   }, [allRateCards, brand]);
-  const filteredModels = modelList.filter(m => m.toLowerCase().includes(model.toLowerCase()));
+
+  // Filter models: prioritize starts-with matches
+  const filteredModels = useMemo(() => {
+    if (!model.trim()) return modelList;
+    const q = model.trim().toUpperCase();
+    const startsWith = modelList.filter((m) => m.toUpperCase().startsWith(q));
+    if (startsWith.length > 0) return startsWith;
+    return modelList.filter((m) => m.toUpperCase().includes(q));
+  }, [modelList, model]);
 
   const canCreateBrand = brand.trim().length > 0 && !filteredBrands.some(b => b.toUpperCase() === brand.trim().toUpperCase());
   const canCreateModel = model.trim().length > 0 && !filteredModels.some(m => m.toUpperCase() === model.trim().toUpperCase());
 
   const isDBRecorded = matchedCard && !matchedCard.id.startsWith('virtual-');
+
+  const selectBrandAndFocusModel = (selectedBrand: string) => {
+    setBrand(selectedBrand);
+    setModel('');
+    setBrandDropdownOpen(false);
+    setTimeout(() => {
+      modelInputRef.current?.focus();
+      setModelDropdownOpen(true);
+    }, 50);
+  };
 
   return (
     <div className="w-full space-y-3 sm:space-y-4 text-foreground">
@@ -248,13 +277,32 @@ export default function RateCards() {
               </label>
               <div className="relative">
                 <input
+                  ref={brandInputRef}
                   type="text"
                   placeholder="Select Brand..."
                   value={brand}
                   onChange={(e) => {
-                    setBrand(e.target.value);
+                    const val = e.target.value;
+                    setBrand(val);
                     setModel('');
                     setBrandDropdownOpen(true);
+
+                    // Auto-complete if typed string matches an exact brand name
+                    const q = val.trim().toUpperCase();
+                    if (q.length >= 2) {
+                      const exactMatch = brandList.find((b) => b.toUpperCase() === q);
+                      if (exactMatch) {
+                        selectBrandAndFocusModel(exactMatch);
+                      }
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === 'Tab') && brandDropdownOpen && filteredBrands.length > 0) {
+                      e.preventDefault();
+                      selectBrandAndFocusModel(filteredBrands[0]);
+                    } else if (e.key === 'Escape') {
+                      setBrandDropdownOpen(false);
+                    }
                   }}
                   onFocus={() => {
                     setBrandDropdownOpen(true);
@@ -276,11 +324,7 @@ export default function RateCards() {
                     filteredBrands.map((b) => (
                       <div
                         key={b}
-                        onClick={() => {
-                          setBrand(b);
-                          setModel('');
-                          setBrandDropdownOpen(false);
-                        }}
+                        onClick={() => selectBrandAndFocusModel(b)}
                         className={`px-3.5 py-3 sm:py-2.5 hover:bg-primary/25 cursor-pointer text-sm font-semibold transition-colors flex items-center justify-between ${
                           brand.toUpperCase() === b ? 'bg-primary/20 text-primary font-bold' : 'text-white/90'
                         }`}
@@ -291,11 +335,7 @@ export default function RateCards() {
                     ))
                   ) : canCreateBrand ? (
                     <div
-                      onClick={() => {
-                        setBrand(brand.trim().toUpperCase());
-                        setModel('');
-                        setBrandDropdownOpen(false);
-                      }}
+                      onClick={() => selectBrandAndFocusModel(brand.trim().toUpperCase())}
                       className="px-3.5 py-3 hover:bg-primary/25 cursor-pointer text-sm font-semibold transition-colors flex items-center gap-2 text-primary"
                     >
                       <Plus className="h-4 w-4" /> Create new brand: {brand.trim().toUpperCase()}
@@ -314,13 +354,34 @@ export default function RateCards() {
               </label>
               <div className="relative">
                 <input
+                  ref={modelInputRef}
                   type="text"
                   placeholder="Select Model..."
                   value={model}
                   disabled={!brand.trim()}
                   onChange={(e) => {
-                    setModel(e.target.value);
+                    const val = e.target.value;
+                    setModel(val);
                     setModelDropdownOpen(true);
+
+                    // Auto-complete if typed string matches an exact model name
+                    const q = val.trim().toUpperCase();
+                    if (q.length >= 2) {
+                      const exactMatch = filteredModels.find((m) => m.toUpperCase() === q);
+                      if (exactMatch) {
+                        setModel(exactMatch);
+                        setModelDropdownOpen(false);
+                      }
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if ((e.key === 'Enter' || e.key === 'Tab') && modelDropdownOpen && filteredModels.length > 0) {
+                      e.preventDefault();
+                      setModel(filteredModels[0]);
+                      setModelDropdownOpen(false);
+                    } else if (e.key === 'Escape') {
+                      setModelDropdownOpen(false);
+                    }
                   }}
                   onFocus={() => {
                     if (brand.trim()) {

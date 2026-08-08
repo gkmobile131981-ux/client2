@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../co
 import { apiClient } from '../lib/api';
 import { SearchSelect } from '../components/ui/SearchSelect';
 import { DEVICE_BRANDS, DEFAULT_SERVICES, RateCard } from '../data/deviceCatalog';
+import { findBestMatchingRateCard } from '../utils/modelMatching';
 
 export default function RepairPriceList() {
   const [selectedBrand, setSelectedBrand] = useState<string>('');
@@ -79,6 +80,8 @@ export default function RepairPriceList() {
     if (!selectedModelId) return null;
     if (selectedModelId.startsWith('fallback-')) {
       const model = selectedModelId.replace('fallback-', '');
+      const matched = findBestMatchingRateCard(rateCards, selectedBrand, model);
+      if (matched) return matched;
       return {
         brand: selectedBrand,
         model,

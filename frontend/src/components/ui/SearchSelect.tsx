@@ -68,13 +68,11 @@ export function SearchSelect({
     const startsWith = options.filter((opt) =>
       opt.label.toLowerCase().startsWith(q)
     );
-    const contains = options.filter(
-      (opt) =>
-        !opt.label.toLowerCase().startsWith(q) &&
-        opt.label.toLowerCase().includes(q)
-    );
+    if (startsWith.length > 0) {
+      return startsWith;
+    }
 
-    return [...startsWith, ...contains];
+    return options.filter((opt) => opt.label.toLowerCase().includes(q));
   }, [options, searchTerm, value, isOpen]);
 
   const handleSelect = (optValue: string) => {
@@ -97,7 +95,7 @@ export function SearchSelect({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Escape') {
       setIsOpen(false);
-    } else if (e.key === 'Enter' && isOpen && filteredOptions.length > 0) {
+    } else if ((e.key === 'Enter' || e.key === 'Tab') && isOpen && filteredOptions.length > 0) {
       e.preventDefault();
       handleSelect(filteredOptions[0].value);
     } else if (e.key === 'ArrowDown' && !isOpen) {
