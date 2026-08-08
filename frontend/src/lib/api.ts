@@ -1,5 +1,7 @@
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+import { supabase } from './supabase';
+
 export class ApiError extends Error {
   status: number;
   details?: any;
@@ -53,6 +55,20 @@ async function refreshAccessToken(): Promise<string> {
   localStorage.setItem('gk_access_token', data.accessToken);
   if (data.refreshToken) {
     localStorage.setItem('gk_refresh_token', data.refreshToken);
+  }
+
+  // Keep the frontend Supabase client in sync so realtime channels and auth
+  // listeners keep using the freshly issued access token instead of the stale
+  // one they were established with. Best-effort: API calls authenticate from
+  // localStorage, so a failure here only degrades realtime/subscription
+  // features, never the request itself.
+  try {
+    await supabase.auth.setSession({
+      access_token: data.accessToken,
+      refresh_token: data.refreshToken || refreshToken,
+    });
+  } catch {
+    // Non-fatal
   }
 
   return data.accessToken;

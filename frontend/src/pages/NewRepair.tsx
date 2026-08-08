@@ -304,8 +304,14 @@ const repairOrderSchema = z.object({
   accessoryOther: z.boolean().optional().default(false),
   imei: z.string().optional().nullable(),
   warranty: z.string().optional().nullable(),
-  estimate: z.number().positive('Estimate cost must be positive'),
-  advance: z.number().nonnegative('Paid/Advance payment must be positive or zero'),
+  estimate: z.preprocess(
+    (v) => (typeof v === 'number' && isNaN(v) ? null : v),
+    z.number().nonnegative('Estimate cost must be zero or positive').nullable().optional()
+  ),
+  advance: z.preprocess(
+    (v) => (typeof v === 'number' && isNaN(v) ? 0 : v),
+    z.number().nonnegative('Paid/Advance payment must be positive or zero')
+  ),
   allowCashback: z.boolean().optional().default(false),
   expense: z.number().nonnegative('Expense must be zero or positive').optional().default(0),
   deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Select a valid date').or(z.literal('')).optional().nullable(),
@@ -315,7 +321,7 @@ const repairOrderSchema = z.object({
   sendEmail: z.boolean().optional().default(false),
   kycDetails: z.string().optional().nullable(),
   reminderEnable: z.boolean().optional().default(false)
-}).refine((data) => data.advance <= data.estimate, {
+}).refine((data) => (data.advance ?? 0) <= (data.estimate ?? 0), {
   message: 'Paid/Advance cannot exceed estimate',
   path: ['advance']
 });
@@ -1309,8 +1315,8 @@ export default function NewRepair() {
     if (values.imei) formData.append('imei', values.imei);
     if (values.warranty) formData.append('warranty', values.warranty);
 
-    formData.append('estimate', String(values.estimate));
-    formData.append('advance', String(values.advance));
+    formData.append('estimate', String(values.estimate ?? 0));
+    formData.append('advance', String(values.advance ?? 0));
     formData.append('allowCashback', String(values.allowCashback));
     formData.append('expense', String(values.expense));
 

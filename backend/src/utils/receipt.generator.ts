@@ -79,6 +79,7 @@ interface ReceiptData {
       model: string;
       imei: string | null;
       problem: string;
+      warranty?: string | null;
     };
     customer: {
       name: string;
@@ -494,6 +495,41 @@ export async function generateReceiptPdf(data: ReceiptData): Promise<Uint8Array>
   });
 
   cursorY = boxY - 25;
+
+  // 3.5. Device Warranty strip — shown between the device card and financials so the
+  // customer can see the coverage at a glance. Renders the stored value, or "No Warranty"
+  // when none was recorded.
+  const warrantyValue = (repair.device.warranty || '').trim();
+  const hasWarranty = warrantyValue.length > 0;
+  const warrantyDisplay = hasWarranty ? warrantyValue : 'No Warranty';
+
+  page.drawRectangle({
+    x: marginX,
+    y: cursorY - 26,
+    width: width - marginX * 2,
+    height: 26,
+    color: lightBgColor,
+  });
+
+  page.drawText('DEVICE WARRANTY', {
+    x: marginX + 12,
+    y: cursorY - 17,
+    size: 9,
+    font: fontBold,
+    color: secondaryColor,
+  });
+
+  page.drawText(warrantyDisplay, {
+    x: marginX + colWidth + 16,
+    y: cursorY - 17,
+    size: 9,
+    font: hasWarranty ? fontBold : font,
+    color: hasWarranty ? primaryColor : secondaryColor,
+    maxWidth: colWidth - 12,
+    lineHeight: 11,
+  });
+
+  cursorY -= 26 + 12;
 
   // 4. Financials Section Table
   page.drawText('FINANCIALS SUMMARY', {

@@ -17,8 +17,15 @@ if (!process.env.SUPABASE_SERVICE_ROLE_KEY && !process.env.VITE_SUPABASE_SERVICE
   console.error('[CRITICAL] Missing SUPABASE_SERVICE_ROLE_KEY in Railway environment variables!');
 }
 
-// Client for normal transactions or user identity checks
-export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+// Client for normal transactions or user identity checks.
+// Kept stateless: every request passes its token explicitly (getUser/signInWithPassword),
+// so session persistence + auto-refresh timers are disabled to avoid cross-request leaks.
+export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false
+  }
+});
 
 // Admin client with full bypass of RLS, used only in server-side operations
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {

@@ -77,6 +77,45 @@ export default function DeliverRepair() {
   
   // Signature States
   const sigPadRef = useRef<SignatureCanvas>(null);
+
+  // Base64 backup of the drawn signature. The browser clears the underlying
+  // canvas on resize / address-bar show-hide (viewport resize), so we keep a
+  // snapshot taken on pen-up and re-hydrate the pad whenever it turns empty.
+  const [savedSignature, setSavedSignature] = useState<string | null>(null);
+
+  const captureSignature = () => {
+    const pad = sigPadRef.current;
+    if (!pad || pad.isEmpty()) return;
+    setSavedSignature(pad.getCanvas().toDataURL('image/png'));
+  };
+
+  // Re-draw the saved signature when the pad has been cleared by the browser
+  // (window resize, orientation change, mobile address-bar show/hide). Uses
+  // requestAnimationFrame so any internal library resize/clear settles first.
+  useEffect(() => {
+    const restoreIfCleared = () => {
+      const pad = sigPadRef.current;
+      if (!pad || !savedSignature || !pad.isEmpty()) return;
+      const canvas = pad.getCanvas();
+      pad.fromDataURL(savedSignature, {
+        width: canvas.width || 300,
+        height: canvas.height || 150,
+      });
+    };
+    const handleViewportChange = () => {
+      requestAnimationFrame(restoreIfCleared);
+    };
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('orientationchange', handleViewportChange);
+    document.addEventListener('visibilitychange', handleViewportChange);
+    window.visualViewport?.addEventListener('resize', handleViewportChange);
+    return () => {
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('orientationchange', handleViewportChange);
+      document.removeEventListener('visibilitychange', handleViewportChange);
+      window.visualViewport?.removeEventListener('resize', handleViewportChange);
+    };
+  }, [savedSignature]);
   
   // Success states
   const [isSuccess, setIsSuccess] = useState(false);
@@ -183,6 +222,7 @@ export default function DeliverRepair() {
   // Clear signature pad
   const clearSignature = () => {
     sigPadRef.current?.clear();
+    setSavedSignature(null);
   };
 
   // Submit delivery closure
@@ -204,10 +244,15 @@ export default function DeliverRepair() {
       return;
     }
 
-    // Convert signature pad vectors to Base64 Image if not empty
-    const signatureDataUrl = (sigPadRef.current && !sigPadRef.current.isEmpty())
-      ? sigPadRef.current.getTrimmedCanvas().toDataURL('image/png')
-      : null;
+    // Convert signature pad vectors to Base64 Image if not empty. Falls back to
+    // the saved snapshot when the pad was cleared by a browser resize.
+    let signatureDataUrl: string | null = null;
+    const pad = sigPadRef.current;
+    if (pad && !pad.isEmpty()) {
+      signatureDataUrl = pad.getTrimmedCanvas().toDataURL('image/png');
+    } else if (savedSignature) {
+      signatureDataUrl = savedSignature;
+    }
 
     const paidNum = parseFloat(amountPaidNow || '0');
 
@@ -584,6 +629,7 @@ export default function DeliverRepair() {
                 <ReactSignatureCanvas 
                   ref={sigPadRef}
                   penColor="black"
+                  onEnd={captureSignature}
                   canvasProps={{
                     className: 'w-full h-full cursor-crosshair'
                   }}

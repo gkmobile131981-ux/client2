@@ -232,14 +232,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     checkInitialSession();
 
-    // Set listener on Auth changes
+    // Set listener on Auth changes. Both tokens are mirrored to localStorage on
+    // ANY session event (SIGNED_IN / TOKEN_REFRESHED / setSession), keeping the
+    // cached copy in step with the in-memory Supabase client. Only SIGNED_IN
+    // (re)loads the profile; token refreshes just sync the token copy.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        localStorage.setItem('gk_refresh_token', session.refresh_token);
-        await loadProfile(session.access_token);
-      } else if (event === 'TOKEN_REFRESHED' && session) {
-        localStorage.setItem('gk_refresh_token', session.refresh_token);
+      if (session?.access_token) {
         localStorage.setItem('gk_access_token', session.access_token);
+        if (session.refresh_token) {
+          localStorage.setItem('gk_refresh_token', session.refresh_token);
+        }
+      }
+      if (event === 'SIGNED_IN' && session) {
+        await loadProfile(session.access_token);
       }
       setIsLoading(false);
     });

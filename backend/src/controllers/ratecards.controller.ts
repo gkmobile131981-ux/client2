@@ -11,13 +11,45 @@ const SUPER_ADMIN_EMAILS = [
 
 const DEFAULT_SHOP_ID = 'bafff8e0-53cc-45cc-afa3-1c5862e8da21';
 
-// Every rate-card operation must resolve to the SAME shop or data written on
-// create/save can never be read back on list/get (the original implementation
-// pointed non-super-admin reads at a hardcoded admin shop, causing "saved but
-// not displayed" mismatches). Authenticated users always operate within their
-// own shop; the default is only a fallback for users without an assigned shop.
-function getShopIdToUse(user: any): string {
-  return user?.shop_id || DEFAULT_SHOP_ID;
+// Super Admin shop id, resolved once and cached briefly so every list/lookup
+// does not re-query the users table. The TTL ensures newly created super admins
+// are picked up without a restart.
+let cachedSuperAdminShopId: string | null = null;
+let cachedAtMs = 0;
+const SUPER_ADMIN_SHOP_CACHE_TTL_MS = 5 * 60 * 1000;
+
+// Rate-card data is authored by the Super Admin and must be visible to every
+// shop (and every staff member) under the account. Writes only ever pass through
+// a super admin, so they target the super admin's own shop; reads from any other
+// role resolve to the SAME shop, keeping write/read scoping consistent while
+// letting shop owners see the master price list.
+async function resolveShopIdToUse(user: any): Promise<string> {
+  if (!user) return DEFAULT_SHOP_ID;
+
+  const isSuperAdmin =
+    user.role === 'superadmin' ||
+    (!!user.email && SUPER_ADMIN_EMAILS.includes(user.email.toLowerCase().trim()));
+
+  if (isSuperAdmin) {
+    return user.shop_id || DEFAULT_SHOP_ID;
+  }
+
+  if (cachedSuperAdminShopId && Date.now() - cachedAtMs < SUPER_ADMIN_SHOP_CACHE_TTL_MS) {
+    return cachedSuperAdminShopId;
+  }
+
+  const { data: superAdminProfile } = await supabaseAdmin
+    .from('users')
+    .select('id, email, shop_id')
+    .or(`role.eq.superadmin,email.in.(${SUPER_ADMIN_EMAILS.join(',')})`)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  const resolved = superAdminProfile?.shop_id || DEFAULT_SHOP_ID;
+  cachedSuperAdminShopId = resolved;
+  cachedAtMs = Date.now();
+  return resolved;
 }
 
 function checkSuperAdmin(user: any): boolean {
@@ -50,7 +82,7 @@ export async function getRateCards(req: Request, res: Response): Promise<void> {
   }
 
   try {
-    const targetShopId = getShopIdToUse(user);
+    const targetShopId = await resolveShopIdToUse(user);
     const { data, error } = await supabaseAdmin
       .from('rate_cards')
       .select(`
@@ -84,7 +116,7 @@ export async function getRateCardById(req: Request, res: Response): Promise<void
   }
 
   try {
-    const targetShopId = getShopIdToUse(user);
+    const targetShopId = await resolveShopIdToUse(user);
     const { data, error } = await supabaseAdmin
       .from('rate_cards')
       .select(`*, services:rate_card_services(*)`)
@@ -121,7 +153,7 @@ export async function lookupRateCard(req: Request, res: Response): Promise<void>
   }
 
   try {
-    const targetShopId = getShopIdToUse(user);
+    const targetShopId = await resolveShopIdToUse(user);
     const { data, error } = await supabaseAdmin
       .from('rate_cards')
       .select(`*, services:rate_card_services(*)`)
@@ -166,7 +198,7 @@ export async function createRateCard(req: Request, res: Response): Promise<void>
     const { data, error } = await supabaseAdmin
       .from('rate_cards')
       .insert({
-        shop_id: getShopIdToUse(user),
+        shop_id: await resolveShopIdToUse(user),
         brand: validated.brand,
         model: validated.model,
         model_image_url: modelImageUrl,
@@ -225,7 +257,7 @@ export async function updateRateCard(req: Request, res: Response): Promise<void>
       .from('rate_cards')
       .update(updatePayload)
       .eq('id', id)
-      .eq('shop_id', getShopIdToUse(user))
+      .eq('shop_id', await resolveShopIdToUse(user))
       .select()
       .single();
 
@@ -263,7 +295,7 @@ export async function deleteRateCard(req: Request, res: Response): Promise<void>
       .from('rate_cards')
       .delete()
       .eq('id', id)
-      .eq('shop_id', getShopIdToUse(user));
+      .eq('shop_id', await resolveShopIdToUse(user));
 
     if (error) {
       res.status(400).json({ error: error.message });
@@ -294,7 +326,7 @@ export async function upsertRateCardServices(req: Request, res: Response): Promi
     const { services } = upsertServicesSchema.parse(req.body);
 
     // Verify rate card belongs to Super Admin's shop
-    const targetShopId = getShopIdToUse(user);
+    const targetShopId = await resolveShopIdToUse(user);
     const { data: existing, error: verifyError } = await supabaseAdmin
       .from('rate_cards')
       .select('id')

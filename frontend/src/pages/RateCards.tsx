@@ -209,13 +209,29 @@ export default function RateCards() {
   const totalDittoLabor = editServices.reduce((sum, s) => sum + Number(s.ditto_cost || 0), 0);
   const totalCopyLabor = editServices.reduce((sum, s) => sum + Number(s.copy_cost || 0), 0);
 
-  // Available brands list
-  const brandList = Object.keys(DEVICE_BRANDS);
+  // Available brands list — static catalog PLUS any brand already saved in the DB
+  // so previously created custom brands stay searchable.
+  const brandList = useMemo(() => {
+    const set = new Set<string>(Object.keys(DEVICE_BRANDS));
+    allRateCards.forEach((rc) => set.add(rc.brand.toUpperCase()));
+    return Array.from(set).sort();
+  }, [allRateCards]);
   const filteredBrands = brandList.filter(b => b.toLowerCase().includes(brand.toLowerCase()));
 
-  // Available models list for selected brand
-  const modelList = DEVICE_BRANDS[brand.toUpperCase()] || [];
+  // Available models list for selected brand — catalog models plus any model
+  // already saved for this brand in the DB.
+  const modelList = useMemo(() => {
+    const brandKey = brand.trim().toUpperCase();
+    const set = new Set<string>(DEVICE_BRANDS[brandKey] || []);
+    allRateCards.forEach((rc) => {
+      if (rc.brand.toUpperCase() === brandKey) set.add(rc.model.toUpperCase());
+    });
+    return Array.from(set).sort();
+  }, [allRateCards, brand]);
   const filteredModels = modelList.filter(m => m.toLowerCase().includes(model.toLowerCase()));
+
+  const canCreateBrand = brand.trim().length > 0 && !filteredBrands.some(b => b.toUpperCase() === brand.trim().toUpperCase());
+  const canCreateModel = model.trim().length > 0 && !filteredModels.some(m => m.toUpperCase() === model.trim().toUpperCase());
 
   const isDBRecorded = matchedCard && !matchedCard.id.startsWith('virtual-');
 
@@ -270,11 +286,22 @@ export default function RateCards() {
                         }`}
                       >
                         <span>{b}</span>
-                        <span className="text-[10px] text-muted-foreground">{DEVICE_BRANDS[b]?.length || 0} models</span>
+                        <span className="text-[10px] text-muted-foreground">{allRateCards.filter((rc) => rc.brand.toUpperCase() === b).length} models</span>
                       </div>
                     ))
+                  ) : canCreateBrand ? (
+                    <div
+                      onClick={() => {
+                        setBrand(brand.trim().toUpperCase());
+                        setModel('');
+                        setBrandDropdownOpen(false);
+                      }}
+                      className="px-3.5 py-3 hover:bg-primary/25 cursor-pointer text-sm font-semibold transition-colors flex items-center gap-2 text-primary"
+                    >
+                      <Plus className="h-4 w-4" /> Create new brand: {brand.trim().toUpperCase()}
+                    </div>
                   ) : (
-                    <div className="px-3.5 py-3 text-xs text-muted-foreground">Type custom brand: "{brand.toUpperCase()}"</div>
+                    <div className="px-3.5 py-3 text-xs text-muted-foreground">Start typing to search brands</div>
                   )}
                 </div>
               )}
@@ -329,8 +356,18 @@ export default function RateCards() {
                         {m}
                       </div>
                     ))
+                  ) : canCreateModel ? (
+                    <div
+                      onClick={() => {
+                        setModel(model.trim().toUpperCase());
+                        setModelDropdownOpen(false);
+                      }}
+                      className="px-3.5 py-3 hover:bg-primary/25 cursor-pointer text-sm font-semibold transition-colors flex items-center gap-2 text-primary"
+                    >
+                      <Plus className="h-4 w-4" /> Create new model: {model.trim().toUpperCase()}
+                    </div>
                   ) : (
-                    <div className="px-3.5 py-3 text-xs text-muted-foreground">Type custom model: "{model.toUpperCase()}"</div>
+                    <div className="px-3.5 py-3 text-xs text-muted-foreground">Start typing to search models</div>
                   )}
                 </div>
               )}

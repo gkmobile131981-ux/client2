@@ -132,4 +132,61 @@ describe('Rate Card shop-scoping consistency', () => {
 
     expect(res.status).toBe(403);
   });
+
+  it('lets a shop owner in a different shop see the super admin rate cards', async () => {
+    // Second shop owner with their own shop and their own rate card
+    const { data: ownerB } = await supabaseAdmin.auth.admin.createUser({
+      email: 'owner-b@gkrepair.com',
+      password: 'ownerbpass',
+      email_confirm: true,
+      user_metadata: { name: 'Owner B', role: 'owner' },
+    });
+    if (!ownerB?.user) throw new Error('Failed to create owner B for rate card tests');
+    const ownerBId = ownerB.user.id;
+
+    const { data: shopB } = await supabaseAdmin
+      .from('shops')
+      .insert({ name: 'Shop B', address: 'B St', phone: '0001112223', owner_id: ownerBId })
+      .select()
+      .single();
+    expect(shopB).toBeTruthy();
+
+    await supabaseAdmin
+      .from('users')
+      .update({ shop_id: shopB.id })
+      .eq('id', ownerBId);
+
+    const { data: bCard } = await supabaseAdmin
+      .from('rate_cards')
+      .insert({ shop_id: shopB.id, brand: 'ONEPLUS', model: 'Nord 4', model_image_url: null })
+      .select()
+      .single();
+    expect(bCard).toBeTruthy();
+
+    const { data: loginB } = await supabaseClient.auth.signInWithPassword({
+      email: 'owner-b@gkrepair.com',
+      password: 'ownerbpass',
+    });
+    const ownerBToken = loginB.session?.access_token || '';
+    expect(ownerBToken).toBeTruthy();
+
+    const listRes = await request(app)
+      .get('/api/ratecards')
+      .set('Authorization', `Bearer ${ownerBToken}`);
+
+    expect(listRes.status).toBe(200);
+    const ids = (listRes.body.rateCards || []).map((c: any) => c.id);
+
+    // Owner B must see the super admin's cards (authored in the seeded shop)...
+    const { data: adminCards } = await supabaseAdmin
+      .from('rate_cards')
+      .select('id')
+      .eq('shop_id', testData.shopId);
+    for (const card of adminCards || []) {
+      expect(ids).toContain(card.id);
+    }
+
+    // ...but must NOT see cards from their own shop.
+    expect(ids).not.toContain(bCard.id);
+  });
 });

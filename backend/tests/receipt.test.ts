@@ -227,6 +227,28 @@ describe('generateReceiptPdf — header layout robustness', () => {
     expect(Buffer.from(pdf).length).toBeGreaterThan(0);
   });
 
+  it('renders the device warranty value on the receipt when one is recorded', async () => {
+    const pdf = await generateReceiptPdf(
+      baseReceipt({ repair: { device: { warranty: '6 Months Manufacturer Warranty' } } })
+    );
+    const text = pdfText(pdf);
+
+    expect(isPdf(pdf)).toBe(true);
+    expect(text).toContain('DEVICE WARRANTY');
+    expect(text).toContain('6 Months Manufacturer Warranty');
+  });
+
+  it('renders "No Warranty" when the device has no warranty recorded', async () => {
+    const pdf = await generateReceiptPdf(
+      baseReceipt({ repair: { device: { warranty: null } } })
+    );
+    const text = pdfText(pdf);
+
+    expect(isPdf(pdf)).toBe(true);
+    expect(text).toContain('DEVICE WARRANTY');
+    expect(text).toContain('No Warranty');
+  });
+
   it('keeps the booked/expected/delivered date columns aligned for delivered repairs', async () => {
     const pdf = await generateReceiptPdf(baseReceipt());
     const text = pdfText(pdf);

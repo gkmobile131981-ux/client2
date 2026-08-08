@@ -1120,7 +1120,8 @@ export async function getRepairReceipt(req: Request, res: Response): Promise<voi
           brand: repair.device.brand,
           model: repair.device.model,
           imei: repair.device.imei,
-          problem: repair.device.problem
+          problem: repair.device.problem,
+          warranty: repair.device.warranty || null
         },
         customer: {
           name: repair.customer.name,
